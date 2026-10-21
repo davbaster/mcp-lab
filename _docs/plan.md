@@ -28,7 +28,7 @@ Throughout the course, learners follow along building a **personal-notes MCP ser
 
 ## Quizzes and progression
 
-- Each chapter ends with **5 multiple-choice questions**, each with exactly one correct answer. Some questions include a code snippet.
+- Each chapter ends with **5 multiple-choice questions**, each with **2 or 3 options** and exactly one correct answer. Some questions include a code snippet.
 - A learner needs **4 of 5 (80%)** to pass a chapter and unlock the next one. Chapters unlock in order.
 - Retries are unlimited. Option order is shuffled on every attempt.
 - After a failed attempt, the learner sees which questions were wrong plus a pointer to the relevant lesson, but not the correct answer.
@@ -63,11 +63,11 @@ Lessons:
 6. Transports at a glance: stdio and Streamable HTTP.
 
 Quiz:
-1. In MCP, which component keeps a one-to-one connection with a single server? **Client** · Host · Transport · Registry
-2. Which primitive is meant for the *model* to invoke in order to take actions? **Tools** · Resources · Prompts · Roots
-3. What message format does MCP use? **JSON-RPC 2.0** · GraphQL · gRPC/Protobuf · Plain REST
-4. What is the first request a client sends to a server? **`initialize`** · `tools/list` · `ping` · `resources/read`
-5. Prompts are primarily controlled by… **The user (e.g. picked from a menu or slash command)** · The model · The server, automatically · The operating system
+1. In MCP, which component keeps a one-to-one connection with a single server? **Client** · Host · Transport
+2. Which primitive is meant for the *model* to invoke in order to take actions? **Tools** · Resources · Prompts
+3. What message format does MCP use? **JSON-RPC 2.0** · GraphQL · gRPC/Protobuf
+4. What is the first request a client sends to a server? **`initialize`** · `tools/list` · `ping`
+5. Prompts are primarily controlled by… **The user (e.g. picked from a menu or slash command)** · The model · The server, automatically
 
 ### Chapter 2 — Your first server
 
@@ -79,11 +79,11 @@ Lessons:
 5. Reading the raw JSON-RPC traffic in the Inspector.
 
 Quiz:
-1. Which command adds the Python MCP SDK with its CLI tools to a uv project? **`uv add "mcp[cli]"`** · `pip install fastmcp-cli` · `uv tool install inspector` · `npm i @mcp/server`
-2. *(snippet: `@mcp.tool()` on `def add(a: int, b: int) -> int`)* Under what name do clients see this tool? **`add`** · `tool_1` · `mcp.add` · It has no name until you pass `name=`
-3. Where does FastMCP get a tool's input schema? **From the function's type hints** · From a separate JSON file · From the return value · The client infers it
-4. What does `mcp dev server.py` do? **Runs the server and opens the MCP Inspector to test it** · Deploys the server · Generates a client · Formats the code
-5. What transport does `mcp.run()` use when no argument is given? **stdio** · Streamable HTTP · WebSocket · HTTP+SSE
+1. Which command adds the Python MCP SDK with its CLI tools to a uv project? **`uv add "mcp[cli]"`** · `pip install fastmcp-cli` · `uv tool install inspector`
+2. *(snippet: `@mcp.tool()` on `def add(a: int, b: int) -> int`)* Under what name do clients see this tool? **`add`** · `tool_1` · `mcp.add`
+3. Where does FastMCP get a tool's input schema? **From the function's type hints** · From a separate JSON file · From the return value
+4. What does `mcp dev server.py` do? **Runs the server and opens the MCP Inspector to test it** · Deploys the server · Generates a client
+5. What transport does `mcp.run()` use when no argument is given? **stdio** · Streamable HTTP · WebSocket
 
 ### Chapter 3 — Building tools: the notes CRUD
 
@@ -96,11 +96,11 @@ Lessons:
 6. Tool annotations: `readOnlyHint` and `destructiveHint`.
 
 Quiz:
-1. Why do tool docstrings matter? **They become the description the model uses to decide when and how to call the tool** · They are required for Python to run · They speed up execution · They are only for human maintainers
-2. `get_note` raises `ValueError("Note 42 not found")`. What does the client receive? **A tool result marked `isError: true` with the message** · The server process crashes · The connection closes · An empty successful result
-3. Which annotation best fits `delete_note`? **`destructiveHint: true`** · `readOnlyHint: true` · `openWorldHint: false` only · No annotation applies
-4. *(snippet: `def get_note(note_id):` with no type hint)* What problem does this cause? **The input schema has no type for `note_id`, so the model gets no guidance on what to pass** · Python raises a `SyntaxError` · The tool is hidden from clients · Nothing; FastMCP infers `int`
-5. Which design is generally better for an LLM? **Separate focused tools (`create_note`, `delete_note`, …) with clear schemas** · One `manage_notes(action: str, data: str)` tool · One tool that runs raw SQL · No tools; only prompts
+1. Why do tool docstrings matter? **They become the description the model uses to decide when and how to call the tool** · They are required for Python to run · They speed up execution
+2. `get_note` raises `ValueError("Note 42 not found")`. What does the client receive? **A tool result marked `isError: true` with the message** · The server process crashes · The connection closes
+3. Which annotation best fits `delete_note`? **`destructiveHint: true`** · `readOnlyHint: true` · `openWorldHint: false` only
+4. *(snippet: `def get_note(note_id):` with no type hint)* What problem does this cause? **The input schema has no type for `note_id`, so the model gets no guidance on what to pass** · Python raises a `SyntaxError` · The tool is hidden from clients
+5. Which design is generally better for an LLM? **Separate focused tools (`create_note`, `delete_note`, …) with clear schemas** · One `manage_notes(action: str, data: str)` tool · One tool that runs raw SQL
 
 ### Chapter 4 — Resources and prompts
 
@@ -112,11 +112,11 @@ Lessons:
 5. Choosing the right primitive: a decision guide.
 
 Quiz:
-1. What is the main difference between a resource and a tool? **Resources expose read-only context the application chooses to include; tools perform actions the model invokes** · Resources are faster · Tools cannot take arguments · There is no difference
-2. `@mcp.resource("notes://{note_id}")` defines a… **Resource template** · Tool · Prompt · Transport
-3. Which method does a client call to get a resource's contents? **`resources/read`** · `resources/call` · `tools/call` · `prompts/get`
-4. Users should be able to pick "Summarize this note" from a menu in their client. Which primitive fits? **Prompt** · Tool · Resource · Notification
-5. Which of these should be a tool rather than a resource? **Creating a new note** · The list of note titles · A single note's content · The notes count
+1. What is the main difference between a resource and a tool? **Resources expose read-only context the application chooses to include; tools perform actions the model invokes** · Resources are faster · Tools cannot take arguments
+2. `@mcp.resource("notes://{note_id}")` defines a… **Resource template** · Tool · Prompt
+3. Which method does a client call to get a resource's contents? **`resources/read`** · `resources/call` · `tools/call`
+4. Users should be able to pick "Summarize this note" from a menu in their client. Which primitive fits? **Prompt** · Tool · Resource
+5. Which of these should be a tool rather than a resource? **Creating a new note** · The list of note titles · A single note's content
 
 ### Chapter 5 — Transports and connecting real clients
 
@@ -129,11 +129,11 @@ Lessons:
 6. Local HTTP safety: bind to `127.0.0.1`, validate `Origin`, and add authentication before exposing the server remotely.
 
 Quiz:
-1. Why does `print("debug")` break a stdio server? **stdout carries the protocol messages, so stray text corrupts them** · `print` is disabled in MCP · It slows the server · It doesn't break anything
-2. With the stdio transport, who starts the server process? **The client/host** · The user, manually, every time · A cloud scheduler · The server starts itself at boot
-3. *(snippet: Claude Desktop config)* Which top-level key lists the servers to launch? **`mcpServers`** · `servers` · `tools` · `plugins`
-4. How does a client send messages to a Streamable HTTP server? **HTTP POST to the server's single MCP endpoint** · A new WebSocket per message · Writing to the server's stdin · DNS TXT records
-5. Which setting matters most when running a Streamable HTTP server locally? **Bind to `127.0.0.1` and validate the `Origin` header** · Disable all logging · Use port 80 · Run as administrator
+1. Why does `print("debug")` break a stdio server? **stdout carries the protocol messages, so stray text corrupts them** · `print` is disabled in MCP · It slows the server
+2. With the stdio transport, who starts the server process? **The client/host** · The user, manually, every time · A cloud scheduler
+3. *(snippet: Claude Desktop config)* Which top-level key lists the servers to launch? **`mcpServers`** · `servers` · `tools`
+4. How does a client send messages to a Streamable HTTP server? **HTTP POST to the server's single MCP endpoint** · A new WebSocket per message · Writing to the server's stdin
+5. Which setting matters most when running a Streamable HTTP server locally? **Bind to `127.0.0.1` and validate the `Origin` header** · Disable all logging · Use port 80
 
 ### Chapter 6 — Context, testing, and shipping
 
@@ -146,11 +146,11 @@ Lessons:
 6. Shipping: `pyproject.toml`, `uv run`, and a README with a ready-to-paste client config.
 
 Quiz:
-1. How should a tool send log messages to the client? **Accept a `ctx: Context` parameter and call `await ctx.info(...)`** · `print()` to stdout · Return logs inside the tool result · Write them to a resource
-2. An `import_notes` tool takes 30 seconds. How do you keep the user informed? **Call `ctx.report_progress(...)` as work proceeds** · Split it into 30 tools · Return early and hope · Raise an exception halfway
-3. Where should the server open its SQLite connection so that it happens once for the server's lifetime? **In the server's lifespan handler** · Inside every tool call · In the client · In the docstring
-4. The server needs an API key for an external service. Where should it come from? **An environment variable set in the client config's `env`** · Hardcoded in `server.py` · A tool argument the model fills in · A public resource
-5. An `export_notes(path: str)` tool writes a file. What is the main risk? **Path traversal: the model could write outside the intended folder, so restrict paths to an allowed directory** · The file may be too small · JSON is not supported · There is no risk
+1. How should a tool send log messages to the client? **Accept a `ctx: Context` parameter and call `await ctx.info(...)`** · `print()` to stdout · Return logs inside the tool result
+2. An `import_notes` tool takes 30 seconds. How do you keep the user informed? **Call `ctx.report_progress(...)` as work proceeds** · Split it into 30 tools · Return early and hope
+3. Where should the server open its SQLite connection so that it happens once for the server's lifetime? **In the server's lifespan handler** · Inside every tool call · In the client
+4. The server needs an API key for an external service. Where should it come from? **An environment variable set in the client config's `env`** · Hardcoded in `server.py` · A tool argument the model fills in
+5. An `export_notes(path: str)` tool writes a file. What is the main risk? **Path traversal: the model could write outside the intended folder, so restrict paths to an allowed directory** · The file may be too small · JSON is not supported
 
 ## Content authoring
 
