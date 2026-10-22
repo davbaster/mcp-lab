@@ -67,7 +67,9 @@ Run these from the project folder that contains `pyproject.toml`. Frontend, cont
 
 ## Model
 
-The default model for working in this repo is Claude Haiku 5.5 (`claude-haiku-5-5`). Switch to a larger model only when a task needs more reasoning than it can handle.
+- Orchestrator (the main session): Claude Opus 5.5 (`claude-opus-5-5`), medium effort
+- Subagents (PM, engineer, QA): Claude Haiku 5.5 (`claude-haiku-5-5`), high effort
+- If a task is complex, its subagent can use Claude Sonnet 5.5 (`claude-sonnet-5-5`), medium effort
 
 ## Working style
 
