@@ -40,7 +40,9 @@ Run these from the project folder that contains `pyproject.toml`. Frontend, cont
 ## Rules
 
 **Dependencies**
-- Dependencies are added in `pyproject.toml`. Do not add one without asking the user first.
+- Each part has its own dependency file. Python parts (`backend/`, `oncall-mcp/`) use that folder's `pyproject.toml`, managed with uv (`uv add`). Node parts (`frontend/`, `content-build/`) use that folder's `package.json`, managed with npm (`npm install`).
+- Do not add a dependency, in either language, without asking the user first.
+- Commit the lock file (`uv.lock` or `package-lock.json`) in the same change as its dependency file.
 
 **API contract**
 - The frontend and backend share no code and talk only through `openapi.yaml`.
