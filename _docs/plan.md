@@ -10,15 +10,16 @@ Separately from the course content, the repo also contains an internal **on-call
 
 Throughout the course, learners follow along building a **personal-notes MCP server**. They start with a FastMCP "hello" tool and finish with CRUD tools, resources, prompts, and both transports. The web app shows the code but never runs it. Learners can type it into their own machine if they want, but nothing is checked or graded there.
 
-**Audience:** developers who know basic Python (functions, type hints, `pip`/`uv`) and have never used MCP. A readiness checklist appears before Chapter 1, and [CS50's Introduction to Programming with Python](https://cs50.harvard.edu/python/) is recommended but not required.
+**Audience:** developers who know basic Python (functions, type hints, `pip`/`uv`) and have never used MCP. A readiness checklist is the first lesson of Chapter 1 ("Before you start"), and [CS50's Introduction to Programming with Python](https://cs50.harvard.edu/python/) is recommended but not required.
 
 **Language:** English only.
 
 ## Learner experience
 
-- Free self-enrollment with username and password, using a secure HTTP-only session cookie. Password recovery is out of scope.
+- Free self-enrollment with username and password, using a secure HTTP-only session cookie. Sessions expire after 1 day, and expired rows are purged daily. Password recovery is out of scope.
+- Repeated failed logins are rate-limited per username and per IP address, so passwords cannot be guessed freely.
 - Visitors can read all of Chapter 1 without an account. Taking a quiz or saving progress needs an account.
-- The dashboard shows each chapter's status (locked / in progress / passed), the best quiz score per chapter, and a **Resume** button.
+- The dashboard shows each chapter's status (locked / in progress / passed), the best quiz score per chapter (from any attempt, passed or not), and a **Resume** button that opens the last lesson visited in the learner's current chapter (the first one not yet passed).
 - Each chapter is a sequence of short lesson pages, followed by the chapter quiz.
 - Lesson pages have prose and rich media built from the [content component library](#content-component-library): video, 3D models, diagrams, images, callouts, and a **code viewer**:
   - syntax highlighting, file tabs, and a copy button
@@ -32,7 +33,7 @@ Throughout the course, learners follow along building a **personal-notes MCP ser
 - A learner needs **4 of 5 (80%)** to pass a chapter and unlock the next one. Chapters unlock in order.
 - Retries are unlimited. Option order is shuffled on every attempt.
 - After a failed attempt, the learner sees which questions were wrong plus a pointer to the relevant lesson, but not the correct answer.
-- After passing, the learner sees every question's correct answer and explanation.
+- After passing, the learner sees every question's correct answer and explanation. Answers are revealed per attempt: a retake that fails shows only the wrong questions, even if the chapter was passed before. A later failed retake never removes a pass.
 - Answer keys stay on the server. The backend grades submissions and stores every attempt.
 - The course is **complete** when all 6 chapters are passed, and the dashboard then shows a completion state. There is no certificate.
 
@@ -46,7 +47,7 @@ Throughout the course, learners follow along building a **personal-notes MCP ser
 - **Context collected automatically:** page URL, course, chapter and lesson ID, quiz question ID (if relevant), app version, browser and device, timestamp, and the last 10 frontend console errors. Quiz answers, passwords, and session tokens are never collected.
 - **What the learner sees:** a confirmation ("Thanks — we'll review it") and nothing more. There is no status tracking or email.
 - **Limits:** 10 submissions per learner per day. The same message submitted twice within a minute is ignored.
-- **Storage:** the backend stores each submission in `app.feedback` (status `new`) through `POST /api/feedback`, which is defined in `openapi.yaml` like every other endpoint. The learner's identity is stored as an internal ID only and never leaves the backend.
+- **Storage:** the backend stores each submission in `app.feedback` (status `new`) through `POST /api/feedback`, which is defined in `openapi.yaml` like every other endpoint. Feedback IDs are UUIDs, so they are unique across deployments. `course_id` is set whenever the feedback comes from a course page, and is empty only for pages outside a course (such as the course list). The learner's identity is stored as an internal ID only and never leaves the backend. Triage decisions are recorded only in `ops.feedback_triage`, so `app.feedback.status` stays `new` in v1.
 
 ## Curriculum
 
@@ -55,6 +56,7 @@ The course has 6 chapters, each with about 4–6 short lessons. It targets the o
 ### Chapter 1 — What is MCP?
 
 Lessons:
+0. Before you start: the readiness checklist (expected Python skills, Python 3.10+, CS50 Python as optional preparation). It is a normal lesson, so it needs no app support and is free to read.
 1. The problem MCP solves: N apps × M integrations become one protocol.
 2. Hosts, clients, and servers: a host runs one client per server connection.
 3. The three server primitives and who controls each: tools (model), resources (application), prompts (user).
@@ -160,18 +162,22 @@ Each course is a self-contained folder under `courses/`, separate from the app c
 courses/mcp-server/
 ├── course.yaml                # id, title, description, chapter order, free-preview chapters
 ├── assets/                    # images, .glb 3D models, diagram sources (no video)
+├── ids.json                   # published chapter, lesson, and question IDs (generated)
+├── MIGRATIONS.md              # notes for removed IDs
 └── chapters/03-tools/
-    ├── 02-crud.mdx            # lesson: front-matter (title, order) + MDX body
+    ├── lessons/02-crud.mdx    # lesson: front-matter (title, order) + MDX body
     ├── code/step-N/           # real code files for the code viewer
     └── quiz.yaml              # the chapter quiz
 ```
 
+The MCP course's chapter folders are `01-what-is-mcp`, `02-first-server`, `03-tools`, `04-resources-prompts`, `05-transports`, and `06-shipping`. A chapter is added to `course.yaml` once its lessons exist. A chapter folder that holds only `code/` is a chapter in progress: the build warns about it and does not publish it, so code steps can be written before their lessons.
+
 - **Lessons are restricted MDX:** Markdown plus component tags from the [content component library](#content-component-library), with literal props only, e.g. `<Video src="..." />`. JavaScript expressions, `import`/`export`, inline `<script>`, raw HTML event handlers, and unknown components fail the build.
 - **Build output is data, not code.** The content build compiles each lesson to a JSON tree (Markdown nodes plus allowlisted component nodes with validated props). The backend serves that tree through the API, so lesson access control (free preview, locked chapters) stays on the server. The frontend renders it with a fixed component registry. No course ever ships executable code.
-- **Code steps** live as real files under `chapters/NN-slug/code/step-N/`. The build computes diffs for step mode and the per-chapter ZIPs.
+- **Code steps** live as real files under `chapters/NN-slug/code/step-N/`. The build computes diffs for step mode and the per-chapter ZIPs. The backend serves step data and ZIPs under the same access rules as the chapter's lessons.
 - **Quizzes:** each chapter's quiz is in `chapters/NN-slug/quiz.yaml` (question, optional snippet, options, correct option, explanation, lesson link). The backend loads it at startup and never sends the correct option or explanation before the learner passes. Quizzes are always platform-rendered and server-graded; course content cannot define its own quiz pages or report scores.
 - **Stable IDs:** chapter, lesson, and question IDs come from the folder and file names (or an explicit `id` in front-matter) and must not change once published, because progress, attempts, and feedback reference them. CI fails if a published ID disappears without a migration note.
-- **Per-course CI:** CI checks that the code in each chapter's final step passes `python -m py_compile` and the course's own test suite (for this course, the pytest suite from Chapter 6), so the published code stays correct.
+- **Per-course CI:** CI checks that the code in every step passes `python -m py_compile`, and that each chapter's final step passes the course's own test suite where it has one (for this course, the pytest suite from Chapter 6), on the oldest Python version the course promises and on 3.12. Every step pins the same `mcp` version. The job discovers courses by itself, so the published code stays correct with no course-specific CI.
 
 ### Content component library
 
@@ -189,7 +195,7 @@ Initial set:
 | `Tabs` | tabbed alternatives (e.g. macOS / Windows) | |
 | `CodeSteps` | the code viewer | step mode, file tabs, copy, ZIP download |
 
-**Media hosting:** videos are not stored in the repo or database. They live in object storage behind a CDN (or on YouTube/Vimeo), and the course references them by URL. Images and 3D models ship with the course `assets/` and are served as static files. The frontend's Content-Security-Policy allows only the app's own origin plus the allowlisted media origins.
+**Media hosting:** videos are not stored in the repo or database. They live in object storage behind a CDN (or on YouTube/Vimeo), and the course references them by URL. Images, 3D models, diagrams, and caption files ship with the course `assets/`. The build gives them content-hashed names, and the backend serves them as public, long-cached static files at `/api/courses/{course_id}/assets/{file}`, so they stay on the app's origin. The frontend's Content-Security-Policy, set by the frontend container's nginx, allows only the app's own origin plus the allowlisted media origins. It is generated from the same committed allowlist that the content build checks video URLs against, so there is a single list of media origins.
 
 ## Application architecture
 
@@ -198,8 +204,10 @@ The frontend and backend are two separate applications. They communicate **only*
 - **Frontend** (`frontend/`): React, TypeScript, Vite, with Shiki for highlighting. A static build served by its own container. It has no database access and no shared code with the backend. Everything it knows comes from the API.
 - **Backend** (`backend/`): Python, FastAPI. It owns all data, authentication, and quiz grading.
 - **Database:** PostgreSQL for accounts, sessions, chapter progress, and quiz attempts. Progress, attempts, and feedback rows carry a `course_id`. Accounts are shared across courses within one deployment. Only the backend (and `oncall-mcp`'s read-only role) connects to it.
-- **Deployment:** Docker Compose on one VM with separate `frontend`, `backend`, and `postgres` services behind a reverse proxy with TLS. The proxy routes `/api/*` to the backend and everything else to the frontend. The observability stack and `oncall-mcp` described under Operations run alongside.
-- **Staging:** a separate Docker Compose project on the same VM with its own ports and database. It never replaces or shares data with production.
+- **Deployment:** Docker Compose on one VM with separate `frontend`, `backend`, and `postgres` services behind a Traefik reverse proxy with TLS. The proxy routes `/api/*` to the backend and everything else to the frontend, and adds HSTS and the other security headers (the CSP comes from the frontend). The observability stack and `oncall-mcp` described under Operations run alongside.
+- **Migrations:** the app's Alembic history manages only the `app` schema. The deploy script runs migrations as a separate step before any service is replaced. In local Docker, the backend runs them on start.
+- **Backups:** the production database is dumped daily to encrypted object storage off the VM (daily dumps kept 14 days, weekly dumps 8 weeks), and a restore has been tested. Staging is not backed up.
+- **Staging:** a separate Docker Compose project on the same VM with its own ports and database, behind HTTP basic auth and marked `noindex`. It never replaces or shares data with production.
 
 ### Deployment modes
 
@@ -221,12 +229,12 @@ There are no WebSockets.
   - the spec exported from the backend differs from the committed `openapi.yaml`
   - the generated frontend client differs from what `openapi.yaml` produces
   - the frontend doesn't type-check against the client
-  - backend contract tests find responses that don't validate against `openapi.yaml`
+  - backend contract tests find responses that don't validate against `openapi.yaml` (every response made by the backend test client is checked automatically)
 - **Errors:** every error uses one shared JSON shape (`{ "error": { "code", "message" } }`) defined in the spec.
 - **Auth:** the session cookie is documented in the spec as a cookie security scheme.
 - **No version prefix** in v1.
 
-Core endpoints: register / login / logout / me; list courses; list a course's chapters with status; get lesson content (the compiled JSON tree); get quiz (without answers); submit quiz attempt → score, wrong question IDs, and the answers and explanations if passed; get progress; submit feedback. Course-specific endpoints live under `/api/courses/{course_id}/...`.
+Core endpoints: register / login / logout / me; list courses; list a course's chapters with status; get lesson content (the compiled JSON tree); save the last lesson visited; get a chapter's code steps and its ZIP; get a course asset; get quiz (without answers); submit quiz attempt → score, wrong question IDs with lesson links, and the answers and explanations if passed; get progress; submit feedback. Course-specific endpoints live under `/api/courses/{course_id}/...`. Lesson, quiz, code, and progress responses are `Cache-Control: private, no-store`. Assets are public and cached long-term.
 
 ## Operations: on-call MCP server
 
@@ -237,8 +245,8 @@ An internal MCP server, `oncall-mcp/` in this repo, gives on-call engineers one 
 
 ### Observability foundation (prerequisite)
 
-- **Metrics:** the FastAPI app exposes Prometheus `/metrics` (request rate, latency, 5xx, quiz-submission errors). A Postgres exporter and node/container exporters cover the database and host. Prometheus scrapes them all. Every series carries a `deployment` label, and course-level series (lesson loads, quiz submissions and errors) also carry `course`, so one observability stack can serve shared and isolated [deployment modes](#deployment-modes).
-- **Logs:** container logs are shipped to Loki (via Promtail). The app logs structured JSON with `deployment` and, where relevant, `course_id`, and never logs passwords, session tokens, or quiz answers.
+- **Metrics:** the FastAPI app exposes Prometheus `/metrics` (request rate, latency, 5xx, quiz-submission errors) on an internal-only port that the public proxy never routes. Route labels use route templates, and `course` labels only configured courses, to keep the number of series bounded. A Postgres exporter, node/container exporters, and a blackbox exporter (probing each deployment's public `/api/health`) cover the database, host, and availability. Prometheus scrapes them all. Every series carries a `deployment` label, and course-level series (lesson loads, quiz submissions and errors) also carry `course`, so one observability stack can serve shared and isolated [deployment modes](#deployment-modes).
+- **Logs:** container logs are shipped to Loki (via Grafana Alloy; Promtail reached end of life in 2026). The app logs structured JSON with `deployment` and, where relevant, `course_id`, and never logs passwords, session tokens, or quiz answers.
 - **Alerts:** Grafana is what wakes up the LLM on-call engineer. A Grafana webhook contact point POSTs its alert JSON payload to the runner's wake endpoint (see [Grafana alert contract](#grafana-alert-contract)). The runner stores alerts and incidents in an `ops` Postgres schema. Initial **critical** alerts:
   - app unavailable or health check failing
   - sustained HTTP 5xx
@@ -246,14 +254,16 @@ An internal MCP server, `oncall-mcp/` in this repo, gives on-call engineers one 
   - Postgres connection failures
   - sustained CPU, memory, or disk pressure
 
-  Warnings are recorded but do not start the LLM engineer.
-- **Deploy history:** the deploy script records each deployment (deployment name, environment, app version, commit SHA, the courses served with each course's content commit SHA, time, who) in `ops.deployments`. A content-only change is a deployment like any other, so it shows up when comparing deployments.
+  Warnings are recorded but do not start the LLM engineer. Thresholds live in one provisioning file, and every rule links a runbook section.
+- **Access:** Grafana, Prometheus, and Loki listen only on the VM's `127.0.0.1` and are reached through an SSH tunnel. Prometheus keeps 15 days of data and Loki 14 days.
+- **Deploy history:** the deploy script records each deployment, successful or failed (deployment name, environment, app version, commit SHA, the courses served with each course's content commit SHA, time, who, outcome), in `ops.deployments`. A content-only change is a deployment like any other, so it shows up when comparing deployments. Production accepts only commits on `main`.
+- **`ops` schema:** alerts, incidents, the audit log, deploy history, and triage decisions live in an `ops` schema with its own migration history under `oncall-mcp/`, separate from the app's. In shared mode it sits on the same Postgres server.
 
 ### Server design
 
 - Python and FastMCP, in the same style the course teaches.
 - **Core plus adapters.** The core holds the tools, resources, prompts, redaction, audit log, and auth. Adapters hide the data sources behind small interfaces: `HealthAdapter`, `MetricsAdapter` (Prometheus), `LogsAdapter` (Loki), `DeploymentsAdapter` (`ops.deployments` + git), and `IssueTracker` (GitHub). Adapters for this app live in `oncall-mcp/adapters/course_app/`. Fake adapters with fixture data are used for tests and local development, and make the core reusable in other projects.
-- **Transport:** Streamable HTTP, bound to the internal Docker network. It is not exposed publicly; humans reach it through an SSH tunnel. Every caller has its own bearer token (one per human, one for the LLM engineer), and the token's identity is written to the audit log.
+- **Transport:** Streamable HTTP, bound to the internal Docker network. It is not exposed publicly; humans reach it through an SSH tunnel. Every caller has its own bearer token (one per human, one for the LLM engineer, and a short-lived one per agent session), and the token's identity is written to the audit log. Each token has a caller kind (`human` or `llm`), allowed deployments, and allowed tools, all enforced by the server. Only hashes of tokens are stored.
 - **One server for all deployments.** A single `oncall-mcp` covers every deployment on the VM, in both shared and isolated modes. Tools and resources accept optional `deployment` and `course` filters. A caller's token can be limited to specific deployments, and the server enforces that limit on every call, so isolated deployments stay isolated during on-call work too. With one shared deployment, the filters can be omitted.
 
 ### Capabilities
@@ -276,6 +286,7 @@ Each primitive in the course's sense (tool, resource, or prompt):
 | Feedback | `feedback://{id}` | resource | redacted feedback message and collected context, with the referenced lesson (its `.mdx` source path and source), code step, or quiz question attached |
 | Feedback | `search_github_issues` | tool, read-only | searches open and closed issues to find duplicates, optionally filtered by `course:<id>` label |
 | Feedback | `triage_feedback` | tool, side effect | records a decision (`valid`, `duplicate`, `invalid`, or `needs_human`) with a reason and an optional issue URL in `ops.feedback_triage` |
+| Feedback | `reopen_feedback_triage` | tool, side effect | human tokens only: reopens a decision so the item is pending again |
 | Respond | `incident_summary` | prompt | turns `incident://{id}` into a structured summary |
 | Respond | `fix_summary` | prompt | turns an incident and a branch into a PR description: cause, fix, staging result, risk |
 
@@ -283,12 +294,12 @@ Because many MCP clients only attach resources at the user's or application's re
 
 ### Safety rules (enforced in code, not left to the model)
 
-- **Redaction happens in the core** before any tool or resource returns data. It removes passwords, tokens, cookies, emails, usernames, and quiz answers, and has its own tests.
+- **Redaction happens in the core** before any tool or resource returns data. It removes passwords, tokens, cookies, emails, usernames, and quiz answers (including explanations, which reveal the answer), and has its own tests. Feedback triage on a quiz question therefore sees the question and options but not the key; if the key is needed, the item goes to `needs_human`.
 - **Allowlisted metric queries and capped log searches** only.
 - **Audit log:** every call writes to `ops.audit_log` (caller, tool or resource, redacted arguments, result size, outcome, time). The log is kept for 30 days, along with incident evidence.
-- **No production-changing tools:** no deploy, restart, or database writes to app tables, and no shell access. Health checks and feedback reads use a read-only database role (one per deployment database in isolated mode), and triage decisions are written only to the `ops` schema.
+- **No production-changing tools:** no deploy, restart, or database writes to app tables, and no shell access. Health checks and feedback reads use a read-only database role (one per deployment database in isolated mode) that can read `app.feedback` (without the account ID) but not accounts, sessions, or quiz attempts. Triage decisions are written only to the `ops` schema, and the audit log is append-only.
 - **Deployment scoping:** a token limited to some deployments cannot read alerts, metrics, logs, incidents, or feedback from any other deployment. Out-of-scope requests are rejected and audited.
-- **Feedback is untrusted input.** Learner text is passed to the model as data inside clear delimiters, never as instructions. Feedback triage sessions get only the Feedback tools plus `open_github_issue`. They have no repo, staging, or fix access, so a malicious message cannot trigger anything beyond an issue.
+- **Feedback is untrusted input.** Learner text is passed to the model as data inside clear delimiters (escaped so the text cannot close them), never as instructions. Feedback triage sessions get only the Feedback tools plus `open_github_issue`. They have no repo, staging, or fix access, so a malicious message cannot trigger anything beyond an issue.
 - **Rate limits** on Respond tools per caller, e.g. a cap on GitHub issues opened per hour.
 - **Production deploys go only through a GitHub pull request a human has approved**, then the normal deploy pipeline. Code changes are made with the engineer's own repo tools on a branch, not through MCP.
 
@@ -298,7 +309,7 @@ Because many MCP clients only attach resources at the user's or application's re
 - **Payload:** Grafana's standard webhook JSON, with top-level `receiver`, `status` (`firing` / `resolved`), `groupKey`, `commonLabels`, `commonAnnotations`, `externalURL`, and an `alerts[]` array. Each alert has `status`, `labels` (including `alertname`, `severity`, `service`), `annotations` (`summary`, `description`, `runbook_url`), `startsAt`, `endsAt`, `fingerprint`, `values`, `generatorURL`, `dashboardURL`, and `panelURL`.
 - **Label conventions:** every alert rule must set `severity` (`critical` / `warning`), `service` (`api`, `frontend`, `postgres`, `host`, `staging`), and `deployment` (except host-level rules, which use `deployment=host`). Course-level rules also set `course`. Rules missing required labels are rejected in CI review of the Grafana provisioning files.
 - **Handling:**
-  1. Validate the token and the JSON shape. Reply `202 Accepted` quickly, and process in the background so Grafana does not time out or retry.
+  1. Validate the token and the JSON shape. Store the redacted payload, then reply `202 Accepted` quickly and process in the background so Grafana does not time out or retry. Stored payloads not yet processed are picked up after a restart.
   2. Redact the payload, then store it as incident evidence. Each alert is keyed by `fingerprint`.
   3. `firing` + `severity=critical` → open or update the incident and **wake the LLM engineer**.
   4. `firing` + `warning` → record only, with no wake.
@@ -311,9 +322,11 @@ Because many MCP clients only attach resources at the user's or application's re
 1. Grafana sends a critical `firing` alert as JSON to `POST /alerts/grafana`. The runner validates it and opens or updates the incident.
 2. The runner wakes the LLM engineer, an agent session (Claude Agent SDK) connected to `oncall-mcp`. Its starting context is the redacted Grafana alert JSON plus the attached `alert://` and `incident://` resources. A setting turns automatic wake-ups on or off.
 3. The agent investigates with the Inspect and Investigate tools and records findings with `add_incident_note`.
-4. If it finds a small, safe fix, it commits it to a branch, calls `run_staging_checks`, and opens a PR using `fix_summary`. If staging fails, the change is not promoted. The fix may be in app code or in a course's content (for example, a broken media URL in a lesson). Content fixes touch only `courses/<id>/` and go through the same content build and review.
+4. If it finds a small, safe fix, it commits it to an `oncall/<incident>-<slug>` branch in a fresh, temporary clone, calls `run_staging_checks`, and opens a PR using `fix_summary`. Its GitHub token can push only `oncall/` branches and open PRs, never merge. If staging fails, no PR is opened and it opens an issue instead. The fix may be in app code or in a course's content (for example, a broken media URL in a lesson). Content fixes touch only `courses/<id>/` and go through the same content build and review.
 5. If the problem is broad or uncertain, or anything fails, it calls `open_github_issue` with redacted evidence and next steps. This notifies the human on-call engineer.
 6. A human reviews and approves any PR before production.
+
+Each session has a time and turn limit. If it ends without a note plus an issue or PR, the runner opens an issue itself, so every critical incident ends with something a human can see.
 
 ### Feedback triage flow (Phase 4)
 
@@ -326,7 +339,7 @@ Because many MCP clients only attach resources at the user's or application's re
    - **valid**: a real bug, content error, or worthwhile suggestion. It opens a GitHub issue with `open_github_issue`, labeled `feedback` plus `bug`, `content`, or `suggestion`, and `course:<id>`, with the chapter or lesson in the title. The issue contains the redacted message, the context, its reasoning, and a proposed fix. Learner identity is never included.
    - **duplicate**: it records the existing issue's URL. No new issue is created.
    - **invalid**: spam, off-topic, or the learner's own misunderstanding where the content is correct. No issue; the reason is recorded.
-   - **needs_human**: unclear or sensitive. The item is left for the human on-call engineer, who sees it in `list_pending_feedback`.
+   - **needs_human**: unclear or sensitive. The item is left for the human on-call engineer, who sees it in `list_pending_feedback`. An item still undecided after 3 sessions is marked `needs_human` by the runner.
 4. Human on-call engineers can triage the same way from their MCP client, and can reopen any LLM decision. Every decision is in the audit log.
 
 ### Build phases
