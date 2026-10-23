@@ -260,6 +260,7 @@ An internal MCP server, `oncall-mcp/` in this repo, gives on-call engineers one 
 
   Warnings are recorded but do not start the LLM engineer. Thresholds live in one provisioning file, and every rule links a runbook section.
 - **Access:** Grafana, Prometheus, and Loki listen only on the VM's `127.0.0.1` and are reached through an SSH tunnel. Prometheus keeps 15 days of data and Loki 14 days.
+- **Dashboards** are provisioned as code, all filterable by deployment (and course where it applies): Overview (the home dashboard), App performance, Server, Containers, Postgres, Logs, and On-call (incidents, LLM sessions, handoffs, and whether the monitoring itself is working). Each deploy shows as a marker on every dashboard.
 - **Deploy history:** the deploy script records each deployment, successful or failed (deployment name, environment, app version, commit SHA, the courses served with each course's content commit SHA, time, who, outcome), in `ops.deployments`. A content-only change is a deployment like any other, so it shows up when comparing deployments. Production accepts only commits on `main`.
 - **`ops` schema:** alerts, incidents, the audit log, deploy history, and triage decisions live in an `ops` schema with its own migration history under `oncall-mcp/`, separate from the app's. In shared mode it sits on the same Postgres server.
 
@@ -311,7 +312,7 @@ Because many MCP clients only attach resources at the user's or application's re
 
 - **Contact point:** a Grafana webhook contact point sends `POST /alerts/grafana` to the runner (`oncall-mcp/runner/`). The URL is reachable only on the internal Docker network. Grafana sends an `Authorization: Bearer <token>` header, and the runner rejects requests without it.
 - **Payload:** Grafana's standard webhook JSON, with top-level `receiver`, `status` (`firing` / `resolved`), `groupKey`, `commonLabels`, `commonAnnotations`, `externalURL`, and an `alerts[]` array. Each alert has `status`, `labels` (including `alertname`, `severity`, `service`), `annotations` (`summary`, `description`, `runbook_url`), `startsAt`, `endsAt`, `fingerprint`, `values`, `generatorURL`, `dashboardURL`, and `panelURL`.
-- **Label conventions:** every alert rule must set `severity` (`critical` / `warning`), `service` (`api`, `frontend`, `postgres`, `host`, `staging`), and `deployment` (except host-level rules, which use `deployment=host`). Course-level rules also set `course`. Rules missing required labels are rejected in CI review of the Grafana provisioning files.
+- **Label conventions:** every alert rule must set `severity` (`critical` / `warning`), `service` (`api`, `frontend`, `postgres`, `host`, `staging`, `proxy`), and `deployment` (except host-level rules, which use `deployment=host`). Course-level rules also set `course`. Rules missing required labels are rejected in CI review of the Grafana provisioning files.
 - **Handling:**
   1. Validate the token and the JSON shape. Store the redacted payload, then reply `202 Accepted` quickly and process in the background so Grafana does not time out or retry. Stored payloads not yet processed are picked up after a restart.
   2. Redact the payload, then store it as incident evidence. Each alert is keyed by `fingerprint`.
