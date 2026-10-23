@@ -319,6 +319,9 @@ Because many MCP clients only attach resources at the user's or application's re
   4. `firing` + `warning` → record only, with no wake.
   5. `resolved` → mark the alert resolved, add it to the incident timeline, and let a running session know.
 - **No duplicate wake-ups:** at most one active LLM session per incident. Repeat notifications from Grafana for the same `fingerprint` or `groupKey` update the existing incident instead of starting a new session. Incidents are scoped to a deployment, and the woken session's token is limited to that deployment (plus `host` when the alert is host-level).
+- **Staging never wakes the LLM engineer.** A critical staging alert opens a staging incident and one unassigned GitHub issue labeled `staging`, and nothing else. This prevents a loop where staging checks redeploy staging, which fires an alert, which wakes the engineer again.
+- **Deploys mute their own alerts.** The deploy script creates a Grafana silence for the deployment it is replacing and removes it when the health check passes (at most 10 minutes), so a normal deploy never opens an incident.
+- **Drills:** a human can start an on-call drill on staging, which breaks staging on purpose and marks the resulting incident as a drill. Drill incidents do wake the LLM engineer, so the whole chain can be tested end to end without touching production.
 - **Alert rules and contact point are provisioned as code** (Grafana provisioning YAML in the repo), so staging and production use the same rules.
 
 ### LLM on-call engineer flow (Phase 4)
@@ -327,10 +330,10 @@ Because many MCP clients only attach resources at the user's or application's re
 2. The runner wakes the LLM engineer, an agent session (Claude Agent SDK) connected to `oncall-mcp`. Its starting context is the redacted Grafana alert JSON plus the attached `alert://` and `incident://` resources. A setting turns automatic wake-ups on or off.
 3. The agent investigates with the Inspect and Investigate tools and records findings with `add_incident_note`.
 4. If it finds a small, safe fix, it commits it to an `oncall/<incident>-<slug>` branch in a fresh, temporary clone, calls `run_staging_checks`, and opens a PR using `fix_summary`. Its GitHub token can push only `oncall/` branches and open PRs, never merge. If staging fails, no PR is opened and it opens an issue instead. The fix may be in app code or in a course's content (for example, a broken media URL in a lesson). Content fixes touch only `courses/<id>/` and go through the same content build and review.
-5. If the problem is broad or uncertain, or anything fails, it calls `open_github_issue` with redacted evidence and next steps. This notifies the human on-call engineer.
+5. If the problem is broad or uncertain, or anything fails, it calls `open_github_issue` with redacted evidence and next steps, as a handoff: the issue is labeled `needs-human` and assigned to the human on-call engineer (a configured GitHub user). GitHub's assignment notification is how the human is told. There is no email or phone paging in v1.
 6. A human reviews and approves any PR before production.
 
-Each session has a time and turn limit. If it ends without a note plus an issue or PR, the runner opens an issue itself, so every critical incident ends with something a human can see.
+Each session has a time and turn limit. If it ends without a note plus an issue or PR, the runner opens a handoff issue itself, so every critical incident ends with something a human can see. The runner also opens the handoff issue right away when automatic wake-ups are off or a session cannot start (for example, the model API is unreachable). PRs from the engineer request a review from the same human.
 
 ### Feedback triage flow (Phase 4)
 
