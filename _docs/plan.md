@@ -373,6 +373,13 @@ The learner feedback form ships with the course itself. Feedback collected befor
 - Teaching the on-call server in the course (it is internal tooling only).
 - Advanced MCP topics: sampling, elicitation, roots, OAuth authorization flows, and building MCP clients.
 
+## Future options (not in v1)
+
+Ideas that were considered and deliberately postponed. They are not part of v1, have no backlog issues, and must not be built until a human decides to add them to the plan.
+
+- **External watchdog:** a scheduled GitHub Actions workflow (for example every 15 minutes) probes production's public `/api/health` and opens a GitHub issue assigned to the human on-call engineer if it fails. It runs on GitHub's servers, so it still works when the whole VM is down and the runner and Grafana can't report anything.
+- **Email backup channel:** a second Grafana contact point that emails critical alerts, plus a rule for "on-call runner unreachable", directly to the human on-call engineer. It needs an SMTP account. In v1, humans are notified only through assigned GitHub issues.
+
 ## Acceptance criteria
 
 1. A visitor can read Chapter 1 without an account. A registered learner can read every unlocked lesson and use the code viewer (steps, copy, ZIP download) on desktop and phone.
