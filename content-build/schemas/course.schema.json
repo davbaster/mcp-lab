@@ -10,11 +10,18 @@
     "title": { "$ref": "#/definitions/text" },
     "description": { "$ref": "#/definitions/text" },
     "chapters": {
-      "description": "The chapter folder names under chapters/, in course order.",
+      "description": "The chapters, in course order. Each id is the chapter folder name under chapters/. src/course.ts checks that an id is listed once, and the length and characters of a title (after trimming).",
       "type": "array",
       "minItems": 1,
-      "uniqueItems": true,
-      "items": { "$ref": "#/definitions/name" }
+      "items": {
+        "type": "object",
+        "required": ["id", "title"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/definitions/name" },
+          "title": { "description": "The chapter's name for learners.", "type": "string" }
+        }
+      }
     },
     "free_preview": {
       "description": "Chapters that visitors can read without an account. Each must also be in chapters.",

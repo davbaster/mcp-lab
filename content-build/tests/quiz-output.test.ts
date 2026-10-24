@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { compileQuiz, writeQuizzes } from "../src/index.ts";
 import type { CompiledQuiz } from "../src/index.ts";
-import { FIRST_QUIZ, FIXTURES, PART_DIR, VALID_COURSE, courseYaml, error, makeCourse, quizFixture, temporaryFolder, toLf } from "./helpers.ts";
+import { FIRST_QUIZ, FIXTURES, PART_DIR, VALID_COURSE, chapterList, courseYaml, error, makeCourse, quizFixture, temporaryFolder, toLf } from "./helpers.ts";
 
 const GOLDEN = join(FIXTURES, "expected", "private", "quizzes", "sample-course");
 const CHAPTERS = ["01-first-steps", "02-going-further"];
@@ -275,7 +275,7 @@ describe("writeQuizzes: the files", () => {
 
   it("writes a new file for every listed chapter, in a course with another chapter list", () => {
     const course = makeCourse("sample-course", {
-      "course.yaml": courseYaml({ chapters: ["01-first-steps"], free_preview: [] }),
+      "course.yaml": courseYaml({ chapters: chapterList("01-first-steps"), free_preview: [] }),
       "chapters/02-going-further": null,
     });
     const { buildDir, problems } = built(course);

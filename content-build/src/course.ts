@@ -86,8 +86,8 @@ export type Inspection = {
   lessons?: CompiledLesson[];
 };
 
-/** The fields of `course.yaml` that the build copies to the manifest. */
-export type CourseInfo = { title: string; description: string; freePreview: string[] };
+/** The fields of `course.yaml` that the build copies to the manifest. `chapterTitles` maps a chapter id to its trimmed title. */
+export type CourseInfo = { title: string; description: string; freePreview: string[]; chapterTitles: Map<string, string> };
 
 /** A lesson that compiled: where it is, what its front matter says, and its tree (before the asset references are rewritten). */
 export type CompiledLesson = {
@@ -201,7 +201,7 @@ function warnAboutUnusedAssets(assets: AssetCollector, used: Set<string>, report
 }
 
 type CourseYaml = {
-  /** The chapter names, when `chapters` is a non-empty list of strings. Otherwise nothing can be checked against the folders. */
+  /** The chapter ids, when `chapters` is a non-empty list in which every item has a string `id`. Otherwise nothing can be checked against the folders. */
   chapters?: string[];
   yaml?: ParsedYaml;
   info?: CourseInfo;
@@ -243,25 +243,79 @@ function readCourseYaml(
       yaml.lineOf(["id"]),
     );
   }
-  checkFreePreview(data, yaml, report);
+  const items = Array.isArray(data.chapters) ? data.chapters : [];
+  const ids = items.map(chapterId);
+  checkChapterItems(items, ids, yaml, report);
+  checkFreePreview(data, ids, yaml, report);
 
-  const chapters = data.chapters;
-  const usable = Array.isArray(chapters) && chapters.length > 0 && chapters.every((c) => typeof c === "string");
-  return { chapters: usable ? (chapters as string[]) : undefined, yaml, info: courseInfo(data) };
+  const usable = items.length > 0 && ids.every((id) => id !== undefined);
+  return { chapters: usable ? (ids as string[]) : undefined, yaml, info: courseInfo(data, items) };
 }
 
-function courseInfo(data: Record<string, unknown>): CourseInfo | undefined {
+/** The `id` of a `chapters` item, when the item is a mapping and its `id` is a string. */
+function chapterId(item: unknown): string | undefined {
+  if (typeof item !== "object" || item === null || Array.isArray(item)) return undefined;
+  const id = (item as Record<string, unknown>).id;
+  return typeof id === "string" ? id : undefined;
+}
+
+/** The longest chapter title, in Unicode characters (an emoji is one). */
+const MAX_CHAPTER_TITLE = 100;
+
+/** The chapter title without leading and trailing white space, which is what the build keeps. Undefined when `title` is not a string. */
+function chapterTitle(item: unknown): string | undefined {
+  const title = typeof item === "object" && item !== null ? (item as Record<string, unknown>).title : undefined;
+  return typeof title === "string" ? title.trim() : undefined;
+}
+
+/**
+ * The rules of `chapters` that the schema cannot say: an id is listed once, and a title (trimmed) is not empty,
+ * is one line, and is at most 100 characters. The type of a title and the keys of an item are the schema's.
+ */
+function checkChapterItems(items: unknown[], ids: (string | undefined)[], yaml: ParsedYaml, report: Report) {
+  items.forEach((item, index) => {
+    const id = ids[index];
+    if (id !== undefined && ids.indexOf(id) !== index) {
+      report.error("course.yaml", `\`chapters\` lists \`${id}\` more than once`, yaml.lineOf(["chapters", index]));
+    }
+    const title = chapterTitle(item);
+    if (title === undefined) return;
+    const field = `\`chapters[${index}].title\``;
+    const line = yaml.lineOf(["chapters", index, "title"]);
+    if (title === "") {
+      report.error("course.yaml", `${field} must not be empty`, line);
+      return;
+    }
+    const characters = [...title];
+    if (characters.some((character) => (character.codePointAt(0) ?? 0) < 0x20 || character === "\u007f")) {
+      report.error("course.yaml", `${field} must be one line of plain text, without line breaks or control characters`, line);
+    }
+    const length = characters.length;
+    if (length > MAX_CHAPTER_TITLE) {
+      report.error("course.yaml", `${field} must be at most ${MAX_CHAPTER_TITLE} characters, but it has ${length}`, line);
+    }
+  });
+}
+
+function courseInfo(data: Record<string, unknown>, items: unknown[]): CourseInfo | undefined {
   const { title, description, free_preview: preview } = data;
   if (typeof title !== "string" || typeof description !== "string") return undefined;
   if (!Array.isArray(preview) || !preview.every((name) => typeof name === "string")) return undefined;
-  return { title, description, freePreview: preview as string[] };
+  const chapterTitles = new Map<string, string>();
+  for (const item of items) {
+    const id = chapterId(item);
+    const chapter = chapterTitle(item);
+    if (id !== undefined && chapter !== undefined) chapterTitles.set(id, chapter);
+  }
+  return { title, description, freePreview: preview as string[], chapterTitles };
 }
 
-function checkFreePreview(data: Record<string, unknown>, yaml: ParsedYaml, report: Report) {
-  const { chapters, free_preview: preview } = data;
-  if (!Array.isArray(chapters) || !Array.isArray(preview)) return;
+/** `ids` are the ids of the `chapters` items. The check waits until every item has one: otherwise a listed chapter may be the item that is missing its id. */
+function checkFreePreview(data: Record<string, unknown>, ids: (string | undefined)[], yaml: ParsedYaml, report: Report) {
+  const { free_preview: preview } = data;
+  if (!Array.isArray(data.chapters) || !Array.isArray(preview) || ids.includes(undefined)) return;
   preview.forEach((name, index) => {
-    if (typeof name === "string" && !chapters.includes(name)) {
+    if (typeof name === "string" && !ids.includes(name)) {
       report.error(
         "course.yaml",
         `\`free_preview\` names \`${name}\`, which is not listed in \`chapters\``,

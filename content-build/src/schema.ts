@@ -15,7 +15,7 @@ export function newAjv(options: { strictRequired?: boolean } = {}): Ajv {
 
 const ajv = newAjv();
 
-export const courseShape: Shape = { validate: ajv.compile(courseSchema), root: "course.yaml" };
+export const courseShape: Shape = { validate: ajv.compile(courseSchema), root: "course.yaml", lineForMissing: true };
 export const lessonFrontMatterShape: Shape = {
   validate: ajv.compile(lessonFrontMatterSchema),
   root: "the front matter",
@@ -92,6 +92,9 @@ function describe(
 ): string {
   switch (error.keyword) {
     case "type":
+      if (error.params.type === "object" && path.length === 2 && path[0] === "chapters") {
+        return `${field} must be a mapping with the keys \`id\` and \`title\`, for example \`{id: 01-intro, title: Introduction}\``;
+      }
       return `${field} must be ${TYPE_NAMES[String(error.params.type)] ?? String(error.params.type)}`;
     case "minItems":
       return path.length === 1 && path[0] === "chapters"

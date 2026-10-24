@@ -20,6 +20,8 @@ const deviceRule = (id: string) =>
   `the lesson \`id\` \`${id}\` is a Windows device name, and the id becomes a file name in the build (\`${id}.json\`); choose another id`;
 const fileRule = (file: string, step: number) =>
   `\`<CodeSteps>\` shows the file \`${file}\` of step ${step}, but that step of chapter \`01-intro\` has no such file; write the path inside the step, with \`/\` and the exact letters, as in \`src/util.py\``;
+const MAPPING_RULE = (index: number) =>
+  `\`chapters[${index}]\` must be a mapping with the keys \`id\` and \`title\`, for example \`{id: 01-intro, title: Introduction}\``;
 const unknownKey = (key: string) => `unknown key \`${key}\``;
 
 const invalid: Record<string, Problem[]> = {
@@ -32,13 +34,23 @@ const invalid: Record<string, Problem[]> = {
   "title-wrong-type": [error("course.yaml", "`title` must be a string", 2)],
   "description-empty": [error("course.yaml", "`description` must not be empty", 3)],
   "chapters-wrong-type": [error("course.yaml", "`chapters` must be a list", 4)],
-  "chapters-item-wrong-type": [error("course.yaml", "`chapters[1]` must be a string", 6)],
+  "chapters-item-wrong-type": [error("course.yaml", MAPPING_RULE(1), 6)],
   "free-preview-wrong-type": [error("course.yaml", "`free_preview` must be a list", 6)],
   "unknown-key": [error("course.yaml", unknownKey("free_previews"), 8)],
   "id-mismatch": [error("course.yaml", "`id` is `other-id` but the course folder is named `id-mismatch`; they must be equal", 1)],
   "Uppercase-Id": [error("course.yaml", `\`id\` ${NAME_RULE} (got "Uppercase-Id")`, 1)],
-  "chapter-name-with-space": [error("course.yaml", `\`chapters[0]\` ${NAME_RULE} (got "01 intro")`, 5)],
-  "chapter-name-uppercase": [error("course.yaml", `\`chapters[0]\` ${NAME_RULE} (got "01-Intro")`, 5)],
+  "chapter-name-with-space": [error("course.yaml", `\`chapters[0].id\` ${NAME_RULE} (got "01 intro")`, 5)],
+  "chapter-name-uppercase": [error("course.yaml", `\`chapters[0].id\` ${NAME_RULE} (got "01-Intro")`, 5)],
+  "chapter-name-bare": [error("course.yaml", MAPPING_RULE(0), 5)],
+  "chapter-id-missing": [error("course.yaml", "missing required field `chapters[0].id`", 5)],
+  "chapter-title-missing": [error("course.yaml", "missing required field `chapters[0].title`", 5)],
+  "chapter-title-wrong-type": [error("course.yaml", "`chapters[0].title` must be a string", 6)],
+  "chapter-title-empty": [error("course.yaml", "`chapters[0].title` must not be empty", 6)],
+  "chapter-title-too-long": [error("course.yaml", "`chapters[0].title` must be at most 100 characters, but it has 101", 6)],
+  "chapter-title-line-break": [
+    error("course.yaml", "`chapters[0].title` must be one line of plain text, without line breaks or control characters", 6),
+  ],
+  "chapter-unknown-key": [error("course.yaml", unknownKey("chapters[0].subtitle"), 7)],
   "chapter-name-duplicate": [error("course.yaml", "`chapters` lists `01-intro` more than once", 6)],
   "free-preview-unlisted-chapter": [
     error("course.yaml", "`free_preview` names `02-extra`, which is not listed in `chapters`", 7),

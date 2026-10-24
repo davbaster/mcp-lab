@@ -2,6 +2,6 @@ id: chapter-name-duplicate
 title: A course for the validator tests
 description: One small course that breaks one rule.
 chapters:
-  - 01-intro
-  - 01-intro
+  - {id: 01-intro, title: Introduction}
+  - {id: 01-intro, title: Introduction}
 free_preview: []

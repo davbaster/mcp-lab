@@ -1,11 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "course_id": "sample-course",
   "title": "Sample course",
   "description": "A small course that shows the format and that the validator accepts.",
   "chapters": [
     {
       "id": "01-first-steps",
+      "title": "First steps",
       "free_preview": true,
       "has_code": true,
       "lessons": [
@@ -23,6 +24,7 @@
     },
     {
       "id": "02-going-further",
+      "title": "Going further",
       "free_preview": false,
       "has_code": false,
       "lessons": [

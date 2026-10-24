@@ -2,5 +2,5 @@ id: course-yaml-syntax-error
 title: A course
   description: indented under the title
 chapters:
-  - 01-intro
+  - {id: 01-intro, title: Introduction}
 free_preview: []

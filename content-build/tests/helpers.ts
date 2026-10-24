@@ -99,18 +99,40 @@ export function warning(file: string, message: string, line?: number): Problem {
   return line === undefined ? { severity: "warning", file, message } : { severity: "warning", file, line, message };
 }
 
-/** A course.yaml written as JSON, which is YAML too: one key per line, so line numbers are easy to count. */
+/** The chapters of the valid course, as `course.yaml` lists them. */
+export const CHAPTERS = [
+  { id: "01-first-steps", title: "First steps" },
+  { id: "02-going-further", title: "Going further" },
+];
+
+/** A `chapters` list for `courseYaml` with these ids, each titled "Chapter <position>". */
+export function chapterList(...ids: string[]): { id: string; title: string }[] {
+  return ids.map((id, index) => ({ id, title: `Chapter ${index + 1}` }));
+}
+
+/**
+ * A course.yaml written as JSON, which is YAML too: one key per line, and one chapter per line, so line numbers are
+ * easy to count (`chapters` is on line 5, its items on lines 6, 7, ...).
+ */
 export function courseYaml(overrides: Record<string, unknown> = {}): string {
   const fields: Record<string, unknown> = {
     id: "sample-course",
     title: "Sample course",
     description: "A small course.",
-    chapters: ["01-first-steps", "02-going-further"],
+    chapters: CHAPTERS,
     free_preview: ["01-first-steps"],
     ...overrides,
   };
-  for (const [key, value] of Object.entries(fields)) if (value === undefined) delete fields[key];
-  return `${JSON.stringify(fields, null, 1)}\n`;
+  const entries = Object.entries(fields)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => {
+      const text =
+        key === "chapters" && Array.isArray(value) && value.length > 0
+          ? `[\n${value.map((item) => `  ${JSON.stringify(item)}`).join(",\n")}\n ]`
+          : JSON.stringify(value, null, 1).replaceAll("\n", "\n ");
+      return ` ${JSON.stringify(key)}: ${text}`;
+    });
+  return `{\n${entries.join(",\n")}\n}\n`;
 }
 
 /** The code folder of the first chapter of the valid course. */

@@ -1,0 +1,8 @@
+id: chapter-unknown-key
+title: A course for the validator tests
+description: One small course that breaks one rule.
+chapters:
+  - id: 01-intro
+    title: Introduction
+    subtitle: A longer name
+free_preview: []
