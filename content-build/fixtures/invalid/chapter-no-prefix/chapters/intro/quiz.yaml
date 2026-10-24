@@ -1,2 +1,60 @@
-# The quiz content is checked by a later task.
-questions: []
+# A valid quiz for this fixture: 5 questions that link to a lesson of this chapter.
+questions:
+  - id: intro-q1
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: 01-hello
+  - id: intro-q2
+    text: How many questions does a chapter quiz have?
+    options:
+      - id: a
+        text: Three
+      - id: b
+        text: Five
+      - id: c
+        text: Ten
+    correct: b
+    explanation: Every chapter quiz has five questions.
+    lesson: 01-hello
+  - id: intro-q3
+    text: How many options does a question have?
+    options:
+      - id: a
+        text: Two or three
+      - id: b
+        text: Exactly one
+    correct: a
+    explanation: A question has two or three options, and one of them is correct.
+    lesson: 01-hello
+  - id: intro-q4
+    text: What does the build do with this file?
+    options:
+      - id: a
+        text: It checks the shape and the rules
+      - id: b
+        text: It ignores the file
+      - id: c
+        text: It serves the file to learners
+    correct: a
+    explanation: The validator checks the file; only the backend reads the compiled quiz.
+    lesson: 01-hello
+  - id: intro-q5
+    text: What does this line print?
+    snippet:
+      language: python
+      code: |
+        print("hello")
+    options:
+      - id: a
+        text: hello
+      - id: b
+        text: goodbye
+    correct: a
+    explanation: The string is printed as it is written.
+    lesson: 01-hello

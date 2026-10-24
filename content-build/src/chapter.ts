@@ -2,6 +2,8 @@
 
 import { join } from "node:path";
 import { listFolder, readText } from "./folder.ts";
+import { checkQuizFile } from "./quiz.ts";
+import type { QuizCollector } from "./quiz.ts";
 import { checkKnownEntries } from "./report.ts";
 import type { EntrySpec, Report } from "./report.ts";
 import { checkShape, lessonFrontMatterShape } from "./schema.ts";
@@ -9,17 +11,29 @@ import { parseYaml, stripBom } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
 
 const LESSON_FILE = /^(\d{2})-[a-z0-9-]+\.mdx$/;
+const LESSON_ID = /^[a-z0-9-]+$/;
 
 type Lesson = {
   /** The file name, such as `01-intro.mdx`. */
   name: string;
+  /** The lesson's stable ID: see `lessonId`. */
+  id: string;
   /** The lesson's `order`, when it is a valid one. */
   order?: number;
   orderLine?: number;
 };
 
-/** `folder` is the chapter on disk, `file` the same folder inside the course, as used in messages. */
-export function validateChapter(folder: string, file: string, spec: EntrySpec, report: Report) {
+/**
+ * `folder` is the chapter on disk, `file` the same folder inside the course, as used in messages. With
+ * `quiz`, the chapter's quiz.yaml is checked too (it needs the lesson IDs, so it comes after the lessons).
+ */
+export function validateChapter(
+  folder: string,
+  file: string,
+  spec: EntrySpec,
+  report: Report,
+  quiz?: { collector: QuizCollector; chapterId: string },
+) {
   const found = listFolder(folder);
   if (found === undefined) {
     report.error(file, "the chapter folder cannot be read");
@@ -27,19 +41,28 @@ export function validateChapter(folder: string, file: string, spec: EntrySpec, r
   }
   checkKnownEntries(report, file, found, spec, "chapter");
 
-  if (found.get("quiz.yaml") !== "file") report.error(`${file}/quiz.yaml`, "quiz.yaml is missing");
-  if (found.get("lessons") !== "directory") {
+  let lessonIds: string[] | undefined;
+  if (found.get("lessons") === "directory") {
+    lessonIds = validateLessons(join(folder, "lessons"), `${file}/lessons`, report);
+  } else {
     report.error(`${file}/lessons`, "the lessons/ folder is missing");
-    return;
   }
-  validateLessons(join(folder, "lessons"), `${file}/lessons`, report);
+
+  const quizFile = `${file}/quiz.yaml`;
+  if (found.get("quiz.yaml") !== "file") {
+    report.error(quizFile, "quiz.yaml is missing");
+    quiz?.collector.problems.push({ severity: "error", file: quizFile, message: "quiz.yaml is missing" });
+  } else if (quiz !== undefined) {
+    checkQuizFile(join(folder, "quiz.yaml"), quizFile, quiz.chapterId, lessonIds, quiz.collector, report);
+  }
 }
 
-function validateLessons(folder: string, file: string, report: Report) {
+/** The stable IDs of the lessons, or undefined when there are none to link to. */
+function validateLessons(folder: string, file: string, report: Report): string[] | undefined {
   const found = listFolder(folder);
   if (found === undefined) {
     report.error(file, "the lessons/ folder cannot be read");
-    return;
+    return undefined;
   }
   const lessons: Lesson[] = [];
   for (const [name, kind] of found) {
@@ -52,13 +75,14 @@ function validateLessons(folder: string, file: string, report: Report) {
   }
   if (lessons.length === 0) {
     report.error(file, "lessons/ must contain at least one .mdx lesson file");
-    return;
+    return undefined;
   }
   checkOrders(lessons, file, report);
+  return lessons.map((lesson) => lesson.id);
 }
 
 function readLesson(path: string, file: string, name: string, report: Report): Lesson {
-  const lesson: Lesson = { name };
+  const lesson: Lesson = { name, id: lessonId(name, undefined) };
   if (!LESSON_FILE.test(name)) {
     report.error(
       file,
@@ -88,7 +112,16 @@ function readLesson(path: string, file: string, name: string, report: Report): L
   for (const { line, message } of checkShape(lessonFrontMatterShape, value, yaml)) {
     report.error(file, message, line);
   }
-  return withOrder(lesson, value as Record<string, unknown>, yaml);
+  return withOrder({ ...lesson, id: lessonId(name, value) }, value as Record<string, unknown>, yaml);
+}
+
+/**
+ * The stable ID of a lesson: the `id` in its front matter when that is a valid one, otherwise the file
+ * name without `.mdx`. `frontMatter` is the parsed front matter, or undefined when there is none.
+ */
+export function lessonId(fileName: string, frontMatter: unknown): string {
+  const id = typeof frontMatter === "object" && frontMatter !== null ? (frontMatter as Record<string, unknown>).id : undefined;
+  return typeof id === "string" && LESSON_ID.test(id) ? id : fileName.replace(/\.mdx$/, "");
 }
 
 function withOrder(lesson: Lesson, data: Record<string, unknown>, yaml: ParsedYaml): Lesson {
@@ -98,7 +131,7 @@ function withOrder(lesson: Lesson, data: Record<string, unknown>, yaml: ParsedYa
 }
 
 /** The text between the opening and closing `---` lines, or why there is none. */
-function splitFrontMatter(text: string): { yaml: string } | { problem: string } {
+export function splitFrontMatter(text: string): { yaml: string } | { problem: string } {
   const lines = stripBom(text).split("\n").map((l) => l.replace(/\r$/, ""));
   if (lines[0]?.trimEnd() !== "---") {
     return { problem: "the lesson must start with a front-matter block: a `---` line, the settings, and a closing `---` line" };

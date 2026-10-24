@@ -9,6 +9,8 @@ import { courseShape, checkShape } from "./schema.ts";
 import { parseYaml } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
 import { validateChapter } from "./chapter.ts";
+import { makeQuizCollector } from "./quiz.ts";
+import type { QuizCollector } from "./quiz.ts";
 import type { Report } from "./report.ts";
 import { checkKnownEntries, makeReport } from "./report.ts";
 
@@ -33,22 +35,38 @@ const CHAPTER_ENTRIES = {
  * a file's content.
  */
 export function validateCourse(courseDir: string): Problem[] {
+  return inspectCourse(courseDir).problems;
+}
+
+export type Inspection = {
+  /** What `validateCourse` returns. */
+  problems: Problem[];
+  /** The compiled quizzes and the problems of the quizzes. Undefined when the course folder cannot be read. */
+  quizzes?: QuizCollector;
+  /** The chapters listed in `course.yaml`, when it has a usable list. */
+  chapters?: string[];
+};
+
+/** `validateCourse` and what else the check found out, for the steps that build from the course. */
+export function inspectCourse(courseDir: string): Inspection {
   const root = resolveCoursePath(courseDir);
   const kind = pathKind(root);
-  if (kind === undefined) return [{ severity: "error", file: "", message: "the course folder does not exist" }];
-  if (kind !== "directory") return [{ severity: "error", file: "", message: "the path is not a folder" }];
+  if (kind === undefined) return { problems: [{ severity: "error", file: "", message: "the course folder does not exist" }] };
+  if (kind !== "directory") return { problems: [{ severity: "error", file: "", message: "the path is not a folder" }] };
 
   const report = makeReport();
   const found = listFolder(root);
   if (found === undefined) {
     report.error("", "the course folder cannot be read");
-    return report.problems;
+    return { problems: report.problems };
   }
   checkKnownEntries(report, "", found, COURSE_ENTRIES, "course");
 
-  const course = readCourseYaml(root, found, onDiskName(root), report);
-  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report);
-  return sortProblems(report.problems);
+  const folderName = onDiskName(root);
+  const quizzes = makeQuizCollector(folderName);
+  const course = readCourseYaml(root, found, folderName, report);
+  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes);
+  return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters };
 }
 
 type CourseYaml = {
@@ -121,6 +139,7 @@ function checkChapters(
   chapters: string[],
   yaml: ParsedYaml | undefined,
   report: Report,
+  quizzes: QuizCollector,
 ) {
   if (courseEntries.get("chapters") !== "directory") {
     report.error("chapters", "the chapters/ folder is missing");
@@ -151,7 +170,10 @@ function checkChapters(
       report.error("course.yaml", `chapter \`${name}\` is listed in \`chapters\` but chapters/${name} does not exist${hint}`, line);
       return;
     }
-    validateChapter(join(root, "chapters", name), `chapters/${name}`, CHAPTER_ENTRIES, report);
+    validateChapter(join(root, "chapters", name), `chapters/${name}`, CHAPTER_ENTRIES, report, {
+      collector: quizzes,
+      chapterId: name,
+    });
   });
 
   for (const [name, kind] of folders) {

@@ -1,0 +1,55 @@
+questions:
+  - id: first-steps-1
+    text: ¿Qué significa «bienvenido»?
+    options:
+      - id: a
+        text: Welcome
+      - id: b
+        text: Goodbye
+    correct: a
+    explanation: Bienvenido significa welcome, ñandú.
+    lesson: 01-welcome
+  - id: first-steps-2
+    text: 日本語のテキストですか？
+    options:
+      - id: a
+        text: はい
+      - id: b
+        text: いいえ
+    correct: a
+    explanation: はい、日本語です。
+    lesson: 01-welcome
+  - id: first-steps-3
+    text: Which emoji is a globe? 🌍
+    options:
+      - id: a
+        text: 🌍
+      - id: b
+        text: 🔥
+    correct: a
+    explanation: The globe is 🌍, outside the Basic Multilingual Plane.
+    lesson: 01-welcome
+  - id: first-steps-4
+    text: Привет, мир
+    options:
+      - id: a
+        text: Hello, world
+      - id: b
+        text: Bye
+    correct: a
+    explanation: Привет means hello.
+    lesson: 01-welcome
+  - id: first-steps-5
+    text: Naïve café — déjà vu
+    snippet:
+      language: python
+      code: |
+        print("héllo wörld 🌍")
+    options:
+      - id: a
+        text: Yes
+      - id: b
+        text: No
+    correct: a
+    explanation: Ça va.
+    lesson: 01-welcome

@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +8,9 @@ import type { Problem } from "../src/problem.ts";
 export const PART_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const FIXTURES = join(PART_DIR, "fixtures");
 export const VALID_COURSE = join(FIXTURES, "valid", "sample-course");
+export const QUIZ_FIXTURES = join(FIXTURES, "quizzes");
+/** The quiz of the first chapter of the valid course, the file that the single-file quiz fixtures replace. */
+export const FIRST_QUIZ = "chapters/01-first-steps/quiz.yaml";
 
 const temporaryFolders: string[] = [];
 
@@ -40,6 +43,11 @@ export function makeCourse(id: string, changes: Record<string, string | null> = 
     }
   }
   return course;
+}
+
+/** The text of a single-file quiz fixture, `fixtures/quizzes/<group>/<name>.yaml`. */
+export function quizFixture(group: "valid" | "invalid", name: string): string {
+  return readFileSync(join(QUIZ_FIXTURES, group, `${name}.yaml`), "utf8");
 }
 
 export function lessonText(title: string, order: number | string, extra = ""): string {

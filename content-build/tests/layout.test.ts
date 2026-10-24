@@ -5,10 +5,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateCourse } from "../src/course.ts";
 import { onDiskName } from "../src/folder.ts";
-import { error, lessonText, makeCourse, warning } from "./helpers.ts";
+import { VALID_COURSE, error, lessonText, makeCourse, warning } from "./helpers.ts";
 
 const FIRST = "chapters/01-first-steps";
 const LESSONS = `${FIRST}/lessons`;
+// The quiz of the valid course links to 02-setup.mdx by its explicit id, so a test that rewrites that file keeps the id.
+const SETUP_ID = "id: setup\n";
 
 function check(changes: Record<string, string | null>) {
   return validateCourse(makeCourse("sample-course", changes));
@@ -19,7 +21,7 @@ describe("lessons folder", () => {
     expect(
       check({
         [`${LESSONS}/03-third.mdx`]: lessonText("Third", 3),
-        [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 2),
+        [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 2, SETUP_ID),
       }),
     ).toEqual([]);
   });
@@ -71,7 +73,10 @@ describe("lesson front matter", () => {
   const lesson = (text: string) => check({ [`${LESSONS}/01-welcome.mdx`]: text });
 
   it("accepts an optional id", () => {
-    expect(lesson(lessonText("Welcome", 1, "id: welcome-lesson\n"))).toEqual([]);
+    // The quiz links to the lesson by the new id: an explicit id replaces the file name as the lesson's ID.
+    const quiz = readFileSync(join(VALID_COURSE, FIRST, "quiz.yaml"), "utf8").replaceAll("lesson: 01-welcome", "lesson: welcome-lesson");
+
+    expect(check({ [`${LESSONS}/01-welcome.mdx`]: lessonText("Welcome", 1, "id: welcome-lesson\n"), [`${FIRST}/quiz.yaml`]: quiz })).toEqual([]);
   });
 
   it("does not read the body", () => {
@@ -126,7 +131,7 @@ describe("lesson front matter", () => {
 describe("lesson order", () => {
   it("reports each duplicate on the later file, with the line of its order", () => {
     const problems = check({
-      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 1),
+      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 1, SETUP_ID),
       [`${LESSONS}/03-extra.mdx`]: lessonText("Extra", 1),
     });
 
@@ -137,7 +142,7 @@ describe("lesson order", () => {
   });
 
   it("reports a gap once, naming the values found", () => {
-    const problems = check({ [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 4) });
+    const problems = check({ [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 4, SETUP_ID) });
 
     expect(problems.filter((p) => p.severity === "error")).toEqual([
       error(LESSONS, "`order` values must be unique and run from 1 to 2 with no gaps, but they are 1, 4"),
@@ -147,7 +152,7 @@ describe("lesson order", () => {
   it("requires order to start at 1", () => {
     const problems = check({
       [`${LESSONS}/01-welcome.mdx`]: lessonText("Welcome", 2),
-      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 3),
+      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 3, SETUP_ID),
     });
 
     expect(problems.filter((p) => p.severity === "error").map((p) => p.message)).toEqual([
@@ -156,7 +161,7 @@ describe("lesson order", () => {
   });
 
   it("does not report a gap while a lesson has a broken order", () => {
-    const problems = check({ [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", "oops") });
+    const problems = check({ [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", "oops", SETUP_ID) });
 
     expect(problems.map((p) => p.message)).toEqual(["`order` must be an integer"]);
   });
@@ -164,7 +169,7 @@ describe("lesson order", () => {
   it("warns, without failing, when the file name prefix differs from the order", () => {
     const swapped = check({
       [`${LESSONS}/01-welcome.mdx`]: lessonText("Welcome", 2),
-      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 1),
+      [`${LESSONS}/02-setup.mdx`]: lessonText("Setup", 1, SETUP_ID),
     });
     expect(swapped).toEqual([
       warning(`${LESSONS}/01-welcome.mdx`, "the file name starts with 01 but `order` is 2", 3),

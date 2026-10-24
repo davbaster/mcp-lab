@@ -8,3 +8,6 @@ compose.yaml text eol=lf
 openapi.yaml text eol=lf
 frontend/src/api/schema.d.ts text eol=lf
 Makefile text eol=lf
+# Quiz fixtures and the golden quiz output are compared byte for byte; a Windows checkout must not change them.
+content-build/fixtures/**/*.yaml text eol=lf
+content-build/fixtures/expected/**/*.json text eol=lf

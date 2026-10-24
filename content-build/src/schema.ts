@@ -16,13 +16,29 @@ export const lessonFrontMatterShape: Shape = {
   root: "the front matter",
 };
 
-type Shape = {
+/** Compiles another schema with the same ajv setup (strict mode). */
+export function compileShape(schema: object, options: Omit<Shape, "validate">): Shape {
+  return { validate: ajv.compile(schema), ...options };
+}
+
+export type Shape = {
   validate: ValidateFunction;
   /** How the top level is called in a message, such as "course.yaml". */
   root: string;
+  /**
+   * Names the part of the file that a field belongs to, so that a message can say "question `tools-2`"
+   * instead of `questions[2]`. Gets the path of the field and the whole value; `rest` is the part of
+   * the path inside `scope`. Without it, a message names the field by its whole path.
+   */
+  locate?: (path: readonly PathSegment[], value: unknown) => { scope: string; rest: PathSegment[] };
+  /** Never quote the checked value in a message. */
+  quiet?: boolean;
+  /** A missing field is reported at the line of the mapping that lacks it, when that has a line. */
+  lineForMissing?: boolean;
 };
 
 const NAME_RULE = "use only lowercase letters, digits, and hyphens";
+const NO_WHITESPACE = "^\\S+$";
 
 /** Checks `value` (parsed from `source`) against the shape. Returns no problems when it conforms. */
 export function checkShape(shape: Shape, value: unknown, source: ParsedYaml): ShapeProblem[] {
@@ -33,27 +49,42 @@ export function checkShape(shape: Shape, value: unknown, source: ParsedYaml): Sh
       problems.push(line === undefined ? { message } : { line, message });
     }
   };
+  // `build` gets the field as the message names it: the whole path, or the path inside its scope.
+  const say = (fieldPath: PathSegment[], build: (field: string) => string): string => {
+    const { scope, rest } = shape.locate?.(fieldPath, value) ?? { scope: "", rest: fieldPath };
+    if (rest.length === 0) return build(scope === "" ? shape.root : scope);
+    return scope === "" ? build(`\`${label(rest)}\``) : `${scope}: ${build(`\`${label(rest)}\``)}`;
+  };
   for (const error of shape.validate.errors ?? []) {
     const path = pointerToPath(error.instancePath);
     const instance = valueAt(value, path);
-    const field = path.length === 0 ? shape.root : `\`${label(path)}\``;
     if (error.keyword === "uniqueItems") {
       for (const { name, index } of repeatedNames(instance)) {
-        add(`${field} lists \`${name}\` more than once`, source.lineOf([...path, index]));
+        add(say(path, (field) => `${field} lists \`${name}\` more than once`), source.lineOf([...path, index]));
       }
     } else if (error.keyword === "additionalProperties") {
       const key = String(error.params.additionalProperty);
-      add(`unknown key \`${label([...path, key])}\``, source.lineOfKey(path, key));
+      add(say([...path, key], (field) => `unknown key ${field}`), source.lineOfKey(path, key));
     } else if (error.keyword === "required") {
-      add(`missing required field \`${label([...path, String(error.params.missingProperty)])}\``, undefined);
+      const missing = String(error.params.missingProperty);
+      add(
+        say([...path, missing], (field) => `missing required field ${field}`),
+        shape.lineForMissing ? source.lineOf(path) : undefined,
+      );
     } else {
-      add(describe(error, path, field, instance), source.lineOf(path));
+      add(say(path, (field) => describe(error, path, field, instance, shape.quiet === true)), source.lineOf(path));
     }
   }
   return problems;
 }
 
-function describe(error: ErrorObject, path: PathSegment[], field: string, instance: unknown): string {
+function describe(
+  error: ErrorObject,
+  path: PathSegment[],
+  field: string,
+  instance: unknown,
+  quiet: boolean,
+): string {
   switch (error.keyword) {
     case "type":
       return `${field} must be ${TYPE_NAMES[String(error.params.type)] ?? String(error.params.type)}`;
@@ -66,7 +97,8 @@ function describe(error: ErrorObject, path: PathSegment[], field: string, instan
     case "pattern":
       // The text rule (`\S`) and the name rule both reject an empty string; say so plainly.
       if (typeof instance === "string" && instance.trim() === "") return `${field} must not be empty`;
-      return `${field} must ${NAME_RULE} (got ${JSON.stringify(instance)})`;
+      if (error.params.pattern === NO_WHITESPACE) return `${field} must not contain white space`;
+      return quiet ? `${field} must ${NAME_RULE}` : `${field} must ${NAME_RULE} (got ${JSON.stringify(instance)})`;
     default:
       return `${field} ${error.message ?? "is not valid"}`;
   }

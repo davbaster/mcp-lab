@@ -97,6 +97,14 @@ const invalid: Record<string, Problem[]> = {
   "lesson-order-gap": [
     error(LESSONS, "`order` values must be unique and run from 1 to 2 with no gaps, but they are 1, 3"),
   ],
+  // quiz.yaml: the rules that need a whole course (the single-file quiz fixtures are in quiz.test.ts)
+  "quiz-question-id-repeated-across-chapters": [
+    error(
+      "chapters/02-more/quiz.yaml",
+      "question `01-intro-q3`: the id is already used by the question at chapters/01-intro/quiz.yaml:25",
+      25,
+    ),
+  ],
 };
 
 const warnings: Record<string, Problem[]> = {
