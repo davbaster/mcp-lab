@@ -6,3 +6,4 @@ compose.yaml text eol=lf
 .env.example text eol=lf
 *.sh text eol=lf
 openapi.yaml text eol=lf
+frontend/src/api/schema.d.ts text eol=lf
