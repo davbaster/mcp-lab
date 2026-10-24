@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100" height="40" viewBox="0 0 100 40">
+  <defs>
+    <linearGradient id="g"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>
+    <rect id="a" width="10" height="10"/>
+    <style>.box { fill: url(#g); } .other { fill: url( '#g' ); }</style>
+  </defs>
+  <use href="#a" x="1"/>
+  <use xlink:href='#a' x="20"/>
+  <use HREF = "#a" x="40"/>
+  <rect class="box" style="fill:url(#g)" width="10" height="10"/>
+  <text x="50" y="20">Click on the box</text>
+</svg>

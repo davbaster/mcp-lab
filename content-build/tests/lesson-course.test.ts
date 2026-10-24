@@ -102,7 +102,12 @@ describe("validateCourse compiles the lessons", () => {
   });
 
   it("compiles with the schema folder it is given", () => {
-    const course = makeCourse("sample-course", { [`${LESSONS}/01-welcome.mdx`]: withBody('<Flag flag name="x" />') });
+    // The fixture's media lesson and its assets are replaced: the small schema folder has no Model3D.
+    const course = makeCourse("sample-course", {
+      [`${LESSONS}/01-welcome.mdx`]: withBody('<Flag flag name="x" />'),
+      [`${SECOND}/01-next.mdx`]: withBody("What comes next."),
+      assets: null,
+    });
 
     expect(validateCourse(course, { schemaDir: COMPONENT_FIXTURES })).toEqual([]);
     expect(validateCourse(course).map((p) => p.message)).toEqual([

@@ -11,10 +11,10 @@ export type Output = { stdout(text: string): void; stderr(text: string): void };
 
 /**
  * Runs the command and returns the exit code: 0 when there are no errors, 1 for errors, 2 for a bad
- * command line, and 3 when the build's own setup is wrong (a component schema is not valid).
- * `options.schemaDir` is for tests.
+ * command line, and 3 when the build's own setup is wrong (a component schema or `media-config.json` is not valid).
+ * `options.schemaDir` and `options.mediaConfigPath` are for tests.
  */
-export function main(args: readonly string[], output: Output, options: { schemaDir?: string } = {}): number {
+export function main(args: readonly string[], output: Output, options: { schemaDir?: string; mediaConfigPath?: string } = {}): number {
   if (args.length !== 1 || args[0] === undefined || args[0].trim() === "") {
     output.stderr(`error: give the course folder to check, once\n${USAGE}\n`);
     return 2;

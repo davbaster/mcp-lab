@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Problem } from "../src/problem.ts";
 import { validateCourse } from "../src/course.ts";
+import { assetInvalid, assetWarnings } from "./asset-fixtures.ts";
 import { FIXTURES, VALID_COURSE, error, lessonProblem, warning } from "./helpers.ts";
 
 const LESSONS = "chapters/01-intro/lessons";
@@ -119,6 +120,8 @@ const invalid: Record<string, Problem[]> = {
       "unknown component `Iframe`; the components are `Callout`, `CodeSteps`, `Diagram`, `Image`, `Model3D`, `Tabs`, `Video`",
     ),
   ],
+  // assets/ and the asset and media references of the lessons (#9)
+  ...assetInvalid,
   // quiz.yaml: the rules that need a whole course (the single-file quiz fixtures are in quiz.test.ts)
   "quiz-question-id-repeated-across-chapters": [
     error(
@@ -136,6 +139,7 @@ const warnings: Record<string, Problem[]> = {
       "this chapter folder has only code/, so it is a chapter in progress: it is not listed in `chapters` and is not built",
     ),
   ],
+  ...assetWarnings,
   "lesson-prefix-mismatch": [warning(`${LESSONS}/05-second.mdx`, "the file name starts with 05 but `order` is 2", 3)],
   "stray-files": [
     warning(`${LESSONS}/README.txt`, "this file is ignored; lessons/ holds only .mdx lesson files"),

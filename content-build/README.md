@@ -1,6 +1,6 @@
 # content-build
 
-A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. So far it validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, and each chapter's code steps, it compiles every lesson to a JSON tree (or rejects it), and it compiles the quizzes and the code steps to private JSON (and the code to ZIPs). The format is described in [`courses/README.md`](../courses/README.md).
+A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. So far it validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, each chapter's code steps, and the files in `assets/` with the asset and media references of the lessons, it compiles every lesson to a JSON tree (or rejects it), it compiles the quizzes and the code steps to private JSON (and the code to ZIPs), and it writes the allowed assets under content-hashed names. The format is described in [`courses/README.md`](../courses/README.md).
 
 It needs Node 24 (the version in the root `.nvmrc`). The scripts run `.ts` files with Node's built-in type stripping, so no TypeScript runner is installed, `engines.node` is `>=24`, and the code uses only erasable TypeScript syntax (`erasableSyntaxOnly` in `tsconfig.json`: no enums, namespaces, or constructor parameter properties). Imports of local files end in `.ts`.
 
@@ -189,12 +189,107 @@ const problems = await writeCodeSteps("courses/mcp-server", "build");
 
 `step` is a number, `path` uses `/`, `zip.file` is the ZIP's file name, `zip.sha256` is the full hash, and `zip.size` is in bytes. Each object is built by listing its fields. The file is UTF-8 without a byte order mark, with LF line endings, a 2-space indent, a final newline, and non-ASCII text as it is. The same course gives byte-identical files whatever the folder, the build folder, the working folder, the time zone, the platform, or the line endings and byte order mark of the source files. The golden output of the valid fixture (`fixtures/expected/private/code/sample-course/`) is compared exactly; the ZIP itself is checked by reading it back.
 
+## Assets
+
+The build checks every file in a course's `assets/` folder, once per course whether or not a lesson uses it, and every asset and media reference in the lessons. Anything that could run code, load something from an unapproved origin, or point at a missing file fails the build with a message that names the file (and the line and column, for a lesson). `writeAssets` then writes the allowed files to a public build folder under content-hashed names.
+
+### Files in `assets/`
+
+- Only `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`, `.glb`, `.gltf`, and `.vtt` are allowed, in any letter case; the hashed name always has the extension in lowercase. Anything else is an error that lists the types. For a video (`.mp4`, `.webm`, `.mov`, `.m4v`, `.ogv`) the message adds that videos go on the media CDN and are used with `Video`. There is no exemption for a `README.md` in `assets/`. Subfolders are allowed. `.DS_Store` and `Thumbs.db` are ignored at any depth.
+- The first bytes must match the extension: `.png` the PNG signature, `.jpg` and `.jpeg` `FF D8 FF`, `.webp` `RIFF....WEBP`, `.glb` `glTF`. A file of 0 bytes is an error.
+- Size limits come from `media-config.json` (below), in bytes on disk: images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`) 5 MiB, models (`.glb`, `.gltf`) 25 MiB, captions (`.vtt`) 1 MiB. A file of exactly the limit passes; one byte more fails. "MB" in the issues means MiB (1,048,576 bytes).
+- A symbolic link, or anything that is not a plain file or folder, is an error; the build never follows links. Names must extract on Windows (`windowsPathProblems`, with a path limit of 100 characters from `assets/`), and a file or folder name may use only letters, digits, `.`, `_`, and `-` and may not start with `.`, so a path never needs URL-encoding. A problem names the shortest path that has it.
+- A `.vtt` must be UTF-8 text without a NUL character that starts with `WEBVTT`. A `.gltf` must be UTF-8 JSON, and every `uri` in its `buffers` and `images` must start with `data:`: a `.gltf` that points to an outside file (such as a `.bin`) must embed it or become a `.glb`.
+- Text files (`.svg`, `.vtt`, `.gltf`) are normalized once before hashing and copying: CRLF and a lone CR become LF, and one leading byte order mark is removed. Binary files are used byte for byte.
+- A file that no lesson of a listed chapter uses is a warning on `assets/<path>`. Using a file as a `Model3D` or `Video` `poster`, or as `captions`, counts as using it. The warning is given only when every lesson compiled without a problem, because a broken lesson's references are not known.
+
+### SVG rules
+
+Every `.svg` in `assets/` is scanned as text (the normalized UTF-8 text, case-insensitive), with no XML parser. The scan looks at the whole text, comments and CDATA included, so it may reject a harmless file; that is the point. Each rule is reported once per file, with the line of its first match.
+
+- Not UTF-8 (for example UTF-16), a NUL character, or an XML declaration with an `encoding` other than `utf-8`.
+- No `<svg` start tag.
+- An element named `script`, `foreignObject`, `iframe`, `embed`, `object`, `animate`, or `set`, with or without a namespace prefix (`<svg:script>`).
+- An attribute whose name starts with `on` (`onload`, `OnClick`), found after whitespace, a quote, or `/` (so `<svg/onload=...>` is caught).
+- Any `href` or `xlink:href` attribute (with or without a prefix, any letter case, spaces around `=`) whose value is not quoted or does not start with `#`. So `http:`, `javascript:`, `data:`, entity-encoded, and relative-file values are rejected; `href="#a"` for `<use>` is fine.
+- `<!ENTITY` anywhere, or a `<?xml-stylesheet` instruction. A plain `<!DOCTYPE svg PUBLIC ...>` without `[` is fine.
+- `@import` anywhere, or a `url(` whose argument (after optional spaces and a quote) does not start with `#`.
+
+These checks are one layer. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `script-src 'none'` and `nosniff` (#58).
+
+### The media config
+
+`media-config.json` (next to `package.json`, found from the source file and not from the working folder) is the only list of media origins and size limits; `schemas/media-config.schema.json` is its draft-07 schema, and `loadMediaConfig()` in `src/media-config.ts` reads and checks it. Changing it is a reviewed change. No file in `src/` contains an origin or host from it; messages build their suggestions from the config.
+
+```json
+{
+  "mediaOrigins": ["https://media.mcp-lab.example"],
+  "embeds": [
+    {
+      "origin": "https://www.youtube-nocookie.com",
+      "pathPrefix": "/embed/",
+      "idPattern": "^[A-Za-z0-9_-]+$",
+      "watchHosts": ["www.youtube.com", "youtube.com", "m.youtube.com", "youtu.be"]
+    }
+  ],
+  "assetLimits": { "imageBytes": 5242880, "modelBytes": 26214400, "captionBytes": 1048576 }
+}
+```
+
+- `mediaOrigins`: `https` origins of files on the media CDN. The placeholder is replaced in #34.
+- `embeds`: video sites that may be embedded. `origin` is the player's origin, `pathPrefix` the path before the ID (a slash at both ends), `idPattern` a regular expression for the ID (from `^` to `$`), and `watchHosts` the hosts of the site's watch pages, which are rejected with a hint to use the embed form. The file also lists Vimeo.
+- `assetLimits`: the size limits in bytes: `imageBytes` for images, `modelBytes` for models, and `captionBytes` for captions.
+- An origin must be exactly what `new URL(origin).origin` returns: `https` only, a lowercase host of letters, digits, dots, and hyphens, no path or trailing `/`, no wildcard, no credentials, no default port. Origins are not repeated, within a list or between `mediaOrigins` and the `embeds` origins. A file that does not match its schema, or has a bad origin, throws a `SetupError` that names the file and the key, so `validate` prints `build setup error: ...` and exits 3.
+
+**For #20:** the Content-Security-Policy is generated from this file, which #20 reads and does not copy: `mediaOrigins` give `img-src` and `media-src`, and the `origin` of each `embeds` entry gives `frame-src`.
+
+### References in lessons
+
+`compileLesson` returns the references it found next to the tree (`{ tree, references }`; the tree and its golden files are unchanged). Each is `{ component, prop, value, line, column }`, at the prop or the Markdown image (`component` is `Markdown` and `prop` is `image` for `![alt](path)`). `src/assets.ts` holds the table of which props refer to a file or a media URL: `Image.src`, `Diagram.src`, `Model3D.src`, `Model3D.poster`, `Video.captions`, `Video.poster`, `Video.src`, and the URL of a Markdown image. A Markdown link and `CodeSteps` props are not references, and a `Diagram` with `source` (Mermaid) gets no check (#55).
+
+A value without a scheme (it does not match `^[A-Za-z][A-Za-z0-9+.-]*:`) is an *asset path*, relative to `assets/` and written without the `assets/` prefix (`images/pic.png`). It is looked up, exactly and case-sensitively, in the folder listing of `assets/`; a typed path is never opened. These are errors, each with its own message: an empty path, a path that starts with `/` or `\`, a `..` or `.` part, a backslash, an empty part (`a//b.png`), a `%`, `?`, or `#`, a name the name rule forbids, a path to a folder, and a missing file (a file that differs only in letter case is named in the message). The file type must fit the use: an image (`.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`) for `Image.src`, a Markdown image, `Model3D.poster`, and `Video.poster`; `.glb` or `.gltf` for `Model3D.src`; `.svg` for `Diagram.src`; `.vtt` for `Video.captions`.
+
+`Image.src`, `Diagram.src`, `Model3D.src`, `Model3D.poster`, and a Markdown image must be files in `assets/`: a URL (`http`, `https`, `mailto`) is an error, because the Content-Security-Policy would block it anyway.
+
+`Video.src` must be an absolute `https` URL. It is parsed with `new URL`, and the decision uses the parsed `origin` and `pathname`, never string prefixes. The raw value may not have spaces, control characters, a backslash, or credentials (`user@`). A relative value (even `clip.mp4`) is an error: videos are not served from `assets/`. A URL on a `mediaOrigins` origin is a direct file (letter case in the scheme and host does not matter, and the default port is the same origin). A URL on an `embeds` origin must be `<origin><pathPrefix><id>` with an ID that matches `idPattern`; a query such as `?start=30` is fine. A URL on a `watchHosts` host is an error that suggests the embed form. Any other origin is an error that says it is not in `media-config.json`. `Video.captions` and `Video.poster` are an asset path or a URL on a `mediaOrigins` origin (not an embed origin) whose path ends in `.vtt`, or in an image extension for a poster.
+
+### Writing the assets
+
+```ts
+import { writeAssets } from "./src/index.ts";
+
+// Returns [] after writing, or the problems and writes nothing.
+const problems = writeAssets("courses/mcp-server", "build");
+```
+
+`writeAssets(courseDir, buildDir)` is synchronous, like `writeQuizzes`. It checks the files in `assets/` as above, but not the lessons: run `validateCourse` first. On any error it writes nothing, leaves the build folder as it was, and returns the problems. An empty `buildDir` throws, and a course folder name that is not `^[a-z0-9-]+$` is an error. It removes and rewrites only `<buildDir>/public/assets/<course_id>/` and `<buildDir>/assets-map/<course_id>.json`, and never reads, writes, or removes anything under `<buildDir>/private/`. With no files in `assets/` it writes no asset files, the map has `"files": {}`, and files of an earlier build are removed. Two courses in one build folder do not touch each other.
+
+Each file is written flat, as `<stem>-<first 16 hex digits of the SHA-256>.<ext>`: `stem` is the file name without its extension (folders dropped), the hash is of the bytes written (after the text normalization), and `ext` is lowercase. `images/pic.png` becomes `pic-0123456789abcdef.png`. Two paths with identical bytes and the same stem give one file, a file that changes gets a new name, and a file that moves between folders keeps its name. A file in a folder named `private/` is written flat under `public/assets/<course_id>/` like any other; two files whose output names differ only in letter case are an error. Nothing outside `public/assets/<course_id>/` and the map holds an asset.
+
+The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is never served. It is, with the keys in code-unit order:
+
+```json
+{
+  "course_id": "mcp-server",
+  "files": {
+    "images/pic.png": { "file": "pic-0123456789abcdef.png", "sha256": "<64 hex digits>", "size": 1234 }
+  }
+}
+```
+
+`file` is the hashed name, `sha256` the full hash, and `size` the bytes of the file written. The file is UTF-8 without a byte order mark, with LF line endings, a 2-space indent, and a final newline. The output is byte-identical whatever the course folder's location, the build folder, the working folder, the platform, and the line endings or byte order mark of the text files. `inspectCourse(...).assets` gives the checked files (path, hashed name, sha256, size, and the bytes) for the writer and for #12.
+
+### Pointing a lesson at the hashed files
+
+`compileLesson` keeps the paths as the author wrote them. The pure function `rewriteAssetUrls(tree, courseId, assetMap)` returns a new tree (the input is not changed) in which every asset reference is `/api/courses/<course_id>/assets/<hashed file name>`, the URL that #58 serves. `assetMap` is the `files` object of the map. It reads the same table of props as the checks. Values that are URLs (an allowlisted `Video.poster` or `captions`) and `Video.src` are not changed, and a reference that is not in the map throws an internal error, because the checks should have caught it. `writeAssets` does not write lesson trees: the step that does (#12) calls `compileLesson` and then `rewriteAssetUrls`.
+
 ## Layout
 
 - `src/course.ts` - `validateCourse`: the course folder and `course.yaml`
 - `src/chapter.ts` - one chapter: `lessons/`, `quiz.yaml`, and the lesson front matter; `lessonId` and `splitFrontMatter` are shared helpers
 - `src/quiz.ts` - `compileQuiz`: the quiz rules, the limits, and the data to write; `src/write-quizzes.ts` - `writeQuizzes`
 - `src/code-steps.ts` - the code step checks and `CODE_LIMITS`; `src/windows-paths.ts` - the Windows path rule; `src/text.ts` - normalizing and splitting text
+- `src/assets.ts` - the allowed file types, the table of props that refer to files, and the hashed names; `src/asset-files.ts` - the checks of the files in `assets/`; `src/svg.ts` - the SVG rules; `src/media-config.ts` - `loadMediaConfig`; `src/media-url.ts` - where a `Video` URL may point; `src/references.ts` - the checks of a lesson's references; `src/rewrite-assets.ts` - `rewriteAssetUrls`; `src/write-assets.ts` - `writeAssets`
 - `src/step-diff.ts` - `diffSteps`; `src/chapter-zip.ts` - `buildChapterZip`; `src/write-code-steps.ts` - `writeCodeSteps`
 - `src/lesson.ts` - `compileLesson`; `src/lesson-tree.ts` - the tree types, the check against its schema, and `serializeTree`; `src/component-schemas.ts` - reads the component schemas and `SetupError`; `src/url.ts` - the URL rule
 - `src/compile-cli.ts` and `src/compile.ts` - the `compile` command and its entry point
@@ -204,7 +299,7 @@ const problems = await writeCodeSteps("courses/mcp-server", "build");
 - `src/cli.ts` and `src/validate.ts` - the `validate` command and its entry point
 - `fixtures/quizzes/valid/<case>.yaml` and `fixtures/quizzes/invalid/<case>.yaml` - single quiz files; a test puts one into a copy of the valid course as `chapters/01-first-steps/quiz.yaml`
 - `fixtures/lessons/valid/<case>.mdx` with `<case>.json` beside it (the golden tree), `fixtures/lessons/invalid/<case>.mdx` - one lesson per rejection; `fixtures/components/` - the small schema folder that the rule tests use
-- `fixtures/expected/` - the golden output of `writeQuizzes` and `writeCodeSteps` for the valid course
+- `fixtures/expected/` - the golden output of `writeQuizzes`, `writeCodeSteps`, and `writeAssets` for the valid course, and the golden rewritten tree (`lessons/all-assets.json`); `fixtures/svg/` - one SVG per SVG rule; `fixtures/lessons/assets/` - the lesson that `rewriteAssetUrls` is tested with
 - `fixtures/valid/` - a valid course; `fixtures/invalid/<case>/` - one course per rule it breaks; `fixtures/warnings/<case>/` - courses that are valid but get a warning. Each folder's name is the course `id`, except `invalid/id-mismatch`.
 - `tests/` - the Vitest tests. Cases that depend on line endings or a byte order mark are written to a temporary folder by the test, so git's line-ending settings cannot change them.
 

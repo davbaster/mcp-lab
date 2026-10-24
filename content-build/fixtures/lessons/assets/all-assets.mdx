@@ -1,0 +1,48 @@
+---
+title: All assets
+order: 1
+---
+
+A Markdown image: ![A photo](images/photo.jpg "A title"), and a link that is not an asset: [a file](images/pic.png).
+
+<Image src="images/pic.png" alt="A picture" />
+
+<Diagram src="diagrams/flow.svg" alt="A flow" />
+
+<Diagram alt="Message flow" source="graph TD; A-->B" />
+
+<Model3D src="models/server.glb" alt="A server" poster="images/banner.webp" />
+
+<Video src="https://media.mcp-lab.example/videos/intro.mp4" title="Intro" captions="captions/intro.vtt" poster="images/banner.webp" />
+
+<Video src="https://www.youtube-nocookie.com/embed/abc" title="Embedded" captions="https://media.mcp-lab.example/c.vtt" poster="https://media.mcp-lab.example/p.png" />
+
+<Callout type="note" title="Nested">
+
+![Inside a callout](images/pic.png)
+
+* A list with ![an image](images/photo.jpg)
+
+> A quote with *emphasis and ![an image](images/pic.png)*
+
+<Image src="images/logo.svg" alt="Nested" />
+
+</Callout>
+
+<Tabs>
+
+<Tab label="One">
+
+<Model3D src="models/box.gltf" alt="A box" poster="images/pic.png" />
+
+</Tab>
+
+<Tab label="Two">
+
+Nothing here.
+
+</Tab>
+
+</Tabs>
+
+<CodeSteps step="2" file="server.py" />

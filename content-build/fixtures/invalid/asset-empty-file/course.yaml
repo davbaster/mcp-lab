@@ -1,0 +1,6 @@
+id: asset-empty-file
+title: A course for the validator tests
+description: One small course that breaks one asset rule.
+chapters:
+  - 01-intro
+free_preview: []

@@ -5,7 +5,7 @@ Course content, one folder per course: `courses/<id>/`. The content build (`cont
 ```
 courses/<id>/
 ├── course.yaml                  # id, title, description, chapter order, free-preview chapters
-├── assets/                      # images, .glb models, diagram sources (checked in #9)
+├── assets/                      # images, .glb models, diagram sources, .vtt captions
 ├── ids.json                     # published IDs (generated, checked in #12)
 ├── MIGRATIONS.md                # notes for removed IDs (checked in #12)
 └── chapters/
@@ -15,6 +15,8 @@ courses/<id>/
         ├── code/                # step-1/, step-2/, ... (see Code steps below)
         └── quiz.yaml            # the chapter quiz (see Quizzes below)
 ```
+
+The files in `assets/` and how lessons refer to them are described in [Assets](../content-build/README.md#assets).
 
 ## course.yaml
 

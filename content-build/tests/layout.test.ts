@@ -240,12 +240,19 @@ describe("files that are not part of the format", () => {
     ]);
   });
 
-  it("does not look inside assets/", () => {
-    expect(check({ "assets/anything/at/all.bin": "x" })).toEqual([]);
+  // #9: assets/ used to be skipped. Its files are checked now (the asset tests cover the rules).
+  it("checks the files in assets/", () => {
+    expect(check({ "assets/anything/at/all.bin": "x" }).map((p) => [p.severity, p.file])).toEqual([["error", "assets/anything/at/all.bin"]]);
   });
 
   it("warns when assets/ is a file or ids.json is a folder", () => {
-    const course = makeCourse("sample-course", { assets: null, "ids.json": null, "ids.json/inside.txt": "x" });
+    // The lesson that uses the fixture's assets is replaced, because assets/ is not a folder here.
+    const course = makeCourse("sample-course", {
+      assets: null,
+      "ids.json": null,
+      "ids.json/inside.txt": "x",
+      [`chapters/02-going-further/lessons/01-next.mdx`]: lessonText("Next steps", 1),
+    });
     writeFileSync(join(course, "assets"), "not a folder");
 
     expect(validateCourse(course)).toEqual([

@@ -8,6 +8,8 @@ import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { splitFrontMatter } from "./chapter.ts";
+import { MARKDOWN_IMAGE, referenceRule } from "./assets.ts";
+import type { LessonReference } from "./assets.ts";
 import { DEFAULT_SCHEMA_DIR, loadComponentSchemas } from "./component-schemas.ts";
 import type { ComponentSchema, ComponentSchemas } from "./component-schemas.ts";
 import { treeErrors } from "./lesson-tree.ts";
@@ -34,8 +36,12 @@ export type LessonOptions = {
   components?: ComponentSchemas;
 };
 
-/** Either the tree or the problems, never both. A lesson problem is never thrown. */
-export type LessonResult = { tree: LessonTree } | { problems: Problem[] };
+/**
+ * Either the tree and the asset and media references the lesson makes (in the order they appear, each with
+ * the line and column of the prop or the Markdown image), or the problems, never both. A lesson problem is
+ * never thrown. The references are next to the tree, not in it.
+ */
+export type LessonResult = { tree: LessonTree; references: LessonReference[] } | { problems: Problem[] };
 
 // ---- the parser's tree: only what this file reads ------------------------------------------------------
 
@@ -56,7 +62,7 @@ const processor = unified().use(remarkParse).use(remarkMdx);
 /** How deep Markdown and components may be nested in each other. Real lessons use a handful of levels. */
 export const MAX_DEPTH = 100;
 
-type Context = { file: string; components: ComponentSchemas; problems: Problem[]; depth: number };
+type Context = { file: string; components: ComponentSchemas; problems: Problem[]; references: LessonReference[]; depth: number };
 
 /**
  * Compiles the text of one lesson. Reads no file except the component schemas. A bad schema is a setup
@@ -82,13 +88,23 @@ export function compileLesson(source: string, options: LessonOptions): LessonRes
     return { problems: [parseProblem(file, error)] };
   }
 
-  const ctx: Context = { file, components, problems: [], depth: 0 };
+  const ctx: Context = { file, components, problems: [], references: [], depth: 0 };
   const tree: LessonTree = { type: "root", children: convertBlocks(ctx, root.children ?? []) };
   if (ctx.problems.length > 0) return { problems: sortByPosition(ctx.problems) };
 
   const wrong = treeErrors(tree);
   if (wrong.length > 0) throw new Error(`internal error: the compiled tree does not match lesson-tree.schema.json: ${wrong.join("; ")}`);
-  return { tree };
+  return { tree, references: sortReferences(ctx.references) };
+}
+
+function sortReferences(references: LessonReference[]): LessonReference[] {
+  return [...references].sort((a, b) => a.line - b.line || a.column - b.column || compareText(a.prop, b.prop));
+}
+
+/** Notes a reference to an asset or a media file, at the position of the prop or the Markdown image. */
+function addReference(ctx: Context, at: { position?: { start: Point } } | undefined, component: string, prop: string, value: string) {
+  const start = at?.position?.start;
+  ctx.references.push({ component, prop, value, line: start?.line ?? 1, column: start?.column ?? 1 });
 }
 
 function sortByPosition(problems: Problem[]): Problem[] {
@@ -240,6 +256,7 @@ function convertPhrasingNodes(ctx: Context, nodes: MdNode[] | undefined): Phrasi
       case "image": {
         const url = String(node.url ?? "");
         checkUrl(ctx, node, url, "image");
+        addReference(ctx, node, MARKDOWN_IMAGE.component, MARKDOWN_IMAGE.prop, url);
         const title = typeof node.title === "string" ? { title: node.title } : {};
         out.push({ type: "image", url, alt: typeof node.alt === "string" ? node.alt : "", ...title });
         break;
@@ -409,6 +426,7 @@ function checkProps(ctx: Context, el: MdNode, schema: ComponentSchema, written: 
     if (schema.props.get(name)?.url !== true || typeof value !== "string") continue;
     const reason = urlProblem(value);
     if (reason !== undefined) add(ctx, where.get(name), `the prop \`${name}\` of \`${tag}\`: ${reason}`);
+    else if (referenceRule(schema.name, name) !== undefined) addReference(ctx, where.get(name), schema.name, name, value);
   }
   return props;
 }
