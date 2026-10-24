@@ -1,8 +1,9 @@
 """Fixtures and helpers shared by the course tests (#13).
 
 `FIXTURE_BUILD` is a small, hand-written build folder with the layout of the content build:
-`alpha-course` (2 chapters, 3 lessons), `beta-course` (1 chapter, 1 lesson), and a deliberately
-broken `unlisted-course`. Its files hold sentinel strings that no response or log may contain.
+`alpha-course` (2 chapters, 3 lessons), `beta-course` (1 chapter, 1 lesson), `gamma-course`
+(3 chapters of one lesson each, `free_preview` on the first and third; for the progress tests, #14),
+and a deliberately broken `unlisted-course`. Its files hold sentinel strings that no response or log may contain.
 """
 
 import json

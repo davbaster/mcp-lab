@@ -96,8 +96,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the chapters of a course, with their lessons */
+        /** List the chapters of a course, with their lessons and (when signed in) status */
         get: operations["listChapters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The signed-in learner's status and best score in each chapter of a course */
+        get: operations["getProgress"];
         put?: never;
         post?: never;
         delete?: never;
@@ -132,6 +149,21 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** ChapterProgressSummary */
+        ChapterProgressSummary: {
+            /** Best Score */
+            best_score: number | null;
+            /** Id */
+            id: string;
+            /** Last Lesson Id */
+            last_lesson_id: string | null;
+            status: components["schemas"]["ChapterStatus"];
+        };
+        /**
+         * ChapterStatus
+         * @enum {string}
+         */
+        ChapterStatus: "locked" | "in_progress" | "passed";
         /** ChapterSummary */
         ChapterSummary: {
             /** Free Preview */
@@ -140,6 +172,7 @@ export interface components {
             id: string;
             /** Lessons */
             lessons: components["schemas"]["LessonSummary"][];
+            status: components["schemas"]["ChapterStatus"] | null;
             /** Title */
             title: string;
         };
@@ -147,6 +180,15 @@ export interface components {
         CourseChaptersResponse: {
             /** Chapters */
             chapters: components["schemas"]["ChapterSummary"][];
+            /** Course Id */
+            course_id: string;
+        };
+        /** CourseProgressResponse */
+        CourseProgressResponse: {
+            /** Chapters */
+            chapters: components["schemas"]["ChapterProgressSummary"][];
+            /** Course Complete */
+            course_complete: boolean;
             /** Course Id */
             course_id: string;
         };
@@ -443,10 +485,72 @@ export interface operations {
             /** @description Successful Response */
             200: {
                 headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["CourseChaptersResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseProgressResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not Found */

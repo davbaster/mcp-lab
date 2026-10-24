@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "course_id": "gamma-course",
+  "title": "Gamma course",
+  "description": "The third fixture course, with three chapters for progress tests.",
+  "chapters": [
+    {
+      "id": "01-intro",
+      "title": "Intro",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "intro-lesson",
+          "title": "Intro lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "02-middle",
+      "title": "Middle",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "middle-lesson",
+          "title": "Middle lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "03-end",
+      "title": "End",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "end-lesson",
+          "title": "End lesson",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

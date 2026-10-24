@@ -10,6 +10,38 @@ components:
       - username
       title: AccountResponse
       type: object
+    ChapterProgressSummary:
+      additionalProperties: false
+      properties:
+        best_score:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Best Score
+        id:
+          title: Id
+          type: string
+        last_lesson_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Lesson Id
+        status:
+          $ref: '#/components/schemas/ChapterStatus'
+      required:
+      - id
+      - status
+      - best_score
+      - last_lesson_id
+      title: ChapterProgressSummary
+      type: object
+    ChapterStatus:
+      enum:
+      - locked
+      - in_progress
+      - passed
+      title: ChapterStatus
+      type: string
     ChapterSummary:
       additionalProperties: false
       properties:
@@ -24,6 +56,10 @@ components:
             $ref: '#/components/schemas/LessonSummary'
           title: Lessons
           type: array
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ChapterStatus'
+          - type: 'null'
         title:
           title: Title
           type: string
@@ -32,6 +68,7 @@ components:
       - title
       - free_preview
       - lessons
+      - status
       title: ChapterSummary
       type: object
     CourseChaptersResponse:
@@ -49,6 +86,26 @@ components:
       - course_id
       - chapters
       title: CourseChaptersResponse
+      type: object
+    CourseProgressResponse:
+      additionalProperties: false
+      properties:
+        chapters:
+          items:
+            $ref: '#/components/schemas/ChapterProgressSummary'
+          title: Chapters
+          type: array
+        course_complete:
+          title: Course Complete
+          type: boolean
+        course_id:
+          title: Course Id
+          type: string
+      required:
+      - course_id
+      - course_complete
+      - chapters
+      title: CourseProgressResponse
       type: object
     CourseSummary:
       additionalProperties: false
@@ -362,6 +419,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourseChaptersResponse'
           description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
         '404':
           content:
             application/json:
@@ -380,7 +443,62 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
-      summary: List the chapters of a course, with their lessons
+      security:
+      - SessionCookie: []
+      - {}
+      summary: List the chapters of a course, with their lessons and (when signed in) status
+      tags:
+      - courses
+  /api/courses/{course_id}/progress:
+    get:
+      operationId: getProgress
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseProgressResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: The signed-in learner's status and best score in each chapter of a course
       tags:
       - courses
   /api/health:

@@ -26,12 +26,14 @@ ALPHA_CHAPTERS = {
             "title": "Basics",
             "free_preview": True,
             "lessons": [{"id": "hello", "title": "Hello"}, {"id": "01-setup", "title": "Setup"}],
+            "status": None,
         },
         {
             "id": "02-more",
             "title": "More",
             "free_preview": False,
             "lessons": [{"id": "next-steps", "title": "Next steps"}],
+            "status": None,
         },
     ],
 }
@@ -43,6 +45,7 @@ BETA_CHAPTERS = {
             "title": "The only chapter",
             "free_preview": True,
             "lessons": [{"id": "only-lesson", "title": "The only lesson"}],
+            "status": None,
         }
     ],
 }
@@ -66,6 +69,13 @@ def assert_course_not_found(response):
     assert list(body) == ["error"]
     assert body["error"]["code"] == "course_not_found"
     assert body["error"]["message"]
+
+
+def without_status(body):
+    return {
+        **body,
+        "chapters": [{k: v for k, v in c.items() if k != "status"} for c in body["chapters"]],
+    }
 
 
 # --- GET /api/courses ---
@@ -117,7 +127,7 @@ def test_chapters_and_lessons_have_exactly_the_documented_keys(serve):
 
     assert sorted(body) == ["chapters", "course_id"]
     for chapter in body["chapters"]:
-        assert sorted(chapter) == ["free_preview", "id", "lessons", "title"]
+        assert sorted(chapter) == ["free_preview", "id", "lessons", "status", "title"]
         assert isinstance(chapter["free_preview"], bool)
         for lesson in chapter["lessons"]:
             assert sorted(lesson) == ["id", "title"]
@@ -192,7 +202,7 @@ def test_an_unknown_course_reads_nothing_from_disk(serve, build_copy, monkeypatc
 # --- public, and the same for everyone ---
 
 
-def test_the_responses_are_the_same_with_and_without_a_session_cookie(serve, db):
+def test_the_responses_are_the_same_with_and_without_a_session_cookie_except_the_status(serve, db):
     client = serve()
     client.base_url = BASE_URL  # https, so the cookie jar sends the Secure session cookie
     anon_courses = client.get("/api/courses")
@@ -206,7 +216,9 @@ def test_the_responses_are_the_same_with_and_without_a_session_cookie(serve, db)
     assert learner_courses.status_code == anon_courses.status_code == 200
     assert learner_courses.content == anon_courses.content
     assert learner_chapters.status_code == anon_chapters.status_code == 200
-    assert learner_chapters.content == anon_chapters.content
+    assert [c["status"] for c in anon_chapters.json()["chapters"]] == [None, None]
+    assert [c["status"] for c in learner_chapters.json()["chapters"]] == ["in_progress", "locked"]
+    assert without_status(learner_chapters.json()) == without_status(anon_chapters.json())
 
 
 def test_a_bogus_session_cookie_does_not_change_the_responses(serve):
