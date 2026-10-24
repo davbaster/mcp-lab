@@ -18,11 +18,6 @@ content-build/fixtures/**/*.png binary
 content-build/fixtures/**/*.jpg binary
 content-build/fixtures/**/*.webp binary
 content-build/fixtures/**/*.glb binary
-# The binary assets of the fixtures are committed as they are; the text ones are normalized before they are hashed, so line endings cannot change the golden output.
-content-build/fixtures/**/*.png binary
-content-build/fixtures/**/*.jpg binary
-content-build/fixtures/**/*.webp binary
-content-build/fixtures/**/*.glb binary
 # The golden asset output is compared byte for byte; its text files are LF already, so a Windows checkout must not change them.
 content-build/fixtures/expected/public/** -text
 content-build/fixtures/expected/assets-map/** text eol=lf

@@ -39,6 +39,9 @@ const INVALID: Record<string, { line: number; message: RegExp }> = {
   "href-unquoted": { line: 3, message: /`href` attribute and its value is not in quotes/ },
   "href-spaced": { line: 3, message: /`href` attribute and its value does not start with `#`/ },
   "href-prefix-uppercase": { line: 3, message: /`foo:HREF` attribute and its value does not start with `#`/ },
+  "doctype-empty-subset": { line: 2, message: /DOCTYPE with an internal subset/ },
+  "doctype-attlist-onload": { line: 2, message: /DOCTYPE with an internal subset/ },
+  "doctype-attlist-href": { line: 2, message: /DOCTYPE with an internal subset/ },
   entity: { line: 3, message: /declares an entity \(`<!ENTITY`\)/ },
   "stylesheet-instruction": { line: 2, message: /`<\?xml-stylesheet` instruction/ },
   import: { line: 3, message: /uses `@import`/ },
@@ -73,8 +76,9 @@ describe("the SVG fixtures", () => {
   });
 
   it("gives exactly one problem for the fixtures that break one rule only", () => {
-    // stylesheet-instruction also has an href in the instruction, which is a second rule.
-    for (const name of Object.keys(INVALID).filter((n) => n !== "stylesheet-instruction")) {
+    // stylesheet-instruction also has an href in the instruction, and entity declares its entity inside a DOCTYPE
+    // subset; each of these breaks a second rule.
+    for (const name of Object.keys(INVALID).filter((n) => n !== "stylesheet-instruction" && n !== "entity")) {
       expect(svgProblems(read("invalid", name)), name).toHaveLength(1);
     }
   });
@@ -154,10 +158,49 @@ describe("svgProblems", () => {
     expect(svgProblems("<svgx></svgx> svg")).toHaveLength(1);
   });
 
-  it("accepts a plain DOCTYPE, and rejects an ENTITY inside one in any letter case", () => {
+  it("accepts a plain DOCTYPE, and rejects an ENTITY inside a subset in any letter case", () => {
     const doctype = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n';
     expect(svgProblems(doctype + svg(""))).toEqual([]);
-    expect(svgProblems(`<!DOCTYPE svg [<!entity x "y">]>\n${svg("")}`)).toHaveLength(1);
+    const problems = svgProblems(`<!DOCTYPE svg [<!entity x "y">]>\n${svg("")}`);
+
+    expect(problems.map((problem) => problem.message)).toEqual([
+      expect.stringContaining("DOCTYPE with an internal subset"),
+      expect.stringContaining("declares an entity"),
+    ]);
+  });
+
+  it("rejects a DOCTYPE with an internal subset in any letter case, spacing, or quoting, once per file", () => {
+    const body = svg("");
+    for (const doctype of [
+      "<!DOCTYPE svg []>",
+      "<!doctype svg [ ]>",
+      "<!DOCTYPE\n  svg\n  [\n]>",
+      "<!DOCTYPE[]>",
+      '<!DOCTYPE svg SYSTEM "a>b.dtd" [ ]>',
+      "<!DOCTYPE svg SYSTEM 'a>b.dtd' [ ]>",
+      '<!DOCTYPE svg [ <!ATTLIST svg onload CDATA "alert(1)"> ]>',
+      '<!DOCTYPE svg [ <!ATTLIST use href CDATA "https://evil.example/x.svg#a"> ]>',
+      '<!DOCTYPE svg [ <!ATTLIST svg onload CDATA "a"> ]>\n<!DOCTYPE svg [ ]>',
+    ]) {
+      const problems = svgProblems(`${doctype}\n${body}`);
+
+      expect(problems, doctype).toHaveLength(1);
+      expect(problems[0]?.message, doctype).toMatch(/DOCTYPE with an internal subset/);
+      expect(problems[0]?.line, doctype).toBe(1);
+    }
+  });
+
+  it("reports the DOCTYPE subset on the line of its first match", () => {
+    const problems = svgProblems(`<?xml version="1.0"?>\n\n<!DOCTYPE svg [ ]>\n${svg("")}`);
+
+    expect(problems.map((problem) => problem.line)).toEqual([3]);
+  });
+
+  it("does not take a later [ for a DOCTYPE subset", () => {
+    const doctype = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n';
+
+    expect(svgProblems(doctype + svg("<style><![CDATA[ a[b] { fill: red } ]]></style>"))).toEqual([]);
+    expect(svgProblems(`<!DOCTYPE svg PUBLIC "a[b" "c">\n${svg("")}`)).toEqual([]);
   });
 
   it("returns the problems in line order", () => {

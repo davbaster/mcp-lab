@@ -212,10 +212,11 @@ Every `.svg` in `assets/` is scanned as text (the normalized UTF-8 text, case-in
 - An element named `script`, `foreignObject`, `iframe`, `embed`, `object`, `animate`, or `set`, with or without a namespace prefix (`<svg:script>`).
 - An attribute whose name starts with `on` (`onload`, `OnClick`), found after whitespace, a quote, or `/` (so `<svg/onload=...>` is caught).
 - Any `href` or `xlink:href` attribute (with or without a prefix, any letter case, spaces around `=`) whose value is not quoted or does not start with `#`. So `http:`, `javascript:`, `data:`, entity-encoded, and relative-file values are rejected; `href="#a"` for `<use>` is fine.
-- `<!ENTITY` anywhere, or a `<?xml-stylesheet` instruction. A plain `<!DOCTYPE svg PUBLIC ...>` without `[` is fine.
+- A `<!DOCTYPE` with an internal subset (a `[` after `<!DOCTYPE`, whatever the spacing or letter case; quoted literals are skipped). A subset can declare entities and, with `<!ATTLIST>`, give an element a default `onload` or `href` that no attribute rule would see. A plain `<!DOCTYPE svg PUBLIC ...>` without `[` is fine.
+- `<!ENTITY` anywhere, or a `<?xml-stylesheet` instruction.
 - `@import` anywhere, or a `url(` whose argument (after optional spaces and a quote) does not start with `#`.
 
-These checks are one layer. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `script-src 'none'` and `nosniff` (#58).
+The scan is plain text. It does not decode CSS escapes (`\75rl(`) or character references, and it does not understand CSS comments, so a tricky spelling can slip past it. These checks are one layer, and the others cover that. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `script-src 'none'` and `nosniff` (#58).
 
 ### The media config
 

@@ -277,7 +277,7 @@ describe("Image and Diagram", () => {
 });
 
 describe("the problems of all references", () => {
-  it("are all found in one run, in lesson order, together with the lesson's own problems", () => {
+  it("a lesson's own problem is reported alone: its references are not known, so none of them is checked", () => {
     const body = [
       image("images/one.png"),
       "{1 + 1}",

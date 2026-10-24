@@ -18,6 +18,8 @@ const EVENT_ATTRIBUTE = /[\s"'/](on[\w:.-]+)\s*=/i;
 const HREF = /[\s"'/]((?:[\w.-]+:)?href)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]*))/gi;
 /** `url(` whose argument, after optional spaces and a quote, is not `#`. */
 const EXTERNAL_URL = /url\((?!\s*["']?#)/i;
+/** `<!DOCTYPE` up to a `[` (an internal subset); quoted literals are skipped, so a `>` inside one does not end it early. */
+const DOCTYPE_SUBSET = /<!DOCTYPE(?:[^>["']|"[^"]*"|'[^']*')*\[/i;
 
 /**
  * Checks the normalized text of an SVG file (LF line endings, no byte order mark). Each rule is reported
@@ -57,6 +59,10 @@ export function svgProblems(text: string): SvgProblem[] {
     break;
   }
 
+  const subset = DOCTYPE_SUBSET.exec(text);
+  if (subset !== null) {
+    add(subset.index, "the SVG has a DOCTYPE with an internal subset (`<!DOCTYPE ... [`), which can declare entities or default attributes such as `onload`; remove the subset");
+  }
   const entity = /<!ENTITY/i.exec(text);
   if (entity !== null) add(entity.index, "the SVG declares an entity (`<!ENTITY`), which can pull in other files or expand without limit");
   const sheet = /<\?xml-stylesheet/i.exec(text);
