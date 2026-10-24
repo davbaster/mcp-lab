@@ -22,7 +22,7 @@ cd backend
 uv sync
 ```
 
-Test:
+Test (needs `DATABASE_URL` set to a test database, see [Test database](#test-database); without it pytest stops before running any test):
 
 ```
 cd backend
@@ -43,6 +43,80 @@ Start the dev server on <http://localhost:8000> (the health check is at <http://
 ```
 cd backend
 uv run uvicorn app.main:app --port 8000
+```
+
+#### Database
+
+The backend reads one setting, `DATABASE_URL`, from the environment. It does not read `.env` files. Format:
+
+```
+postgresql+psycopg://user:password@host:port/dbname
+```
+
+For example `postgresql+psycopg://mcp_lab:secret@127.0.0.1:5432/mcp_lab`. `postgresql://...` (no driver) also works and uses the psycopg driver. Percent-encode special characters in the password: `@` becomes `%40` and `%` becomes `%25` (so `p@ss%w` is written `p%40ss%25w`). Use `127.0.0.1`, not `localhost`: on Windows `localhost` may resolve to IPv6 first.
+
+Set it for the current terminal session only. In PowerShell:
+
+```
+$env:DATABASE_URL = 'postgresql+psycopg://mcp_lab:secret@127.0.0.1:5432/mcp_lab'
+```
+
+In bash:
+
+```
+export DATABASE_URL=postgresql+psycopg://mcp_lab:secret@127.0.0.1:5432/mcp_lab
+```
+
+Migrations use Alembic and live in `backend/migrations/`. Run each command on its own line. Apply all migrations:
+
+```
+cd backend
+uv run alembic upgrade head
+```
+
+Undo all of them (this drops the `app` schema):
+
+```
+cd backend
+uv run alembic downgrade base
+```
+
+Check that the models and the migrations agree (exits non-zero if a migration is missing):
+
+```
+cd backend
+uv run alembic check
+```
+
+The app does not migrate by itself. Only the Docker stack does, on start, because `compose.yaml` sets `RUN_MIGRATIONS_ON_START` to `true` for the backend (the backend image migrates only when that variable is exactly `true`). Production migrates in a separate deploy step ([#35](https://github.com/davbaster/mcp-lab/issues/35)).
+
+#### Test database
+
+The backend tests use a real Postgres database whose name ends in `_test`, taken from `DATABASE_URL`. The suite creates that database itself if it is missing (the role needs the `CREATEDB` permission; otherwise pytest prints the `createdb` command to run by hand), resets it to the migrated schema at the start of every run, and empties the tables before every test. It refuses to run against any other database name, and it stops before running any test if `DATABASE_URL` is unset.
+
+If `DATABASE_URL` is already set in your terminal for a development database, pytest refuses to run (by design) until you change it to a `_test` database. Run one pytest at a time per test database.
+
+The Docker stack does not publish Postgres to your machine, so the tests use a separate Postgres. Pick one of these.
+
+**a) Docker.** Start a disposable Postgres on `127.0.0.1:5433` (no volume, so nothing is kept):
+
+```
+docker run --rm -d --name mcp-lab-test-db -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5433:5432 postgres:16
+```
+
+Then set `DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test` (PowerShell: `$env:DATABASE_URL = 'postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test'`; bash: `export DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test`) and run the tests. Port 5433 avoids a native Postgres on 5432 and the Docker stack. If 5433 is busy, pick another host port (for example `-p 127.0.0.1:5434:5432`) and use the same port in the URL. Remove the container when you are done:
+
+```
+docker stop mcp-lab-test-db
+```
+
+**b) Windows without Docker.** Install PostgreSQL 16 natively. Use a role with the `CREATEDB` permission (the `postgres` role has it) and set `DATABASE_URL` to `postgresql+psycopg://<role>:<password>@127.0.0.1:5432/mcp_lab_test`, using your own port if it is not 5432.
+
+Run the tests:
+
+```
+cd backend
+uv run pytest
 ```
 
 ### Frontend (`frontend/`)
@@ -114,6 +188,8 @@ docker compose up --build --wait
 ```
 
 Then open <http://localhost:8080/>. The health check is at <http://localhost:8080/api/health>.
+
+On start, the backend container applies the database migrations (`alembic upgrade head`) before it starts the server, and stops with the error in its logs if a migration fails. Restarting is safe: the migration is a no-op when the database is up to date.
 
 Rebuild after a code change by running `docker compose up --build` again. The source code is not mounted into the containers.
 
