@@ -1,0 +1,52 @@
+# A valid quiz for this fixture: 5 questions that link to a lesson of this chapter.
+questions:
+  - id: 01-intro-q1
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: con
+  - id: 01-intro-q2
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: con
+  - id: 01-intro-q3
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: con
+  - id: 01-intro-q4
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: con
+  - id: 01-intro-q5
+    text: Which part of this course does the quiz belong to?
+    options:
+      - id: a
+        text: This chapter
+      - id: b
+        text: Another chapter
+    correct: a
+    explanation: The quiz is checked with the chapter it sits in.
+    lesson: con

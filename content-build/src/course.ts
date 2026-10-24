@@ -11,13 +11,15 @@ import type { ComponentSchemas } from "./component-schemas.ts";
 import { checkAssetFiles, makeAssetCollector } from "./asset-files.ts";
 import type { AssetCollector } from "./asset-files.ts";
 import { compileLesson } from "./lesson.ts";
+import type { CodeStepUse } from "./lesson.ts";
+import type { LessonTree } from "./lesson-tree.ts";
 import { loadMediaConfig } from "./media-config.ts";
 import type { MediaConfig } from "./media-config.ts";
 import { checkReferences } from "./references.ts";
 import { parseYaml } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
 import { validateChapter } from "./chapter.ts";
-import type { LessonChecker } from "./chapter.ts";
+import type { Lesson, LessonChecker } from "./chapter.ts";
 import { checkChapterCode, makeCodeCollector } from "./code-steps.ts";
 import type { CodeCollector } from "./code-steps.ts";
 import { makeQuizCollector } from "./quiz.ts";
@@ -75,6 +77,27 @@ export type Inspection = {
   code?: CodeCollector;
   /** The files in assets/, checked, and the problems of those files. Undefined when the course folder cannot be read. */
   assets?: AssetCollector;
+  /** What `course.yaml` says that the build keeps. Undefined when `course.yaml` is missing or not valid. */
+  course?: CourseInfo;
+  /**
+   * With `compileLessons`: the lessons of the listed chapters that compiled, in `course.yaml` order and then by `order`.
+   * A lesson with a problem is not here, so use it only when `problems` has no error.
+   */
+  lessons?: CompiledLesson[];
+};
+
+/** The fields of `course.yaml` that the build copies to the manifest. */
+export type CourseInfo = { title: string; description: string; freePreview: string[] };
+
+/** A lesson that compiled: where it is, what its front matter says, and its tree (before the asset references are rewritten). */
+export type CompiledLesson = {
+  chapter_id: string;
+  id: string;
+  title: string;
+  order: number;
+  /** The file inside the course, with `/`. */
+  file: string;
+  tree: LessonTree;
 };
 
 /** `validateCourse` and what else the check found out, for the steps that build from the course. */
@@ -98,14 +121,32 @@ export function inspectCourse(courseDir: string, options: InspectOptions = {}): 
   const config = loadMediaConfig(options.mediaConfigPath);
   const assets = checkAssets(root, found, folderName, config, report);
   const course = readCourseYaml(root, found, folderName, report);
-  const tracker: LessonTracker = { clean: 0, used: new Set() };
+  const tracker: LessonTracker = { clean: 0, used: new Set(), trees: new Map(), codeSteps: [] };
   const checkLesson =
     options.compileLessons === true ? lessonChecker(options.schemaDir ?? DEFAULT_SCHEMA_DIR, assets, config, tracker) : undefined;
-  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes, code, checkLesson);
+  let lessons: Map<string, Lesson[]> | undefined;
+  if (course.chapters !== undefined) lessons = checkChapters(root, found, course.chapters, course.yaml, report, quizzes, code, checkLesson);
+  if (checkLesson !== undefined) checkCodeStepUses(tracker.codeSteps, code, report);
   if (checkLesson !== undefined && course.chapters !== undefined && everyLessonCompiled(root, course.chapters, tracker)) {
     warnAboutUnusedAssets(assets, tracker.used, report);
   }
-  return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters, code, assets };
+  const compiled = checkLesson !== undefined && course.chapters !== undefined && lessons !== undefined
+    ? compiledLessons(course.chapters, lessons, tracker)
+    : undefined;
+  return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters, code, assets, course: course.info, lessons: compiled };
+}
+
+/** The lessons that compiled, for the listed chapters in order, each chapter's by `order`. */
+function compiledLessons(chapters: string[], lessons: Map<string, Lesson[]>, tracker: LessonTracker): CompiledLesson[] {
+  const out: CompiledLesson[] = [];
+  for (const chapter_id of new Set(chapters)) {
+    const ordered = [...(lessons.get(chapter_id) ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    for (const { id, title, order, file } of ordered) {
+      const tree = tracker.trees.get(file);
+      if (tree !== undefined && title !== undefined && order !== undefined) out.push({ chapter_id, id, title, order, file, tree });
+    }
+  }
+  return out;
 }
 
 /** Checks the files in assets/ and adds their problems to `report`. A course with no assets/ folder has none. */
@@ -121,8 +162,11 @@ function checkAssets(root: string, found: Map<string, Kind>, courseId: string, c
   return collector;
 }
 
-/** What the lessons did with the assets: how many compiled with no problem, and which files they use. */
-type LessonTracker = { clean: number; used: Set<string> };
+/**
+ * What the lessons did: how many compiled with no problem, which asset files they use, the trees of the
+ * lessons that compiled (by file), and the `CodeSteps` tags they make (by file).
+ */
+type LessonTracker = { clean: number; used: Set<string>; trees: Map<string, LessonTree>; codeSteps: { file: string; uses: CodeStepUse[] }[] };
 
 /** Compiles a lesson with the component schemas, which are read once, when the first lesson needs them, and checks its references. */
 function lessonChecker(schemaDir: string, assets: AssetCollector, config: MediaConfig, tracker: LessonTracker): LessonChecker {
@@ -131,6 +175,8 @@ function lessonChecker(schemaDir: string, assets: AssetCollector, config: MediaC
     components ??= loadComponentSchemas(schemaDir);
     const result = compileLesson(text, { path: file, components });
     if ("problems" in result) return result.problems;
+    tracker.trees.set(file, result.tree);
+    tracker.codeSteps.push({ file, uses: result.codeSteps });
     const problems = checkReferences(result.references, file, assets.entries, config, tracker.used);
     if (problems.length === 0) tracker.clean += 1;
     return problems;
@@ -158,6 +204,7 @@ type CourseYaml = {
   /** The chapter names, when `chapters` is a non-empty list of strings. Otherwise nothing can be checked against the folders. */
   chapters?: string[];
   yaml?: ParsedYaml;
+  info?: CourseInfo;
 };
 
 function readCourseYaml(
@@ -200,7 +247,14 @@ function readCourseYaml(
 
   const chapters = data.chapters;
   const usable = Array.isArray(chapters) && chapters.length > 0 && chapters.every((c) => typeof c === "string");
-  return { chapters: usable ? (chapters as string[]) : undefined, yaml };
+  return { chapters: usable ? (chapters as string[]) : undefined, yaml, info: courseInfo(data) };
+}
+
+function courseInfo(data: Record<string, unknown>): CourseInfo | undefined {
+  const { title, description, free_preview: preview } = data;
+  if (typeof title !== "string" || typeof description !== "string") return undefined;
+  if (!Array.isArray(preview) || !preview.every((name) => typeof name === "string")) return undefined;
+  return { title, description, freePreview: preview as string[] };
 }
 
 function checkFreePreview(data: Record<string, unknown>, yaml: ParsedYaml, report: Report) {
@@ -227,18 +281,20 @@ function checkChapters(
   quizzes: QuizCollector,
   code: CodeCollector,
   checkLesson?: LessonChecker,
-) {
+): Map<string, Lesson[]> {
+  const lessons = new Map<string, Lesson[]>();
   if (courseEntries.get("chapters") !== "directory") {
     report.error("chapters", "the chapters/ folder is missing");
-    return;
+    return lessons;
   }
   const folders = listFolder(join(root, "chapters"));
   if (folders === undefined) {
     report.error("chapters", "the chapters/ folder cannot be read");
-    return;
+    return lessons;
   }
   const NAME = /^[a-z0-9-]+$/;
   const listed = new Set(chapters);
+  const lessonFiles = new Map<string, string>(); // lesson id to the first file that uses it
 
   chapters.forEach((name, index) => {
     if (chapters.indexOf(name) !== index || !NAME.test(name)) return; // a repeat or a bad name is already reported
@@ -257,10 +313,14 @@ function checkChapters(
       report.error("course.yaml", `chapter \`${name}\` is listed in \`chapters\` but chapters/${name} does not exist${hint}`, line);
       return;
     }
-    validateChapter(join(root, "chapters", name), `chapters/${name}`, CHAPTER_ENTRIES, report, {
+    const chapterLessons = validateChapter(join(root, "chapters", name), `chapters/${name}`, CHAPTER_ENTRIES, report, {
       collector: quizzes,
       chapterId: name,
     }, checkLesson);
+    if (chapterLessons !== undefined) {
+      lessons.set(name, chapterLessons);
+      checkLessonIdsAreUnique(chapterLessons, lessonFiles, report);
+    }
     checkChapterCode(join(root, "chapters", name), `chapters/${name}`, name, report, code);
   });
 
@@ -272,6 +332,53 @@ function checkChapters(
       continue;
     }
     checkUnlistedChapter(join(root, "chapters", name), file, report);
+  }
+  return lessons;
+}
+
+/** A lesson id is used once in a course: the lesson endpoint has no chapter in its path. `seen` maps an id to the first file that uses it. */
+function checkLessonIdsAreUnique(lessons: Lesson[], seen: Map<string, string>, report: Report) {
+  for (const { id, file, idLine } of lessons) {
+    const first = seen.get(id);
+    if (first === undefined) {
+      seen.set(id, file);
+    } else {
+      report.error(
+        file,
+        `the lesson id \`${id}\` is already used by ${first}; lesson ids must be unique in a course (an id is the \`id\` in the front matter, or else the file name without .mdx)`,
+        idLine,
+      );
+    }
+  }
+}
+
+/** Checks the `CodeSteps` tags of the lessons against the steps of their chapter: the step must exist, and so must the file in it. */
+function checkCodeStepUses(lessons: { file: string; uses: CodeStepUse[] }[], code: CodeCollector, report: Report) {
+  for (const { file, uses } of lessons) {
+    if (uses.length === 0) continue;
+    const chapterId = file.split("/")[1] ?? "";
+    const chapter = code.chapters.find((candidate) => candidate.chapter_id === chapterId);
+    const hasProblems = code.problems.some((problem) => problem.file.startsWith(`chapters/${chapterId}/code`));
+    for (const { step, file: shown, line, column } of uses) {
+      const fail = (message: string) => report.error(file, message, line, column);
+      if (chapter === undefined) {
+        fail(
+          hasProblems
+            ? `\`<CodeSteps>\` shows step ${step}, but the code steps of chapter \`${chapterId}\` have problems; fix them first`
+            : `\`<CodeSteps>\` shows step ${step}, but chapter \`${chapterId}\` has no code/ folder; add the steps or remove the tag`,
+        );
+        continue;
+      }
+      const found = chapter.steps.find((candidate) => candidate.step === Number(step));
+      if (found === undefined) {
+        const last = chapter.steps[chapter.steps.length - 1]?.step ?? 0;
+        fail(`\`<CodeSteps>\` shows step ${step}, but chapter \`${chapterId}\` has the steps 1 to ${last}`);
+      } else if (shown !== undefined && !found.files.has(shown)) {
+        fail(
+          `\`<CodeSteps>\` shows the file \`${shown}\` of step ${step}, but that step of chapter \`${chapterId}\` has no such file; write the path inside the step, with \`/\` and the exact letters, as in \`src/util.py\``,
+        );
+      }
+    }
   }
 }
 

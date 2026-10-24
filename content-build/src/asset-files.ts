@@ -129,9 +129,10 @@ function walk(
 
 /**
  * Names that Windows cannot extract, and names that a URL would need to encode. Each names the shortest path
- * that has the problem. Returns the paths that were reported.
+ * that has the problem. `paths` are the file paths from assets/ with `/`; nothing is read from disk, so a test can
+ * give it names that the local file system cannot create. Returns the paths that were reported.
  */
-function nameProblems(paths: string[], error: (path: string, message: string) => void): Set<string> {
+export function nameProblems(paths: string[], error: (path: string, message: string) => void): Set<string> {
   const reported = new Set<string>();
   for (const { path, message } of windowsPathProblems(paths, ASSET_PATH_LIMIT)) {
     error(path, message);

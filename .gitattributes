@@ -13,6 +13,25 @@ content-build/fixtures/**/*.yaml text eol=lf
 content-build/fixtures/expected/**/*.json text eol=lf
 # Lesson fixtures are compared byte for byte (golden trees) or by exact line and column; a Windows checkout must not change them.
 content-build/fixtures/lessons/** text eol=lf
+# Every text file that a content-build test reads byte for byte or line by line is LF on a Windows checkout, one rule per extension, so that a new extension is a visible choice (tests/gitattributes.test.ts fails for an unclassified one).
+# This block comes before the `binary` and `-text` rules below: the last matching line wins for each attribute.
+content-build/fixtures/**/*.mdx text eol=lf
+content-build/fixtures/**/*.md text eol=lf
+content-build/fixtures/**/*.yaml text eol=lf
+content-build/fixtures/**/*.json text eol=lf
+content-build/fixtures/**/*.py text eol=lf
+content-build/fixtures/**/*.svg text eol=lf
+content-build/fixtures/**/*.gltf text eol=lf
+content-build/fixtures/**/*.vtt text eol=lf
+content-build/fixtures/**/*.txt text eol=lf
+content-build/fixtures/**/*.jpeg binary
+content-build/fixtures/**/*.mp4 binary
+content-build/fixtures/**/*.webm binary
+# The READMEs and docs that the tests read as text.
+content-build/README.md text eol=lf
+courses/README.md text eol=lf
+/README.md text eol=lf
+/AGENTS.md text eol=lf
 # The binary assets of the fixtures are committed as they are; the text ones are normalized before they are hashed, so line endings cannot change the golden output.
 content-build/fixtures/**/*.png binary
 content-build/fixtures/**/*.jpg binary
@@ -23,3 +42,8 @@ content-build/fixtures/expected/public/** -text
 content-build/fixtures/expected/assets-map/** text eol=lf
 # The SVG fixtures are scanned by line number.
 content-build/fixtures/svg/** text eol=lf
+# The IDs of a course are compared as parsed data, but the file is written with LF; the fixture's ids.json is compared byte for byte.
+courses/*/ids.json text eol=lf
+content-build/fixtures/**/ids.json text eol=lf
+# The golden build output (the manifest and the lesson files are new) is compared byte for byte.
+content-build/fixtures/expected/private/** text eol=lf

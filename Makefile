@@ -16,7 +16,9 @@ TEST_DB_PORT ?= 5433
 	typecheck typecheck-frontend typecheck-content-build \
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
-	migrate-backend test-db-up test-db-down
+	migrate-backend test-db-up test-db-down \
+	build-content update-content-ids check-content-ids check-content-ids-base \
+	check-images
 
 HELP_TARGETS = help \
 	install install-backend install-frontend install-content-build \
@@ -24,7 +26,9 @@ HELP_TARGETS = help \
 	typecheck typecheck-frontend typecheck-content-build \
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
-	migrate-backend test-db-up test-db-down
+	migrate-backend test-db-up test-db-down \
+	build-content update-content-ids check-content-ids check-content-ids-base \
+	check-images
 
 HELP.help = Show this list (the default target)
 HELP.install = Install every part (install-backend, install-frontend, install-content-build)
@@ -42,13 +46,18 @@ HELP.test = Run every test suite (test-backend, test-frontend, test-content-buil
 HELP.test-backend = Run the backend tests (needs DATABASE_URL, see README Test database)
 HELP.test-frontend = Run the frontend tests
 HELP.test-content-build = Run the content-build tests
-HELP.check = Check generated files are up to date, no database needed (check-openapi, check-api-client)
+HELP.check = Check generated files are up to date, no database needed (check-openapi, check-api-client, check-content-ids)
 HELP.check-openapi = Check openapi.yaml matches the backend
 HELP.check-api-client = Check the generated frontend API client matches openapi.yaml
 HELP.check-migrations = Check the models and the migrations agree (needs DATABASE_URL, not in any aggregate)
 HELP.migrate-backend = Apply all database migrations (needs DATABASE_URL, not in any aggregate)
 HELP.test-db-up = Start a disposable test Postgres in Docker on TEST_DB_PORT (default 5433) and print its DATABASE_URL
 HELP.test-db-down = Stop the disposable test Postgres
+HELP.build-content = Build every course in courses/ into build/ (writes files, not in any aggregate)
+HELP.update-content-ids = Write courses/<id>/ids.json for every course (writes files, not in any aggregate)
+HELP.check-content-ids = Check courses/<id>/ids.json holds the IDs the courses have now
+HELP.check-content-ids-base = Check no published ID was removed without a note, as in make check-content-ids-base BASE=origin/main (needs git history, not in any aggregate)
+HELP.check-images = Build the backend and frontend images, check the course build is in the backend image and no course data in the frontend one (needs Docker, not in any aggregate)
 
 help:
 	$(info Usage: make <target>   (run from the repo root, a variable goes after the target: make test-backend DATABASE_URL=<url>))
@@ -60,7 +69,7 @@ install: install-backend install-frontend install-content-build
 lint: lint-backend lint-frontend lint-content-build
 typecheck: typecheck-frontend typecheck-content-build
 test: test-backend test-frontend test-content-build
-check: check-openapi check-api-client
+check: check-openapi check-api-client check-content-ids
 
 install-backend:
 	cd backend && uv sync --locked
@@ -97,6 +106,21 @@ typecheck-content-build:
 
 test-content-build:
 	cd content-build && npm test
+
+build-content:
+	cd content-build && npm run build -- ../courses ../build
+
+update-content-ids:
+	cd content-build && npm run ids:update -- ../courses
+
+check-content-ids:
+	cd content-build && npm run ids:check -- ../courses
+
+check-content-ids-base:
+	cd content-build && npm run ids:check -- ../courses --base $(BASE)
+
+check-images:
+	cd backend && uv run python scripts/check_images.py
 
 check-openapi:
 	cd backend && uv run python scripts/export_openapi.py --check

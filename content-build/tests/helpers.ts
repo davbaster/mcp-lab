@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +26,35 @@ export function temporaryFolder(): string {
 }
 
 /**
+ * True when this file system can hold every one of these paths (with `/`) as separate files with exactly these names.
+ * It tries: it creates them in a throwaway folder and looks the names up in the folder listings, so it is true on any
+ * platform that can do it and false on one that cannot. (Windows refuses `a?b`; it makes `a:b` a stream of the file
+ * `a`; and a case-insensitive file system makes `Step-1` and `step-1` one folder.)
+ */
+export function canCreate(...paths: string[]): boolean {
+  const folder = mkdtempSync(join(tmpdir(), "content-build-probe-"));
+  try {
+    for (const path of paths) {
+      const target = join(folder, ...path.split("/"));
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, "x");
+    }
+    return paths.every((path) => {
+      let at = folder;
+      return path.split("/").every((name) => {
+        const found = readdirSync(at).includes(name);
+        at = join(at, name);
+        return found;
+      });
+    });
+  } catch {
+    return false;
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
+}
+
+/**
  * A copy of the valid fixture in a temporary folder named `id`, with `changes` applied. A key is a
  * path inside the course with `/` separators; a string or bytes value writes (or replaces) that file,
  * `null` deletes a file or folder. Text is written exactly as given, so a test can use CRLF and a BOM.
@@ -45,9 +74,17 @@ export function makeCourse(id: string, changes: Record<string, string | Uint8Arr
   return course;
 }
 
-/** The text of a single-file quiz fixture, `fixtures/quizzes/<group>/<name>.yaml`. */
+/**
+ * The text with `\n` line endings. A test that builds CRLF or CR text from a file it read calls this first, so that
+ * it does not make `\r\r\n` from a checkout that already has CRLF.
+ */
+export function toLf(text: string): string {
+  return text.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+}
+
+/** The text of a single-file quiz fixture, `fixtures/quizzes/<group>/<name>.yaml`, with `\n` line endings. */
 export function quizFixture(group: "valid" | "invalid", name: string): string {
-  return readFileSync(join(QUIZ_FIXTURES, group, `${name}.yaml`), "utf8");
+  return toLf(readFileSync(join(QUIZ_FIXTURES, group, `${name}.yaml`), "utf8"));
 }
 
 export function lessonText(title: string, order: number | string, extra = ""): string {

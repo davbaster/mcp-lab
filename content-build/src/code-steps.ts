@@ -110,6 +110,14 @@ function checkCodeFolder(folder: string, file: string, chapterId: string): Check
   return problems.length > 0 ? { problems } : { problems, steps };
 }
 
+/**
+ * The Windows problems of the file paths of one step (paths inside the step, with `/`), each as a problem of
+ * `file/<path>`. Nothing is read from disk, so a test can give it names that the local file system cannot create.
+ */
+export function stepPathProblems(paths: string[], file: string): Problem[] {
+  return windowsPathProblems(paths, CODE_LIMITS.maxPathLength).map(({ path, message }) => ({ severity: "error", file: `${file}/${path}`, message }));
+}
+
 /** The files of one step by path, or undefined when the step has a problem (which is added to `problems`). */
 function readStep(folder: string, file: string, problems: Problem[]): Map<string, string> | undefined {
   const before = problems.length;
@@ -122,7 +130,7 @@ function readStep(folder: string, file: string, problems: Problem[]): Map<string
     error(file, `this step has ${paths.length} files, but the most allowed is ${CODE_LIMITS.maxFilesPerStep}`);
     return undefined;
   }
-  for (const { path, message } of windowsPathProblems(paths, CODE_LIMITS.maxPathLength)) error(`${file}/${path}`, message);
+  problems.push(...stepPathProblems(paths, file));
 
   const files = new Map<string, string>();
   for (const path of paths.sort(compareText)) {

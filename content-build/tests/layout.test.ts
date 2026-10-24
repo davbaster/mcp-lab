@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateCourse } from "../src/course.ts";
 import { onDiskName } from "../src/folder.ts";
-import { VALID_COURSE, error, lessonText, makeCourse, warning } from "./helpers.ts";
+import { VALID_COURSE, error, lessonText, makeCourse, toLf, warning } from "./helpers.ts";
 
 const FIRST = "chapters/01-first-steps";
 const LESSONS = `${FIRST}/lessons`;
@@ -334,7 +334,7 @@ describe("CRLF line endings and a UTF-8 byte order mark", () => {
   function withEncoding(transform: (text: string) => string) {
     const course = makeCourse("sample-course");
     for (const file of filesWithExtension(course, [".yaml", ".mdx"])) {
-      writeFileSync(file, transform(readFileSync(file, "utf8")));
+      writeFileSync(file, transform(toLf(readFileSync(file, "utf8"))));
     }
     return course;
   }

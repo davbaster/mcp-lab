@@ -25,7 +25,9 @@ services:
   backend:
     image: mcp-lab-backend:local
     build:
-      context: ./backend
+      # The repo root: the image also builds the course content from courses/ and content-build/.
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mcp_lab}:${POSTGRES_PASSWORD:-mcp_lab_dev_password}@postgres:5432/${POSTGRES_DB:-mcp_lab}
       RUN_MIGRATIONS_ON_START: "true"

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "course_id": "sample-course",
+  "title": "Sample course",
+  "description": "A small course that shows the format and that the validator accepts.",
+  "chapters": [
+    {
+      "id": "01-first-steps",
+      "free_preview": true,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "01-welcome",
+          "title": "Welcome",
+          "order": 1
+        },
+        {
+          "id": "setup",
+          "title": "Setup",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "02-going-further",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "01-next",
+          "title": "Next steps",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

@@ -23,9 +23,9 @@ Run `make install` first, after cloning and after pulling a change to a lock fil
 | `make lint` | Lint every part |
 | `make typecheck` | Typecheck every part that has one (the frontend and content-build; the backend has none yet) |
 | `make test` | Run every test suite (the backend needs `DATABASE_URL`, see [Test database](#test-database)) |
-| `make check` | Check that `openapi.yaml` and the generated API client are up to date (needs no database) |
+| `make check` | Check that `openapi.yaml`, the generated API client, and the `ids.json` of every course are up to date (needs no database and no git history) |
 
-Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi` and `check-api-client` are the two steps of `make check`. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
+Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi`, `check-api-client`, and `check-content-ids` are the steps of `make check`. `build-content` (build every course into `build/`), `update-content-ids` (write `courses/<id>/ids.json`), `check-content-ids-base` (no published ID was removed without a note, used as `make check-content-ids-base BASE=origin/main`, which needs git history), and `check-images` (build both Docker images and look inside them, see [Docker stack](#docker-stack)) write files or need git or Docker, so they are in no aggregate. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
 
 The commands below are what the targets run. Use them directly to run one test file, start the dev servers, or build. Run each on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
 
@@ -312,6 +312,30 @@ npm run validate -- fixtures/valid/sample-course
 
 Every problem is printed on stdout as `<path>[:<line>]: error: <message>` or `<path>[:<line>]: warning: <message>`, followed by `N error(s), M warning(s)`. The command exits non-zero if there is at least one error; warnings alone exit 0. The format is described in [`courses/README.md`](courses/README.md) and the tool in [`content-build/README.md`](content-build/README.md).
 
+Build every course in `courses/` into `build/` (`make build-content`; `COURSES=<id>,<id>` limits the build; the build writes nothing if any course has an error). The folder `build/` is ignored by git; with no course in `courses/` it holds only empty `private/` and `public/`:
+
+```
+cd content-build
+npm run build -- ../courses ../build
+```
+
+Write the `ids.json` of every course (`make update-content-ids`), check that they are up to date (`make check-content-ids`), and check that no published ID was removed without a note in `MIGRATIONS.md` (`make check-content-ids-base BASE=origin/main`; needs git history, so a shallow clone fails and says so):
+
+```
+cd content-build
+npm run ids:update -- ../courses
+```
+
+```
+cd content-build
+npm run ids:check -- ../courses
+```
+
+```
+cd content-build
+npm run ids:check -- ../courses --base origin/main
+```
+
 ## Docker stack
 
 The stack runs the frontend, backend, Postgres, and Caddy together at a single local address, the same way the app runs in production. The native dev servers from the Commands section above remain the fast edit loop; use the Docker stack to check the whole thing end to end.
@@ -337,6 +361,14 @@ docker compose up --build --wait
 ```
 
 Then open <http://localhost:8080/>. The health check is at <http://localhost:8080/api/health>.
+
+The backend image builds the course content itself, in its first stage (`FROM node:24-alpine AS content`, the major version of `.nvmrc`): it runs `npm ci` and `npm run build -- ../courses ../build` on every course in `courses/`, and the runtime stage holds the result in `/app/course-build` (`COURSE_BUILD_DIR`). No other step is needed, and a course with an error stops `docker compose up --build`. The build context of the backend is the repo root (`compose.yaml`: `context: .`, `dockerfile: backend/Dockerfile`), and `backend/Dockerfile.dockerignore` is an allowlist, so a local `build/` folder and the rest of `frontend/` never enter it. The frontend image never holds course data. To see the output in the running stack (with no course in `courses/` yet, the folders are empty):
+
+```
+docker compose exec backend ls /app/course-build/private
+```
+
+`make check-images` builds both images (the backend one with the fixture course in place of `courses/`), looks for the build output in the backend image, readable by its non-root user, and searches the frontend image for any folder named `private` or `course-build` and any `01-first-steps.json` or `sample-course.json` (the empty system folder `/etc/ssl/private` of the base image is allowed). The same search in the backend image must find them, so it cannot pass by finding nothing. It needs Docker, fails when Docker is missing, and removes the images and containers it made. `COURSES` is read by the backend at run time (#13), not at image build.
 
 On start, the backend container applies the database migrations (`alembic upgrade head`) before it starts the server, and stops with the error in its logs if a migration fails. Restarting is safe: the migration is a no-op when the database is up to date.
 
@@ -385,7 +417,7 @@ To move the backend to another Python minor version, change these together:
 
 - `backend/.python-version`
 - `requires-python` in `backend/pyproject.toml`
-- both `FROM python:` lines in `backend/Dockerfile`
+- both `FROM python:` lines in `backend/Dockerfile` (the `FROM node:` line of its first stage follows the major version in `.nvmrc`)
 
 Every GitHub Action in `.github/workflows/` is pinned to a full commit SHA, followed by a comment with its version (for example `actions/checkout@<sha> # v7.0.1`), because a tag can be moved and a commit cannot. To bump one, find the commit of the new tag, then update the SHA and the version comment together:
 
@@ -399,7 +431,9 @@ For an annotated tag, use the line that ends in `^{}`. The uv version CI install
 
 Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a command that passes locally with `make` passes in CI the same way. The runner needs GNU Make.
 
-CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container.
+CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container and the `docker-images` job builds the images.
+
+The `content-build` job checks out the whole history (`fetch-depth: 0`). After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection). The `docker-images` job runs `make check-images`.
 
 Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
 
@@ -442,5 +476,5 @@ Fix the failure or re-run the job. A test is never skipped or weakened to get a 
 | `backend/` | Python, FastAPI. |
 | `frontend/` | React, TypeScript, Vite, Vitest. |
 | `courses/` | Course content. The folder format is in [`courses/README.md`](courses/README.md); the first course comes with [#26](https://github.com/davbaster/mcp-lab/issues/26) onward. |
-| `content-build/` | Course validator (and later the MDX compiler), Node and TypeScript. |
+| `content-build/` | Course validator, MDX compiler, and build, Node and TypeScript. |
 | `oncall-mcp/` | The on-call MCP server (filled by [#40](https://github.com/davbaster/mcp-lab/issues/40)). |

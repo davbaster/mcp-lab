@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { compileQuiz, writeQuizzes } from "../src/index.ts";
 import type { CompiledQuiz } from "../src/index.ts";
-import { FIRST_QUIZ, FIXTURES, PART_DIR, VALID_COURSE, courseYaml, error, makeCourse, quizFixture, temporaryFolder } from "./helpers.ts";
+import { FIRST_QUIZ, FIXTURES, PART_DIR, VALID_COURSE, courseYaml, error, makeCourse, quizFixture, temporaryFolder, toLf } from "./helpers.ts";
 
 const GOLDEN = join(FIXTURES, "expected", "private", "quizzes", "sample-course");
 const CHAPTERS = ["01-first-steps", "02-going-further"];
@@ -253,7 +253,7 @@ describe("writeQuizzes: the files", () => {
   });
 
   it("writes the same bytes for a quiz saved with CRLF and a byte order mark", () => {
-    const quiz = readFileSync(join(VALID_COURSE, ...FIRST_QUIZ.split("/")), "utf8");
+    const quiz = toLf(readFileSync(join(VALID_COURSE, ...FIRST_QUIZ.split("/")), "utf8"));
     const windows = makeCourse("sample-course", { [FIRST_QUIZ]: `\uFEFF${quiz.replaceAll("\n", "\r\n")}` });
 
     expect(readFileSync(join(windows, ...FIRST_QUIZ.split("/")), "utf8")).toContain("\r\n");

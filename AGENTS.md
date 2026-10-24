@@ -37,7 +37,9 @@ The root `Makefile` is the single entry point, and CI calls the same targets. Ru
 - `make lint` - lint every part (`lint-backend`, `lint-frontend`, `lint-content-build`)
 - `make typecheck` - typecheck every part that has one (`typecheck-frontend`, `typecheck-content-build`; the backend has none yet)
 - `make test` - run every test suite (`test-backend`, `test-frontend`, `test-content-build`); the backend needs `DATABASE_URL` set to a `_test` database
-- `make check` - `check-openapi` and `check-api-client` (the generated files are up to date; no database needed)
+- `make check` - `check-openapi`, `check-api-client`, and `check-content-ids` (the generated files are up to date; no database or git history needed)
+- `make build-content` - build every course in `courses/` into `build/` (writes files, so it is in no aggregate); `make update-content-ids` writes `courses/<id>/ids.json` (also in no aggregate); `make check-content-ids-base BASE=origin/main` fails when a published ID was removed without a note in `MIGRATIONS.md` (needs git history, in no aggregate)
+- `make check-images` - build the backend and frontend Docker images and look inside them (needs Docker; in no aggregate); CI runs it in the `docker-images` job
 - `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
 - `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
 
@@ -70,6 +72,8 @@ The per-folder commands are what the targets run. Use them directly to run one t
 - `cd content-build` then `npm run lint` - ESLint
 - `cd content-build` then `npm run typecheck` - `tsc --noEmit`
 - `cd content-build` then `npm run validate -- <course folder>` - check one course folder (for example `fixtures/valid/sample-course`; `/` or `\` both work); prints `<path>[:<line>]: error|warning: <message>` for each problem and exits non-zero on any error
+- `cd content-build` then `npm run build -- ../courses ../build` - build every course (`COURSES=<id>,<id>` limits it); writes nothing if any course has an error
+- `cd content-build` then `npm run ids:update -- ../courses` - write `ids.json` for every course; `npm run ids:check -- ../courses` checks them, and `npm run ids:check -- ../courses --base origin/main` also fails on a removed published ID without a note
 
 On-call commands will be added as their task is done.
 

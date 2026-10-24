@@ -2,7 +2,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { lessonText, makeCourse, temporaryFolder, VALID_COURSE } from "./helpers.ts";
+import { lessonText, makeCourse, temporaryFolder, toLf, VALID_COURSE } from "./helpers.ts";
 import type { Problem } from "../src/problem.ts";
 
 /** The lesson of the valid course that uses the fixture's assets. A test that does not want them replaces it. */
@@ -17,9 +17,9 @@ export const PNG = fixtureAsset("images/pic.png");
 export const JPG = fixtureAsset("images/photo.jpg");
 export const WEBP = fixtureAsset("images/banner.webp");
 export const GLB = fixtureAsset("models/server.glb");
-export const GLTF = fixtureAsset("models/box.gltf").toString("utf8");
-export const VTT = fixtureAsset("captions/intro.vtt").toString("utf8");
-export const SVG = fixtureAsset("images/logo.svg").toString("utf8");
+export const GLTF = toLf(fixtureAsset("models/box.gltf").toString("utf8"));
+export const VTT = toLf(fixtureAsset("captions/intro.vtt").toString("utf8"));
+export const SVG = toLf(fixtureAsset("images/logo.svg").toString("utf8"));
 
 /** A lesson file whose body starts on line 8, column 1 (the same layout as the lesson fixtures). */
 export function lessonWith(body: string, order = 1): string {
