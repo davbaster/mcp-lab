@@ -147,6 +147,12 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 
 A variable set in the PowerShell session (for example `$env:HTTP_PORT = "8081"`) overrides `.env` until you close the session or remove it with `Remove-Item Env:HTTP_PORT`.
 
+## CI
+
+CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline.
+
+Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
+
 ## Branch protection
 
 A repository ruleset (Settings > Rules > Rulesets) applies to `main` only. Work on other branches (`claude/*`, `oncall/*`, and so on) is not restricted. The rule:

@@ -10,7 +10,10 @@ permissions:
 jobs:
   backend:
     name: backend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     defaults:
       run:
         working-directory: backend
@@ -23,7 +26,10 @@ jobs:
 
   frontend:
     name: frontend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     defaults:
       run:
         working-directory: frontend
