@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { compileQuiz, writeQuizzes } from "../src/index.ts";
 import type { CompiledQuiz } from "../src/index.ts";
-import { FIRST_QUIZ, FIXTURES, PART_DIR, VALID_COURSE, chapterList, courseYaml, error, makeCourse, quizFixture, temporaryFolder, toLf } from "./helpers.ts";
+import { FIRST_QUIZ, FIXTURES, PART_DIR, SLOW_PROCESS_TIMEOUT_MS, VALID_COURSE, chapterList, courseYaml, error, makeCourse, quizFixture, temporaryFolder, toLf } from "./helpers.ts";
 
 const GOLDEN = join(FIXTURES, "expected", "private", "quizzes", "sample-course");
 const CHAPTERS = ["01-first-steps", "02-going-further"];
@@ -250,7 +250,7 @@ describe("writeQuizzes: the files", () => {
     expect(Object.keys(first)).toHaveLength(5);
     expect(second).toEqual(first);
     expect(first).toEqual(tree(built().buildDir));
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 
   it("writes the same bytes for a quiz saved with CRLF and a byte order mark", () => {
     const quiz = toLf(readFileSync(join(VALID_COURSE, ...FIRST_QUIZ.split("/")), "utf8"));

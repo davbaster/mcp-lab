@@ -11,6 +11,12 @@ export const VALID_COURSE = join(FIXTURES, "valid", "sample-course");
 export const QUIZ_FIXTURES = join(FIXTURES, "quizzes");
 /** The quiz of the first chapter of the valid course, the file that the single-file quiz fixtures replace. */
 export const FIRST_QUIZ = "chapters/01-first-steps/quiz.yaml";
+/**
+ * The time limit for a test that starts Node two or more times, or builds all of `fixtures/invalid`. Vitest's default
+ * of 5 s is enough on Linux (a start-up is 0.3 s), but on Windows each start-up takes 1 to 2.5 s and a build reads
+ * about 100 fixture courses, so such a test can take longer than 5 s there.
+ */
+export const SLOW_PROCESS_TIMEOUT_MS = 30_000;
 
 const temporaryFolders: string[] = [];
 

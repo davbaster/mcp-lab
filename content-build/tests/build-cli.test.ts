@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PART_DIR, lessonText, temporaryFolder } from "./helpers.ts";
+import { PART_DIR, SLOW_PROCESS_TIMEOUT_MS, lessonText, temporaryFolder } from "./helpers.ts";
 import { VALID_COURSES, coursesFolder, filesOf, newBuildFolder, runBuild, snapshotOf } from "./build-support.ts";
 
 const USAGE = "usage: npm run build -- <courses folder> <build folder>";
@@ -332,5 +332,5 @@ describe("the real command", () => {
     expect(failed.stdout).toContain("fixtures/invalid/asset-empty-file/assets/images/empty.png: error: the file is empty (0 bytes)");
     expect(usage.code).toBe(2);
     expect(usage.stderr).toContain(USAGE);
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 });
