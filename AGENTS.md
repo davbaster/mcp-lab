@@ -31,11 +31,26 @@ Some of these folders don't exist until their backlog task creates them.
 
 ## Commands
 
-- `uv sync` - install dependencies
-- `uv run pytest` - the whole suite
-- `uv run pytest tests/test_home.py` - one test file
+Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
 
-Run these from the project folder that contains `pyproject.toml`. Frontend, content-build, and on-call commands will be added as their tasks are done.
+`backend/`:
+
+- `cd backend` then `uv sync` - install dependencies
+- `cd backend` then `uv run pytest` - the whole suite
+- `cd backend` then `uv run pytest tests/test_home.py` - one test file
+- `cd backend` then `uv run ruff check .` - lint
+- `cd backend` then `uv run uvicorn app.main:app --port 8000` - dev server
+
+`frontend/`:
+
+- `cd frontend` then `npm ci` - install dependencies
+- `cd frontend` then `npm test` - the whole suite (single run, no watch)
+- `cd frontend` then `npm run lint` - ESLint
+- `cd frontend` then `npm run typecheck` - `tsc --noEmit`
+- `cd frontend` then `npm run build` - production build into `dist/`
+- `cd frontend` then `npm run dev` - dev server
+
+Content-build and on-call commands will be added as their tasks are done.
 
 ## Rules
 
