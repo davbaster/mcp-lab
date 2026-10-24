@@ -8,21 +8,35 @@ A web app for guided courses. The first course is "Build an MCP Server" (Python)
 - Node, at the version in [`.nvmrc`](.nvmrc), with npm.
   - `nvm-windows` ignores `.nvmrc`. Read the version in the file and run `nvm use <that version>` (for example `nvm use 24`).
   - With the original `nvm` on macOS or Linux, run `nvm use` in the repo folder.
+- [GNU Make](https://www.gnu.org/software/make/) (version 3.81 or newer) runs the targets in the root `Makefile`. macOS and Linux usually have it. On Windows, run `winget install GnuWin32.Make` or `choco install make`, then open a new terminal so `make` is on `PATH`. Run `make` from the repo root (the folder with the `Makefile`).
+- Docker (optional) for the [Docker stack](#docker-stack) and for `make test-db-up` (a disposable test database, see [Test database](#test-database)).
 
 ## Commands
 
-Run each command on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
+The root `Makefile` is the single entry point to install, check, lint, typecheck, and test every part, and CI runs the same targets. Run `make` from the repo root; plain `make` (or `make help`) lists every target with a one-line description.
+
+| Command | What it does |
+|---|---|
+| `make install` | Install every part (`uv sync --locked` in `backend/`, `npm ci` in `frontend/`) |
+| `make lint` | Lint every part |
+| `make typecheck` | Typecheck every part that has one (the frontend; the backend has none yet) |
+| `make test` | Run every test suite (the backend needs `DATABASE_URL`, see [Test database](#test-database)) |
+| `make check` | Check that `openapi.yaml` and the generated API client are up to date (needs no database) |
+
+Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`. `check-openapi` and `check-api-client` are the two steps of `make check`. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
+
+The commands below are what the targets run. Use them directly to run one test file, start the dev servers, or build. Run each on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
 
 ### Backend (`backend/`)
 
-Install:
+Install (`make install-backend`; `--locked` fails if `uv.lock` is stale, as it does in CI):
 
 ```
 cd backend
-uv sync
+uv sync --locked
 ```
 
-Test (needs `DATABASE_URL` set to a test database, see [Test database](#test-database); without it pytest stops before running any test):
+Test (`make test-backend`; needs `DATABASE_URL` set to a test database, see [Test database](#test-database); without it pytest stops before running any test). Run one file with `uv run pytest tests/test_home.py`:
 
 ```
 cd backend
@@ -31,7 +45,7 @@ uv run pytest
 
 Every response the tests' `TestClient` receives is checked automatically against `openapi.yaml` (see [OpenAPI contract](#openapi-contract)); a mismatch raises `ContractViolation` at the request, naming the route, method, status, or field. If a test fails this check, fix the code or re-export the spec; to accept a status on purpose, mark that test with `@pytest.mark.undocumented_status(<3xx/4xx/5xx statuses>, reason="...")`, and routes the app serves that are not API operations go in `SKIPPED_ROUTES` in `backend/tests/contract.py`. Never silence the check.
 
-Lint:
+Lint (`make lint-backend`):
 
 ```
 cd backend
@@ -69,7 +83,13 @@ In bash:
 export DATABASE_URL=postgresql+psycopg://mcp_lab:secret@127.0.0.1:5432/mcp_lab
 ```
 
-Migrations use Alembic and live in `backend/migrations/`. Run each command on its own line. Apply all migrations:
+Or set it for one `make` run only, by putting it after the target (the tests need a `_test` database, see [Test database](#test-database)):
+
+```
+make test-backend DATABASE_URL=postgresql+psycopg://mcp_lab:secret@127.0.0.1:5432/mcp_lab_test
+```
+
+Migrations use Alembic and live in `backend/migrations/`. Run each command on its own line. Apply all migrations (`make migrate-backend`):
 
 ```
 cd backend
@@ -83,7 +103,7 @@ cd backend
 uv run alembic downgrade base
 ```
 
-Check that the models and the migrations agree (exits non-zero if a migration is missing):
+Check that the models and the migrations agree (`make check-migrations`; exits non-zero if a migration is missing):
 
 ```
 cd backend
@@ -100,13 +120,19 @@ If `DATABASE_URL` is already set in your terminal for a development database, py
 
 The Docker stack does not publish Postgres to your machine, so the tests use a separate Postgres. Pick one of these.
 
-**a) Docker.** Start a disposable Postgres on `127.0.0.1:5433` (no volume, so nothing is kept):
+**a) Docker.** Start a disposable Postgres on `127.0.0.1:5433` (no volume, so nothing is kept). `make test-db-up` runs the `docker run` command below and prints the matching `DATABASE_URL`; `make test-db-up TEST_DB_PORT=5434` uses another host port in both. Postgres needs a few seconds before it accepts connections, and `make` does not wait for it. If Docker fails (port busy, container name already exists), `make` shows Docker's error and exits non-zero.
+
+```
+make test-db-up
+```
+
+The same, without `make`:
 
 ```
 docker run --rm -d --name mcp-lab-test-db -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5433:5432 postgres:16
 ```
 
-Then set `DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test` (PowerShell: `$env:DATABASE_URL = 'postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test'`; bash: `export DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test`) and run the tests. Port 5433 avoids a native Postgres on 5432 and the Docker stack. If 5433 is busy, pick another host port (for example `-p 127.0.0.1:5434:5432`) and use the same port in the URL. Remove the container when you are done:
+Then set `DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test` (PowerShell: `$env:DATABASE_URL = 'postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test'`; bash: `export DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test`; or `make test-backend DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test` for one run) and run the tests. Port 5433 avoids a native Postgres on 5432 and the Docker stack. If 5433 is busy, pick another host port (for example `-p 127.0.0.1:5434:5432`) and use the same port in the URL. Remove the container when you are done (`make test-db-down` runs the same command):
 
 ```
 docker stop mcp-lab-test-db
@@ -114,7 +140,13 @@ docker stop mcp-lab-test-db
 
 **b) Windows without Docker.** Install PostgreSQL 16 natively. Use a role with the `CREATEDB` and `CREATEROLE` permissions (the `postgres` role has both; a few tests create temporary roles) and set `DATABASE_URL` to `postgresql+psycopg://<role>:<password>@127.0.0.1:5432/mcp_lab_test`, using your own port if it is not 5432.
 
-Run the tests:
+Run the tests. `make test-backend` reads `DATABASE_URL` from the environment only (it never sets it and reads no file), so either set it as above or pass it for one run:
+
+```
+make test-backend DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp_lab_test
+```
+
+Or, with `DATABASE_URL` already set:
 
 ```
 cd backend
@@ -123,7 +155,7 @@ uv run pytest
 
 #### OpenAPI contract
 
-`openapi.yaml` at the repo root is the API contract. It is generated from the backend code. Export it (needs no database and no running server):
+`openapi.yaml` at the repo root is the API contract. It is generated from the backend code. Export it (needs no database and no running server; `make check-openapi` runs the `--check` below):
 
 ```
 cd backend
@@ -170,28 +202,28 @@ The cookie list (Application or Storage tab) then shows `session` with HttpOnly,
 
 ### Frontend (`frontend/`)
 
-Install:
+Install (`make install-frontend`):
 
 ```
 cd frontend
 npm ci
 ```
 
-Test:
+Test (`make test-frontend`):
 
 ```
 cd frontend
 npm test
 ```
 
-Lint:
+Lint (`make lint-frontend`):
 
 ```
 cd frontend
 npm run lint
 ```
 
-Typecheck:
+Typecheck (`make typecheck-frontend`):
 
 ```
 cd frontend
@@ -230,7 +262,7 @@ cd frontend
 npm run generate:api
 ```
 
-Check that the committed types are up to date (CI runs this; it changes no file and prints the fix when they differ):
+Check that the committed types are up to date (`make check-api-client`; CI runs this; it changes no file and prints the fix when they differ):
 
 ```
 cd frontend
@@ -323,6 +355,8 @@ git ls-remote --tags https://github.com/actions/checkout
 For an annotated tag, use the line that ends in `^{}`. The uv version CI installs (`version:` of the `setup-uv` step in `ci.yml`) must equal the `uv==` version in `backend/Dockerfile`; change both together.
 
 ## CI
+
+Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a command that passes locally with `make` passes in CI the same way. The runner needs GNU Make.
 
 CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container.
 

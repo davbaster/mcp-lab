@@ -236,14 +236,15 @@ def test_ci_checks_openapi_after_ruff_and_before_alembic_without_a_database_url(
     backend = ci.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
     step = (
         "      - name: Check openapi.yaml is up to date\n"
-        "        run: uv run python scripts/export_openapi.py --check\n"
+        "        run: make check-openapi\n"
     )
 
     assert step in backend  # no `env:` follows it, so no DATABASE_URL and no secrets
+    assert not backend.split(step, 1)[1].startswith("        env:")
     assert (
-        backend.index("- run: uv sync --locked")
-        < backend.index("- run: uv run ruff check .")
+        backend.index("- run: make install-backend")
+        < backend.index("- run: make lint-backend")
         < backend.index(step)
-        < backend.index("- run: uv run alembic upgrade head")
+        < backend.index("- run: make migrate-backend")
     )
     assert ci.count("name: backend") == 1 and ci.count("name: frontend") == 1

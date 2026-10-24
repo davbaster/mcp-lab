@@ -31,11 +31,23 @@ Some of these folders don't exist until their backlog task creates them.
 
 ## Commands
 
-Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
+The root `Makefile` is the single entry point, and CI calls the same targets. Run `make` from the repo root; plain `make` lists every target. A variable goes after the target and reaches the commands (`make test-backend DATABASE_URL=<url>`). A failing command stops `make` with a non-zero exit code.
+
+- `make install` - install every part (`install-backend`, `install-frontend`)
+- `make lint` - lint every part (`lint-backend`, `lint-frontend`)
+- `make typecheck` - typecheck every part that has one (`typecheck-frontend`; the backend has none yet)
+- `make test` - run every test suite (`test-backend`, `test-frontend`); the backend needs `DATABASE_URL` set to a `_test` database
+- `make check` - `check-openapi` and `check-api-client` (the generated files are up to date; no database needed)
+- `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
+- `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
+
+Each task that adds a new part (`content-build/` in #7, `oncall-mcp/` in #40) also adds that part's targets to the `Makefile` and to the aggregate targets, and CI calls them. Recipes stay portable: one command per line, or `cd <dir> && <command>`; no pipes, `;`, `||`, `$(shell ...)`, `VAR=value` prefixes, single quotes, or Unix-only tools. `backend/tests/test_repo_files.py` checks this.
+
+The per-folder commands are what the targets run. Use them directly to run one test file, start a dev server, or build. Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
 
 `backend/`:
 
-- `cd backend` then `uv sync` - install dependencies
+- `cd backend` then `uv sync --locked` - install dependencies
 - `cd backend` then `uv run pytest` - the whole suite
 - `cd backend` then `uv run pytest tests/test_home.py` - one test file
 - `cd backend` then `uv run ruff check .` - lint
