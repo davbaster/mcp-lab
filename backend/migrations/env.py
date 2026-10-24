@@ -5,6 +5,7 @@ from alembic.util import CommandError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.pool import NullPool
 
+from app import models  # noqa: F401  (registers the tables on Base.metadata)
 from app.db import SCHEMA, Base, DatabaseUrlError, create_db_engine, get_database_url
 
 config = context.config

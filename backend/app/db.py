@@ -59,7 +59,13 @@ def get_database_url() -> URL:
 
 
 def create_db_engine(url: URL, **kwargs: object) -> Engine:
-    return create_engine(url, connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS}, **kwargs)
+    # hide_parameters keeps bound values (a password hash, a username) out of error messages.
+    return create_engine(
+        url,
+        connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
+        hide_parameters=True,
+        **kwargs,
+    )
 
 
 @lru_cache(maxsize=1)
