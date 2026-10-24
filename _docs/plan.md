@@ -213,6 +213,7 @@ The frontend and backend are two separate applications. They communicate **only*
 - **Staging:** a separate Docker Compose project on the same VM with its own ports and database, behind HTTP basic auth and marked `noindex`. It never replaces or shares data with production.
 - **Local production and staging:** the same production and staging Compose projects can run on a developer's machine with local env files, at `app.localhost` and `staging.localhost`, using Caddy's own local certificates instead of Let's Encrypt. This is for trying deploy changes before they reach the VM. Day-to-day development uses the simpler local stack (`compose.yaml`).
 - **CI runs locally too:** the GitHub Actions workflows can be run on a developer's machine with `act`, through `make` targets. Jobs that cannot run under `act` say so in the docs, with the local command to use instead.
+- **Security scanning:** every push and pull request runs CodeQL (code and workflows), OSV-Scanner (every lock file), and zizmor (GitHub Actions workflows), and image builds run Trivy before pushing. A new high or critical finding that has a fix blocks the merge. There are no scheduled scans. Secret scanning and push protection are on in the repo settings, and CodeQL's default setup stays off because the workflow is its advanced setup.
 
 ### Deployment modes
 
