@@ -24,23 +24,33 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: mcp_lab_test
         ports:
-          - 127.0.0.1:5432:5432
+          # No fixed host port: 5432 may be taken on the runner. Docker picks a free one.
+          - 5432
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      # A throwaway password for the disposable service container, not a secret.
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/mcp_lab_test
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
       - run: uv run ruff check .
       - run: uv run alembic upgrade head
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
       - run: uv run alembic check
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
       - run: uv run pytest
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
 
   frontend:
     name: frontend

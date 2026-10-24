@@ -69,11 +69,15 @@ def test_ci_backend_job_has_postgres_service_and_ordered_steps():
         "--health-interval",
         "--health-timeout",
         "--health-retries",
-        "127.0.0.1:5432:5432",
-        "DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/mcp_lab_test",
+        "- 5432\n",
+        "postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test",
     ):
         assert expected in backend
+    assert "127.0.0.1:5432:5432" not in backend  # no fixed host port on the self-hosted runner
+    assert "self-hosted" in backend
     steps = re.findall(r"^      - run: (.+)$", backend, re.MULTILINE)
+    # Every step that talks to the database gets DATABASE_URL (job-level env cannot use `job`).
+    assert backend.count("DATABASE_URL:") == 3
     assert steps == [
         "uv sync",
         "uv run ruff check .",

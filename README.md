@@ -225,7 +225,7 @@ A variable set in the PowerShell session (for example `$env:HTTP_PORT = "8081"`)
 
 ## CI
 
-CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline.
+CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container.
 
 Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
 
