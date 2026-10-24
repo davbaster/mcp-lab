@@ -1,0 +1,7 @@
+# These files run inside Linux containers; CRLF line endings break them.
+Caddyfile text eol=lf
+nginx.conf text eol=lf
+Dockerfile text eol=lf
+compose.yaml text eol=lf
+.env.example text eol=lf
+*.sh text eol=lf
