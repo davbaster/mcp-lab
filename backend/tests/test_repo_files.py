@@ -1,5 +1,6 @@
 """Checks on files that are not Python: Docker, compose, CI, and the Alembic layout."""
 
+import json
 import os
 import re
 import shutil
@@ -184,16 +185,64 @@ def test_ci_installs_the_uv_version_the_dockerfile_installs():
     assert ci_version.group(1) == docker_version.group(1)
 
 
-def test_ci_frontend_job_installs_with_npm_ci_and_reads_the_node_version_file():
+def _ci_job(name):
+    """The text of one job in ci.yml: from its `  name:` line to the next job, or the end of the file."""
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    frontend = ci.split("\n  frontend:\n", 1)[1]
+    after = ci.split(f"\n  {name}:\n", 1)[1]
+    return re.split(r"\n  [\w-]+:\n", after, maxsplit=1)[0]
+
+
+def test_ci_frontend_job_installs_with_npm_ci_and_reads_the_node_version_file():
+    frontend = _ci_job("frontend")
     assert "node-version-file: .nvmrc" in frontend
     assert "cache-dependency-path: frontend/package-lock.json" in frontend
     assert "working-directory" not in frontend  # make runs from the repo root
+    assert "content-build" not in frontend  # a job after this one is not part of it
     steps = re.findall(r"^      - run: (.+)$", frontend, re.MULTILINE)
     assert steps[0] == "make install-frontend"
     assert _rules()["install-frontend"].recipe == ["cd frontend && npm ci"]
     assert not any(c.startswith("npm install") for r in _rules().values() for c in r.recipe)
+
+
+def test_ci_content_build_job_runs_the_make_targets_with_the_node_version_file():
+    content_build = _ci_job("content-build")
+    frontend = _ci_job("frontend")
+
+    assert "name: content-build" in content_build
+    assert re.search(r"^    runs-on: \[self-hosted, Linux, X64, ubuntu-24\]$", content_build, re.MULTILINE)
+    guard = re.search(r"^    if: (.+)$", content_build, re.MULTILINE)
+    assert guard, "the job needs the fork-PR guard"
+    assert guard.group(0) in frontend  # the same guard as the other jobs
+    assert re.findall(r"^      - uses: (.+)$", content_build, re.MULTILINE) == [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+        "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0",
+    ]
+    assert re.search(
+        r"setup-node@.*\n        with:\n"
+        r"          node-version-file: \.nvmrc\n"
+        r"          cache: npm\n"
+        r"          cache-dependency-path: content-build/package-lock\.json\n",
+        content_build,
+    )
+    assert re.findall(r"^      - run: (.+)$", content_build, re.MULTILINE) == [
+        "make install-content-build",
+        "make lint-content-build",
+        "make typecheck-content-build",
+        "make test-content-build",
+    ]
+    assert "working-directory" not in content_build  # make runs from the repo root
+    assert "npm " not in content_build  # only make targets, no direct npm
+    assert "frontend" not in content_build
+
+
+def test_content_build_uses_the_shared_node_version_and_requires_it():
+    assert not (ROOT / "content-build" / ".nvmrc").exists()  # one .nvmrc at the root
+    package = json.loads((ROOT / "content-build" / "package.json").read_text())
+
+    assert package["private"] is True
+    assert package["type"] == "module"
+    assert package["engines"] == {"node": f">={(ROOT / '.nvmrc').read_text().strip()}"}
+    assert {"validate", "test", "lint", "typecheck"} <= set(package["scripts"])
 
 
 # --- The root Makefile ------------------------------------------------------------------
@@ -332,7 +381,8 @@ def test_gitattributes_pins_the_makefile_to_lf():
 def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
     rules = _rules()
 
-    assert {name: rules[name].recipe for name in rules if name.endswith(("-backend", "-frontend"))} | {
+    parts = ("-backend", "-frontend", "-content-build")
+    assert {name: rules[name].recipe for name in rules if name.endswith(parts)} | {
         name: rules[name].recipe for name in ("check-openapi", "check-migrations", "check-api-client")
     } == {
         "install-backend": ["cd backend && uv sync --locked"],
@@ -346,6 +396,10 @@ def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
         "check-openapi": ["cd backend && uv run python scripts/export_openapi.py --check"],
         "check-migrations": ["cd backend && uv run alembic check"],
         "check-api-client": ["cd frontend && npm run check:api"],
+        "install-content-build": ["cd content-build && npm ci"],
+        "lint-content-build": ["cd content-build && npm run lint"],
+        "typecheck-content-build": ["cd content-build && npm run typecheck"],
+        "test-content-build": ["cd content-build && npm test"],
     }
     assert "typecheck-backend" not in rules
 
@@ -354,10 +408,10 @@ def test_aggregate_targets_call_only_the_per_part_targets_they_should():
     rules = _rules()
 
     assert {name: rules[name].prerequisites for name in ("install", "lint", "typecheck", "test", "check")} == {
-        "install": ["install-backend", "install-frontend"],
-        "lint": ["lint-backend", "lint-frontend"],
-        "typecheck": ["typecheck-frontend"],
-        "test": ["test-backend", "test-frontend"],
+        "install": ["install-backend", "install-frontend", "install-content-build"],
+        "lint": ["lint-backend", "lint-frontend", "lint-content-build"],
+        "typecheck": ["typecheck-frontend", "typecheck-content-build"],
+        "test": ["test-backend", "test-frontend", "test-content-build"],
         "check": ["check-openapi", "check-api-client"],
     }
     for name in ("install", "lint", "typecheck", "test", "check"):

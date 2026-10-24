@@ -1,0 +1,6 @@
+id: chapter-wrong-prefix
+title: A course for the validator tests
+description: One small course that breaks one rule.
+chapters:
+  - 02-intro
+free_preview: []

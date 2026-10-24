@@ -75,3 +75,21 @@ jobs:
       - run: make lint-frontend
       - run: make typecheck-frontend
       - run: make test-frontend
+
+  content-build:
+    name: content-build
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: content-build/package-lock.json
+      - run: make install-content-build
+      - run: make lint-content-build
+      - run: make typecheck-content-build
+      - run: make test-content-build

@@ -19,13 +19,13 @@ Run `make install` first, after cloning and after pulling a change to a lock fil
 
 | Command | What it does |
 |---|---|
-| `make install` | Install every part (`uv sync --locked` in `backend/`, `npm ci` in `frontend/`) |
+| `make install` | Install every part (`uv sync --locked` in `backend/`, `npm ci` in `frontend/` and `content-build/`) |
 | `make lint` | Lint every part |
-| `make typecheck` | Typecheck every part that has one (the frontend; the backend has none yet) |
+| `make typecheck` | Typecheck every part that has one (the frontend and content-build; the backend has none yet) |
 | `make test` | Run every test suite (the backend needs `DATABASE_URL`, see [Test database](#test-database)) |
 | `make check` | Check that `openapi.yaml` and the generated API client are up to date (needs no database) |
 
-Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`. `check-openapi` and `check-api-client` are the two steps of `make check`. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
+Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi` and `check-api-client` are the two steps of `make check`. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
 
 The commands below are what the targets run. Use them directly to run one test file, start the dev servers, or build. Run each on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
 
@@ -273,6 +273,43 @@ npm run check:api
 
 Run `npm run generate:api` and commit `frontend/src/api/schema.d.ts` in the same change as any `openapi.yaml` change.
 
+### Content build (`content-build/`)
+
+Needs Node 24 (the version in `.nvmrc`): it runs its TypeScript with Node's built-in type stripping, so no TypeScript runner is installed.
+
+Install (`make install-content-build`):
+
+```
+cd content-build
+npm ci
+```
+
+Test (`make test-content-build`), lint (`make lint-content-build`), and typecheck (`make typecheck-content-build`):
+
+```
+cd content-build
+npm test
+```
+
+```
+cd content-build
+npm run lint
+```
+
+```
+cd content-build
+npm run typecheck
+```
+
+Check one course folder against the course format (the path may use `/` or `\`; the fixtures are the examples until `courses/mcp-server` exists):
+
+```
+cd content-build
+npm run validate -- fixtures/valid/sample-course
+```
+
+Every problem is printed on stdout as `<path>[:<line>]: error: <message>` or `<path>[:<line>]: warning: <message>`, followed by `N error(s), M warning(s)`. The command exits non-zero if there is at least one error; warnings alone exit 0. The format is described in [`courses/README.md`](courses/README.md) and the tool in [`content-build/README.md`](content-build/README.md).
+
 ## Docker stack
 
 The stack runs the frontend, backend, Postgres, and Caddy together at a single local address, the same way the app runs in production. The native dev servers from the Commands section above remain the fast edit loop; use the Docker stack to check the whole thing end to end.
@@ -335,7 +372,7 @@ A variable set in the PowerShell session (for example `$env:HTTP_PORT = "8081"`)
 
 ## Lock files and versions
 
-`backend/uv.lock` and `frontend/package-lock.json` are committed. They pin every package, so every machine and every CI run installs the same ones.
+`backend/uv.lock`, `frontend/package-lock.json`, and `content-build/package-lock.json` are committed. They pin every package, so every machine and every CI run installs the same ones.
 
 - Commit a lock file in the same change as the `pyproject.toml` or `package.json` change.
 - `uv add` / `uv remove` and `npm install <pkg>` update the lock file themselves. They add or remove a dependency, so they need approval (see [`AGENTS.md`](AGENTS.md)).
@@ -402,6 +439,6 @@ Fix the failure or re-run the job. A test is never skipped or weakened to get a 
 |---|---|
 | `backend/` | Python, FastAPI. |
 | `frontend/` | React, TypeScript, Vite, Vitest. |
-| `courses/` | Course content (filled by [#7](https://github.com/davbaster/mcp-lab/issues/7)). |
-| `content-build/` | Course validator and MDX compiler (filled by [#7](https://github.com/davbaster/mcp-lab/issues/7)). |
+| `courses/` | Course content. The folder format is in [`courses/README.md`](courses/README.md); the first course comes with [#26](https://github.com/davbaster/mcp-lab/issues/26) onward. |
+| `content-build/` | Course validator (and later the MDX compiler), Node and TypeScript. |
 | `oncall-mcp/` | The on-call MCP server (filled by [#40](https://github.com/davbaster/mcp-lab/issues/40)). |

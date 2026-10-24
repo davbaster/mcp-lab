@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "course.yaml",
+  "description": "The course description file at courses/<id>/course.yaml. Checks the shape only; src/course.ts checks the rest (the id matches the folder, the chapters exist on disk).",
+  "type": "object",
+  "required": ["id", "title", "description", "chapters", "free_preview"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "$ref": "#/definitions/name" },
+    "title": { "$ref": "#/definitions/text" },
+    "description": { "$ref": "#/definitions/text" },
+    "chapters": {
+      "description": "The chapter folder names under chapters/, in course order.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/name" }
+    },
+    "free_preview": {
+      "description": "Chapters that visitors can read without an account. Each must also be in chapters.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/name" }
+    }
+  },
+  "definitions": {
+    "name": {
+      "description": "An id or a folder name: lowercase letters, digits, and hyphens.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "text": {
+      "description": "A string with at least one character that is not white space.",
+      "type": "string",
+      "pattern": "\\S"
+    }
+  }
+}

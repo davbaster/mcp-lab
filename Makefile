@@ -4,40 +4,44 @@
 # Rules for recipes (they must work with GNU Make 3.81 and with sh or cmd.exe):
 # one command per line, or `cd <dir> && <command>`; no pipes, `;`, `||`, shell
 # functions, VAR=value prefixes, single quotes, or Unix-only tools. A new part
-# (content-build, oncall-mcp) adds its targets here, to the aggregates, and to
+# (oncall-mcp) adds its targets here, to the aggregates, and to
 # the help list.
 
 # A host port for the disposable test database. Override: make test-db-up TEST_DB_PORT=5434
 TEST_DB_PORT ?= 5433
 
 .PHONY: help \
-	install install-backend install-frontend \
-	lint lint-backend lint-frontend \
-	typecheck typecheck-frontend \
-	test test-backend test-frontend \
+	install install-backend install-frontend install-content-build \
+	lint lint-backend lint-frontend lint-content-build \
+	typecheck typecheck-frontend typecheck-content-build \
+	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down
 
 HELP_TARGETS = help \
-	install install-backend install-frontend \
-	lint lint-backend lint-frontend \
-	typecheck typecheck-frontend \
-	test test-backend test-frontend \
+	install install-backend install-frontend install-content-build \
+	lint lint-backend lint-frontend lint-content-build \
+	typecheck typecheck-frontend typecheck-content-build \
+	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down
 
 HELP.help = Show this list (the default target)
-HELP.install = Install every part (install-backend, install-frontend)
+HELP.install = Install every part (install-backend, install-frontend, install-content-build)
 HELP.install-backend = Install backend dependencies from the lock file (uv sync --locked)
 HELP.install-frontend = Install frontend dependencies from the lock file (npm ci)
-HELP.lint = Lint every part (lint-backend, lint-frontend)
+HELP.install-content-build = Install content-build dependencies from the lock file (npm ci)
+HELP.lint = Lint every part (lint-backend, lint-frontend, lint-content-build)
 HELP.lint-backend = Lint the backend (ruff)
 HELP.lint-frontend = Lint the frontend (ESLint)
-HELP.typecheck = Typecheck every part that has a typecheck (typecheck-frontend)
+HELP.lint-content-build = Lint content-build (ESLint)
+HELP.typecheck = Typecheck every part that has a typecheck (typecheck-frontend, typecheck-content-build)
 HELP.typecheck-frontend = Typecheck the frontend (tsc --noEmit)
-HELP.test = Run every test suite (test-backend, test-frontend)
+HELP.typecheck-content-build = Typecheck content-build (tsc --noEmit)
+HELP.test = Run every test suite (test-backend, test-frontend, test-content-build)
 HELP.test-backend = Run the backend tests (needs DATABASE_URL, see README Test database)
 HELP.test-frontend = Run the frontend tests
+HELP.test-content-build = Run the content-build tests
 HELP.check = Check generated files are up to date, no database needed (check-openapi, check-api-client)
 HELP.check-openapi = Check openapi.yaml matches the backend
 HELP.check-api-client = Check the generated frontend API client matches openapi.yaml
@@ -52,10 +56,10 @@ help:
 	$(foreach target,$(HELP_TARGETS),$(info $(target): $(HELP.$(target))))
 	@echo Test database: see the Test database section of README.md.
 
-install: install-backend install-frontend
-lint: lint-backend lint-frontend
-typecheck: typecheck-frontend
-test: test-backend test-frontend
+install: install-backend install-frontend install-content-build
+lint: lint-backend lint-frontend lint-content-build
+typecheck: typecheck-frontend typecheck-content-build
+test: test-backend test-frontend test-content-build
 check: check-openapi check-api-client
 
 install-backend:
@@ -81,6 +85,18 @@ typecheck-frontend:
 
 test-frontend:
 	cd frontend && npm test
+
+install-content-build:
+	cd content-build && npm ci
+
+lint-content-build:
+	cd content-build && npm run lint
+
+typecheck-content-build:
+	cd content-build && npm run typecheck
+
+test-content-build:
+	cd content-build && npm test
 
 check-openapi:
 	cd backend && uv run python scripts/export_openapi.py --check
