@@ -4,7 +4,7 @@
 `COURSE_BUILD_DIR` (the output of the content build), loads the manifest
 `private/courses/<course_id>.json` of each course, and checks that the lesson, quiz, and code
 files the manifest names exist. It reads no lesson, quiz, or code content, so no answer key passes
-through this module. Any problem raises `CourseLoadError` at the first one; the app then does not
+through this module (`app.content` reads the lesson and quiz files, one request at a time). Any problem raises `CourseLoadError` at the first one; the app then does not
 start. Messages hold course IDs, field names, counts, and paths inside the build folder only.
 
 The result is a `Catalog` of frozen data. `app.main` builds it in the lifespan and keeps it on
@@ -57,6 +57,14 @@ class Chapter:
     has_code: bool
     lessons: tuple[Lesson, ...]
 
+    def neighbours(self, lesson_id: str) -> tuple[str | None, str | None]:
+        """The IDs of the lesson before and after this one in this chapter, None at either end."""
+        ids = [lesson.id for lesson in self.lessons]
+        position = ids.index(lesson_id)
+        before = ids[position - 1] if position > 0 else None
+        after = ids[position + 1] if position + 1 < len(ids) else None
+        return before, after
+
 
 @dataclass(frozen=True)
 class Course:
@@ -69,12 +77,29 @@ class Course:
     def lesson_count(self) -> int:
         return sum(len(chapter.lessons) for chapter in self.chapters)
 
+    def get_chapter(self, chapter_id: str) -> Chapter | None:
+        """The chapter with this ID, else None. Reads nothing from disk."""
+        return next((chapter for chapter in self.chapters if chapter.id == chapter_id), None)
+
+    def find_lesson(self, lesson_id: str) -> tuple[Chapter, Lesson] | None:
+        """The chapter and lesson with this lesson ID, else None. Reads nothing from disk."""
+        for chapter in self.chapters:
+            for lesson in chapter.lessons:
+                if lesson.id == lesson_id:
+                    return chapter, lesson
+        return None
+
 
 @dataclass(frozen=True)
 class Catalog:
-    """The configured courses, in the order of `COURSES`. Immutable."""
+    """The configured courses, in the order of `COURSES`, and the build folder. Immutable.
+
+    `build_dir` is where `app.content` reads lesson and quiz files from. A file path is built only
+    from IDs that are in the catalog, never from a request string.
+    """
 
     courses: tuple[Course, ...]
+    build_dir: Path
 
     def __post_init__(self) -> None:
         by_id = MappingProxyType({course.id: course for course in self.courses})
@@ -292,7 +317,7 @@ def load_catalog(courses: str | None, build_dir: str | None) -> Catalog:
             course.lesson_count,
         )
         loaded.append(course)
-    return Catalog(tuple(loaded))
+    return Catalog(tuple(loaded), root)
 
 
 def load_catalog_from_environment() -> Catalog:

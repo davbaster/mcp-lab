@@ -1,0 +1,23 @@
+{
+  "course_id": "delta-course",
+  "chapter_id": "01-open",
+  "questions": [
+    {
+      "id": "01-open-1",
+      "text": "QUESTION-SENTINEL-delta-0",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-delta-0"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-delta-0-b"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-delta-0",
+      "lesson": "first-lesson"
+    }
+  ]
+}

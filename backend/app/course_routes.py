@@ -153,7 +153,7 @@ def get_progress(
     )
 
 
-_CACHE_HEADER = {
+CACHE_HEADER = {
     "description": (
         "Always `private, no-store`: the response can depend on who is signed in, so no shared "
         "cache may keep it."
@@ -179,7 +179,7 @@ def install_course_routes(app: FastAPI) -> None:
         tags=["courses"],
         operation_id="listChapters",
         responses={
-            200: {"headers": {"Cache-Control": _CACHE_HEADER}},
+            200: {"headers": {"Cache-Control": CACHE_HEADER}},
             404: {"model": ErrorResponse},
         },
         # The cookie is optional: a visitor gets `status: null`, a signed-in learner gets statuses.
@@ -193,7 +193,7 @@ def install_course_routes(app: FastAPI) -> None:
         tags=["courses"],
         operation_id="getProgress",
         responses={
-            200: {"headers": {"Cache-Control": _CACHE_HEADER}},
+            200: {"headers": {"Cache-Control": CACHE_HEADER}},
             401: {"model": ErrorResponse},
             404: {"model": ErrorResponse},
         },

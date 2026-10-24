@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "course_id": "delta-course",
+  "title": "Delta course",
+  "description": "The fourth fixture course, for the lesson and quiz tests: a three-lesson free preview chapter and a chapter with a five-question quiz.",
+  "chapters": [
+    {
+      "id": "01-open",
+      "title": "Open",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "first-lesson",
+          "title": "First lesson",
+          "order": 1
+        },
+        {
+          "id": "second-lesson",
+          "title": "Second lesson",
+          "order": 2
+        },
+        {
+          "id": "third-lesson",
+          "title": "Third lesson",
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "02-closed",
+      "title": "Closed",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "quiz-link-7f3a",
+          "title": "Quiz link target",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

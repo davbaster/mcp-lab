@@ -1,0 +1,19 @@
+{
+  "course_id": "delta-course",
+  "chapter_id": "02-closed",
+  "lesson_id": "quiz-link-7f3a",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "LESSON-SENTINEL-delta-quiz-link-7f3a"
+          }
+        ]
+      }
+    ]
+  }
+}

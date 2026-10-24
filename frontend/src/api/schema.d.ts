@@ -106,6 +106,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses/{course_id}/chapters/{chapter_id}/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A chapter's quiz questions, without answers, for a learner whose chapter is unlocked */
+        get: operations["getQuiz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/lessons/{lesson_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A lesson's compiled tree, for anyone in a free preview chapter and else for a learner whose chapter is unlocked */
+        get: operations["getLesson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/courses/{course_id}/progress": {
         parameters: {
             query?: never;
@@ -116,6 +150,23 @@ export interface paths {
         /** The signed-in learner's status and best score in each chapter of a course */
         get: operations["getProgress"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/progress/last-lesson": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the last lesson the signed-in learner visited, in the lesson's chapter */
+        put: operations["saveLastLesson"];
         post?: never;
         delete?: never;
         options?: never;
@@ -227,6 +278,30 @@ export interface components {
              */
             status: "ok";
         };
+        /** LastLessonRequest */
+        LastLessonRequest: {
+            /** Lesson Id */
+            lesson_id: string;
+        };
+        /** LessonResponse */
+        LessonResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Id */
+            course_id: string;
+            /** Lesson Id */
+            lesson_id: string;
+            /** Next Lesson Id */
+            next_lesson_id: string | null;
+            /** Prev Lesson Id */
+            prev_lesson_id: string | null;
+            /** Title */
+            title: string;
+            /** Tree */
+            tree: {
+                [key: string]: unknown;
+            };
+        };
         /** LessonSummary */
         LessonSummary: {
             /** Id */
@@ -240,6 +315,39 @@ export interface components {
             password: string;
             /** Username */
             username: string;
+        };
+        /** QuizOption */
+        QuizOption: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+        };
+        /** QuizQuestion */
+        QuizQuestion: {
+            /** Id */
+            id: string;
+            /** Options */
+            options: components["schemas"]["QuizOption"][];
+            snippet: components["schemas"]["QuizSnippet"] | null;
+            /** Text */
+            text: string;
+        };
+        /** QuizResponse */
+        QuizResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Id */
+            course_id: string;
+            /** Questions */
+            questions: components["schemas"]["QuizQuestion"][];
+        };
+        /** QuizSnippet */
+        QuizSnippet: {
+            /** Code */
+            code: string;
+            /** Language */
+            language: string;
         };
         /** RegisterRequest */
         RegisterRequest: {
@@ -522,6 +630,146 @@ export interface operations {
             };
         };
     };
+    getQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                lesson_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LessonResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getProgress: {
         parameters: {
             query?: never;
@@ -546,6 +794,77 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveLastLesson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LastLessonRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

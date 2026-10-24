@@ -1,0 +1,19 @@
+{
+  "course_id": "delta-course",
+  "chapter_id": "01-open",
+  "lesson_id": "first-lesson",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "LESSON-SENTINEL-delta-first-lesson"
+          }
+        ]
+      }
+    ]
+  }
+}

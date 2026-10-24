@@ -3,7 +3,10 @@
 `FIXTURE_BUILD` is a small, hand-written build folder with the layout of the content build:
 `alpha-course` (2 chapters, 3 lessons), `beta-course` (1 chapter, 1 lesson), `gamma-course`
 (3 chapters of one lesson each, `free_preview` on the first and third; for the progress tests, #14),
-and a deliberately broken `unlisted-course`. Its files hold sentinel strings that no response or log may contain.
+`delta-course` (for the lesson and quiz tests, #15: a `free_preview` chapter of three lessons and a
+chapter of one lesson with a five-question quiz, one question with a snippet and two with three
+options), and a deliberately broken `unlisted-course`. Its files hold sentinel strings that no
+response or log may contain. Load `delta-course` only by asking for it: `serve("delta-course")`.
 """
 
 import json
