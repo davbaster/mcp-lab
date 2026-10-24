@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses/{course_id}/chapters/{chapter_id}/quiz/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grade a quiz attempt of the signed-in learner and save it; the correct answers come back only when the attempt passes */
+        post: operations["submitQuizAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/courses/{course_id}/lessons/{lesson_id}": {
         parameters: {
             query?: never;
@@ -200,6 +217,18 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** AnswerItem */
+        AnswerItem: {
+            /** Option Id */
+            option_id: string;
+            /** Question Id */
+            question_id: string;
+        };
+        /** AttemptRequest */
+        AttemptRequest: {
+            /** Answers */
+            answers: components["schemas"]["AnswerItem"][];
+        };
         /** ChapterProgressSummary */
         ChapterProgressSummary: {
             /** Best Score */
@@ -270,6 +299,27 @@ export interface components {
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
         };
+        /**
+         * FailedAttemptResponse
+         * @description A failed attempt. Nothing here points at a right option.
+         */
+        FailedAttemptResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Id */
+            course_id: string;
+            /**
+             * Passed
+             * @constant
+             */
+            passed: false;
+            /** Score */
+            score: number;
+            /** Total */
+            total: number;
+            /** Wrong */
+            wrong: components["schemas"]["WrongQuestion"][];
+        };
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -316,6 +366,43 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** PassedAttemptResponse */
+        PassedAttemptResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Complete */
+            course_complete: boolean;
+            /** Course Id */
+            course_id: string;
+            /** Next Chapter Id */
+            next_chapter_id: string | null;
+            /**
+             * Passed
+             * @constant
+             */
+            passed: true;
+            /** Results */
+            results: components["schemas"]["QuestionResult"][];
+            /** Score */
+            score: number;
+            /** Total */
+            total: number;
+        };
+        /** QuestionResult */
+        QuestionResult: {
+            /** Correct Option Id */
+            correct_option_id: string;
+            /** Explanation */
+            explanation: string;
+            /** Is Correct */
+            is_correct: boolean;
+            /** Lesson Id */
+            lesson_id: string;
+            /** Option Id */
+            option_id: string;
+            /** Question Id */
+            question_id: string;
+        };
         /** QuizOption */
         QuizOption: {
             /** Id */
@@ -361,6 +448,13 @@ export interface components {
              * @description 4 to 8 characters: A-Z, a-z, 0-9, and _. Never trimmed.
              */
             username: string;
+        };
+        /** WrongQuestion */
+        WrongQuestion: {
+            /** Lesson Id */
+            lesson_id: string;
+            /** Question Id */
+            question_id: string;
         };
     };
     responses: never;
@@ -651,6 +745,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuizResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitQuizAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailedAttemptResponse"] | components["schemas"]["PassedAttemptResponse"];
                 };
             };
             /** @description Unauthorized */

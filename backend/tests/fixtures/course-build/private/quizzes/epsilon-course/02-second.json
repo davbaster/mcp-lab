@@ -1,0 +1,103 @@
+{
+  "course_id": "epsilon-course",
+  "chapter_id": "02-second",
+  "questions": [
+    {
+      "id": "02-second-1",
+      "text": "QUESTION-SENTINEL-epsilon-2-1",
+      "options": [
+        {
+          "id": "k3q7-2-1",
+          "text": "CORRECT-SENTINEL-epsilon-2-1"
+        },
+        {
+          "id": "w9d2-2-1-x",
+          "text": "WRONG-SENTINEL-epsilon-2-1-x"
+        }
+      ],
+      "correct": "k3q7-2-1",
+      "explanation": "EXPLANATION-SENTINEL-epsilon-2-1",
+      "lesson": "second-a"
+    },
+    {
+      "id": "02-second-2",
+      "text": "QUESTION-SENTINEL-epsilon-2-2",
+      "options": [
+        {
+          "id": "k3q7-2-2",
+          "text": "CORRECT-SENTINEL-epsilon-2-2"
+        },
+        {
+          "id": "w9d2-2-2-x",
+          "text": "WRONG-SENTINEL-epsilon-2-2-x"
+        },
+        {
+          "id": "w9d2-2-2-y",
+          "text": "WRONG-SENTINEL-epsilon-2-2-y"
+        }
+      ],
+      "correct": "k3q7-2-2",
+      "explanation": "EXPLANATION-SENTINEL-epsilon-2-2",
+      "lesson": "second-b"
+    },
+    {
+      "id": "02-second-3",
+      "text": "QUESTION-SENTINEL-epsilon-2-3",
+      "snippet": {
+        "language": "python",
+        "code": "print('SNIPPET-SENTINEL-epsilon-2-3')\n"
+      },
+      "options": [
+        {
+          "id": "k3q7-2-3",
+          "text": "CORRECT-SENTINEL-epsilon-2-3"
+        },
+        {
+          "id": "w9d2-2-3-x",
+          "text": "WRONG-SENTINEL-epsilon-2-3-x"
+        }
+      ],
+      "correct": "k3q7-2-3",
+      "explanation": "EXPLANATION-SENTINEL-epsilon-2-3",
+      "lesson": "second-a"
+    },
+    {
+      "id": "02-second-4",
+      "text": "QUESTION-SENTINEL-epsilon-2-4",
+      "options": [
+        {
+          "id": "w9d2-2-4-x",
+          "text": "WRONG-SENTINEL-epsilon-2-4-x"
+        },
+        {
+          "id": "k3q7-2-4",
+          "text": "CORRECT-SENTINEL-epsilon-2-4"
+        },
+        {
+          "id": "w9d2-2-4-y",
+          "text": "WRONG-SENTINEL-epsilon-2-4-y"
+        }
+      ],
+      "correct": "k3q7-2-4",
+      "explanation": "EXPLANATION-SENTINEL-epsilon-2-4",
+      "lesson": "second-b"
+    },
+    {
+      "id": "02-second-5",
+      "text": "QUESTION-SENTINEL-epsilon-2-5",
+      "options": [
+        {
+          "id": "k3q7-2-5",
+          "text": "CORRECT-SENTINEL-epsilon-2-5"
+        },
+        {
+          "id": "w9d2-2-5-x",
+          "text": "WRONG-SENTINEL-epsilon-2-5-x"
+        }
+      ],
+      "correct": "k3q7-2-5",
+      "explanation": "EXPLANATION-SENTINEL-epsilon-2-5",
+      "lesson": "second-a"
+    }
+  ]
+}

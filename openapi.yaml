@@ -10,6 +10,37 @@ components:
       - username
       title: AccountResponse
       type: object
+    AnswerItem:
+      additionalProperties: false
+      properties:
+        option_id:
+          maxLength: 100
+          minLength: 1
+          title: Option Id
+          type: string
+        question_id:
+          maxLength: 100
+          minLength: 1
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - option_id
+      title: AnswerItem
+      type: object
+    AttemptRequest:
+      additionalProperties: false
+      properties:
+        answers:
+          items:
+            $ref: '#/components/schemas/AnswerItem'
+          maxItems: 50
+          title: Answers
+          type: array
+      required:
+      - answers
+      title: AttemptRequest
+      type: object
     ChapterProgressSummary:
       additionalProperties: false
       properties:
@@ -164,6 +195,42 @@ components:
       - error
       title: ErrorResponse
       type: object
+    FailedAttemptResponse:
+      additionalProperties: false
+      description: A failed attempt. Nothing here points at a right option.
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        passed:
+          const: false
+          title: Passed
+          type: boolean
+        score:
+          maximum: 5.0
+          minimum: 0.0
+          title: Score
+          type: integer
+        total:
+          title: Total
+          type: integer
+        wrong:
+          items:
+            $ref: '#/components/schemas/WrongQuestion'
+          title: Wrong
+          type: array
+      required:
+      - course_id
+      - chapter_id
+      - score
+      - total
+      - passed
+      - wrong
+      title: FailedAttemptResponse
+      type: object
     HealthResponse:
       properties:
         status:
@@ -256,6 +323,81 @@ components:
       - password
       title: LoginRequest
       type: object
+    PassedAttemptResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_complete:
+          title: Course Complete
+          type: boolean
+        course_id:
+          title: Course Id
+          type: string
+        next_chapter_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Chapter Id
+        passed:
+          const: true
+          title: Passed
+          type: boolean
+        results:
+          items:
+            $ref: '#/components/schemas/QuestionResult'
+          title: Results
+          type: array
+        score:
+          maximum: 5.0
+          minimum: 0.0
+          title: Score
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - course_id
+      - chapter_id
+      - score
+      - total
+      - passed
+      - results
+      - next_chapter_id
+      - course_complete
+      title: PassedAttemptResponse
+      type: object
+    QuestionResult:
+      additionalProperties: false
+      properties:
+        correct_option_id:
+          title: Correct Option Id
+          type: string
+        explanation:
+          title: Explanation
+          type: string
+        is_correct:
+          title: Is Correct
+          type: boolean
+        lesson_id:
+          title: Lesson Id
+          type: string
+        option_id:
+          title: Option Id
+          type: string
+        question_id:
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - option_id
+      - correct_option_id
+      - is_correct
+      - explanation
+      - lesson_id
+      title: QuestionResult
+      type: object
     QuizOption:
       additionalProperties: false
       properties:
@@ -346,6 +488,20 @@ components:
       - username
       - password
       title: RegisterRequest
+      type: object
+    WrongQuestion:
+      additionalProperties: false
+      properties:
+        lesson_id:
+          title: Lesson Id
+          type: string
+        question_id:
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - lesson_id
+      title: WrongQuestion
       type: object
   securitySchemes:
     SessionCookie:
@@ -635,6 +791,80 @@ paths:
       security:
       - SessionCookie: []
       summary: A chapter's quiz questions, without answers, for a learner whose chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/quiz/attempts:
+    post:
+      operationId: submitQuizAttempt
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/FailedAttemptResponse'
+                - $ref: '#/components/schemas/PassedAttemptResponse'
+                title: Response Submitquizattempt
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: Grade a quiz attempt of the signed-in learner and save it; the correct answers come back
+        only when the attempt passes
       tags:
       - courses
   /api/courses/{course_id}/lessons/{lesson_id}:

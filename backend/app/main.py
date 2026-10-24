@@ -10,6 +10,7 @@ from app.content_routes import install_content_routes
 from app.course_routes import install_course_routes
 from app.courses import load_catalog_from_environment
 from app.errors import install_error_handling
+from app.quiz_routes import install_quiz_routes
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
 # It is not read from git, the clock, or package metadata, so the exported spec stays the same.
@@ -44,6 +45,7 @@ install_error_handling(app)
 install_auth_routes(app)
 install_course_routes(app)
 install_content_routes(app)
+install_quiz_routes(app)
 
 
 class HealthResponse(BaseModel):

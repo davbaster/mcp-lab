@@ -5,8 +5,10 @@
 (3 chapters of one lesson each, `free_preview` on the first and third; for the progress tests, #14),
 `delta-course` (for the lesson and quiz tests, #15: a `free_preview` chapter of three lessons and a
 chapter of one lesson with a five-question quiz, one question with a snippet and two with three
-options), and a deliberately broken `unlisted-course`. Its files hold sentinel strings that no
-response or log may contain. Load `delta-course` only by asking for it: `serve("delta-course")`.
+options), `epsilon-course` (for the quiz attempt tests, #16: two chapters of two lessons, each with a
+five-question quiz whose option IDs are unique and are not `a`, `b`, or `c`), and a deliberately
+broken `unlisted-course`. Its files hold sentinel strings that no response or log may contain. Load
+`delta-course` and `epsilon-course` only by asking for them: `serve("epsilon-course")`.
 """
 
 import json

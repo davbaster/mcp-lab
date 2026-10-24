@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "course_id": "epsilon-course",
+  "title": "Epsilon course",
+  "description": "The fifth fixture course, for the quiz attempt tests: two chapters with a five-question quiz each (#16).",
+  "chapters": [
+    {
+      "id": "01-first",
+      "title": "First",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "first-a",
+          "title": "First lesson A",
+          "order": 1
+        },
+        {
+          "id": "first-b",
+          "title": "First lesson B",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "02-second",
+      "title": "Second",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "second-a",
+          "title": "Second lesson A",
+          "order": 1
+        },
+        {
+          "id": "second-b",
+          "title": "Second lesson B",
+          "order": 2
+        }
+      ]
+    }
+  ]
+}

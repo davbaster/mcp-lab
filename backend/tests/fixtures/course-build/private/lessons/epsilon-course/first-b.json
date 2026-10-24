@@ -1,0 +1,19 @@
+{
+  "course_id": "epsilon-course",
+  "chapter_id": "01-first",
+  "lesson_id": "first-b",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "LESSON-SENTINEL-epsilon-first-b"
+          }
+        ]
+      }
+    ]
+  }
+}
