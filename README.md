@@ -119,6 +119,26 @@ cd backend
 uv run pytest
 ```
 
+#### OpenAPI contract
+
+`openapi.yaml` at the repo root is the API contract. It is generated from the backend code. Export it (needs no database and no running server):
+
+```
+cd backend
+uv run python scripts/export_openapi.py
+```
+
+Check that the committed file is up to date (this is what CI runs; it exits non-zero and writes nothing when the file differs):
+
+```
+cd backend
+uv run python scripts/export_openapi.py --check
+```
+
+The running app serves the same document at <http://localhost:8000/api/openapi.json> and interactive docs at <http://localhost:8000/api/docs> (through the Docker stack: <http://localhost:8080/api/docs>). The docs page loads Swagger UI from a CDN, so it needs internet access.
+
+Re-export in the same change as any API change (see "API contract" in [`AGENTS.md`](AGENTS.md)). Upgrading FastAPI, Pydantic, or PyYAML can change the output too, so re-export after such an upgrade and commit the new file.
+
 ### Frontend (`frontend/`)
 
 Install:

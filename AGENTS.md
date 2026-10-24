@@ -39,6 +39,7 @@ Each command is on its own line and starts with `cd`, so it works in PowerShell 
 - `cd backend` then `uv run pytest` - the whole suite
 - `cd backend` then `uv run pytest tests/test_home.py` - one test file
 - `cd backend` then `uv run ruff check .` - lint
+- `cd backend` then `uv run python scripts/export_openapi.py` - re-export `openapi.yaml` (add `--check` to only compare)
 - `cd backend` then `uv run uvicorn app.main:app --port 8000` - dev server
 
 `frontend/`:
