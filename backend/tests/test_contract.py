@@ -609,6 +609,21 @@ def test_a_route_that_declares_its_own_409_schema_and_returns_it_is_still_reject
     assert 'field "error" is required but missing' in message
 
 
+@pytest.mark.parametrize(
+    "body", [b"", b'{"error": {"code": "c", "message": "m"}}'], ids=["empty", "valid"]
+)
+def test_a_4xx_listed_without_content_fails_whatever_the_body(body):
+    def add(app):
+        @app.get("/err", responses={400: {"description": "bad"}})
+        def err():
+            return Response(body, status_code=400, media_type="application/json" if body else None)
+
+    message = violation_message(lambda: TestClient(make_app_with(add)).get("/err"))
+
+    assert message.startswith("GET /err 400:")
+    assert "list it with ErrorResponse as its content" in message
+
+
 def test_a_declared_error_that_is_not_json_fails():
     def add(app):
         @app.get("/err", responses=DECLARED_400)

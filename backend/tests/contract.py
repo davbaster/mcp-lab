@@ -386,16 +386,17 @@ class Contract:
                 f"status {status} is not listed in the spec (it lists {listed})", route
             ) from None
         if "content" not in described:
-            if response.content and request.method != "HEAD":
-                hint = (
-                    "; every status of 400 or more has the shared error body, so list "
-                    "it with ErrorResponse as its content"
-                    if status >= 400
-                    else ""
-                )
+            if status >= 400:
+                # An error must be an ErrorResponse, and an empty body is not one. The spec has
+                # to list the status with ErrorResponse as its content.
                 raise _Problem(
-                    f"status {status} has no content in the spec, but the response has a body"
-                    + hint,
+                    f"status {status} has no content in the spec, but every status of 400 or "
+                    "more has the shared error body; list it with ErrorResponse as its content",
+                    route,
+                )
+            if response.content and request.method != "HEAD":
+                raise _Problem(
+                    f"status {status} has no content in the spec, but the response has a body",
                     route,
                 )
             return
