@@ -9,12 +9,16 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // Dev server only: `npm run preview` and the production build do not proxy.
+    // Dev server only. `vite preview` copies `server.proxy` unless `preview.proxy` is set, so
+    // it is set to an empty object. The production build never proxies.
     // In Docker and production, Caddy routes /api to the backend.
     server: {
       proxy: {
         "/api": apiProxyTarget,
       },
+    },
+    preview: {
+      proxy: {},
     },
     test: {
       environment: "jsdom",
