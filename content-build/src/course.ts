@@ -9,6 +9,8 @@ import { courseShape, checkShape } from "./schema.ts";
 import { parseYaml } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
 import { validateChapter } from "./chapter.ts";
+import { checkChapterCode, makeCodeCollector } from "./code-steps.ts";
+import type { CodeCollector } from "./code-steps.ts";
 import { makeQuizCollector } from "./quiz.ts";
 import type { QuizCollector } from "./quiz.ts";
 import type { Report } from "./report.ts";
@@ -45,6 +47,8 @@ export type Inspection = {
   quizzes?: QuizCollector;
   /** The chapters listed in `course.yaml`, when it has a usable list. */
   chapters?: string[];
+  /** The steps of the listed chapters that have valid code steps, and the problems of the code steps. Undefined when the course folder cannot be read. */
+  code?: CodeCollector;
 };
 
 /** `validateCourse` and what else the check found out, for the steps that build from the course. */
@@ -64,9 +68,10 @@ export function inspectCourse(courseDir: string): Inspection {
 
   const folderName = onDiskName(root);
   const quizzes = makeQuizCollector(folderName);
+  const code = makeCodeCollector(folderName);
   const course = readCourseYaml(root, found, folderName, report);
-  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes);
-  return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters };
+  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes, code);
+  return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters, code };
 }
 
 type CourseYaml = {
@@ -140,6 +145,7 @@ function checkChapters(
   yaml: ParsedYaml | undefined,
   report: Report,
   quizzes: QuizCollector,
+  code: CodeCollector,
 ) {
   if (courseEntries.get("chapters") !== "directory") {
     report.error("chapters", "the chapters/ folder is missing");
@@ -174,6 +180,7 @@ function checkChapters(
       collector: quizzes,
       chapterId: name,
     });
+    checkChapterCode(join(root, "chapters", name), `chapters/${name}`, name, report, code);
   });
 
   for (const [name, kind] of folders) {
@@ -198,6 +205,7 @@ function checkUnlistedChapter(folder: string, file: string, report: Report) {
   } else if (found.has("code")) {
     report.warning(file, "this chapter folder has only code/, so it is a chapter in progress: it is not listed in `chapters` and is not built");
     checkKnownEntries(report, file, found, CHAPTER_ENTRIES, "chapter");
+    checkChapterCode(folder, file, file.slice("chapters/".length), report);
   } else {
     report.warning(file, "this folder is not listed in `chapters` and has no lessons/, quiz.yaml, or code/, so it is ignored");
   }

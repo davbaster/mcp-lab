@@ -12,7 +12,7 @@ courses/<id>/
     └── 01-slug/                 # NN-slug: NN is the chapter's position in course.yaml
         ├── lessons/
         │   └── 01-slug.mdx      # NN-slug.mdx: front matter, then the MDX body
-        ├── code/                # step-N/ folders (checked in #10)
+        ├── code/                # step-1/, step-2/, ... (see Code steps below)
         └── quiz.yaml            # the chapter quiz (see Quizzes below)
 ```
 
@@ -53,6 +53,31 @@ free_preview:              # chapters visitors can read without an account; may 
 - Anything else (a stray file, a subfolder in `lessons/`, a non-`.mdx` file there) is a warning. `.DS_Store` and `Thumbs.db` are ignored.
 - Names must match exactly, including capitals, on every platform: `01-Tools` is not `01-tools`.
 - YAML and MDX files may use CRLF line endings and start with a UTF-8 byte order mark.
+
+## Code steps
+
+A chapter can have a `code/` folder with the project as it grows, one folder per step: `code/step-1/`, `code/step-2/`, and so on. Each step is the whole project at that point (every file, not only what changed), and it must be a complete, working project. The build compares each step with the one before it, so the step viewer can highlight the lines that changed, and it zips the last step of each chapter for the download button.
+
+```
+chapters/03-tools/code/
+├── step-1/
+│   └── server.py
+└── step-2/
+    ├── server.py
+    └── src/
+        └── util.py
+```
+
+- Step folders are named `step-` and a whole number with no leading zero, spelled exactly like that: `step-1`, `step-2`, `step-10`. `Step-1`, `step-01`, and `step-0` are errors, and so is any other file or folder in `code/` (a `README.md`, a `draft/` folder). Numbers run 1, 2, 3 with no gaps, and a chapter has at most 20 steps.
+- A step has at least one file, at most 100 files, and each file is at most 256 KiB (262,144 bytes). Empty folders do not count as files and are not shipped; `.DS_Store` and `Thumbs.db` are ignored.
+- Every file is UTF-8 text: no binary files and no NUL characters. An empty file is fine. CRLF line endings and a byte order mark are fine too: the build turns `\r\n` into `\n` and removes one leading byte order mark, so the viewer, the Copy button, and the ZIP all show the same text.
+- Do not commit `__pycache__`, `.venv`, `node_modules`, `.pytest_cache`, or `.pyc` files in a step. They are errors, even where `.gitignore` would hide them.
+- A step may hold only plain files and folders. A symbolic link is an error: the build never follows links.
+- Every path in a step must also extract on Windows, so these are errors: a name with `< > : " \ | ? *` or a control character, a name ending in a space or a dot, a Windows device name (`CON`, `PRN`, `AUX`, `NUL`, `COM1` to `COM9`, `LPT1` to `LPT9`, with or without an extension, in any case), two names in one folder that differ only in letter case, and a path inside the step longer than 100 characters (`src/util.py` is 11).
+- A renamed file shows in the viewer as one deleted file and one new file; the build does not detect renames.
+- A chapter folder that has only `code/` (a chapter in progress) gets the same checks, but nothing is built from it until it is listed in `course.yaml`.
+
+Step data and ZIPs are private build data, served by the backend under the same access rules as the chapter's lessons. See [`content-build/README.md`](../content-build/README.md#code-steps).
 
 ## Quizzes
 

@@ -230,8 +230,8 @@ describe("files that are not part of the format", () => {
     ]);
   });
 
-  it("does not look inside assets/ or code/", () => {
-    expect(check({ "assets/anything/at/all.bin": "x", [`${FIRST}/code/step-1/odd.name`]: "x" })).toEqual([]);
+  it("does not look inside assets/", () => {
+    expect(check({ "assets/anything/at/all.bin": "x" })).toEqual([]);
   });
 
   it("warns when assets/ is a file or ids.json is a folder", () => {

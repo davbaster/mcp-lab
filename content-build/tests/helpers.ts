@@ -27,10 +27,10 @@ export function temporaryFolder(): string {
 
 /**
  * A copy of the valid fixture in a temporary folder named `id`, with `changes` applied. A key is a
- * path inside the course with `/` separators; a string value writes (or replaces) that file, `null`
- * deletes a file or folder. Text is written exactly as given, so a test can use CRLF and a BOM.
+ * path inside the course with `/` separators; a string or bytes value writes (or replaces) that file,
+ * `null` deletes a file or folder. Text is written exactly as given, so a test can use CRLF and a BOM.
  */
-export function makeCourse(id: string, changes: Record<string, string | null> = {}): string {
+export function makeCourse(id: string, changes: Record<string, string | Uint8Array | null> = {}): string {
   const course = join(temporaryFolder(), id);
   cpSync(VALID_COURSE, course, { recursive: true });
   for (const [path, content] of Object.entries(changes)) {
@@ -74,4 +74,16 @@ export function courseYaml(overrides: Record<string, unknown> = {}): string {
   };
   for (const [key, value] of Object.entries(fields)) if (value === undefined) delete fields[key];
   return `${JSON.stringify(fields, null, 1)}\n`;
+}
+
+/** The code folder of the first chapter of the valid course. */
+export const CODE = "chapters/01-first-steps/code";
+
+/**
+ * A copy of the valid fixture whose first chapter has exactly the code `files` (a path inside code/ with
+ * `/`, to its content) instead of the fixture's three steps. `changes` are applied after, as in `makeCourse`.
+ */
+export function codeCourse(files: Record<string, string | Uint8Array>, changes: Record<string, string | Uint8Array | null> = {}): string {
+  const inCode = Object.fromEntries(Object.entries(files).map(([path, content]) => [`${CODE}/${path}`, content]));
+  return makeCourse("sample-course", { [CODE]: null, ...inCode, ...changes });
 }
