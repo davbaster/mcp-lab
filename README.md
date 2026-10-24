@@ -15,6 +15,8 @@ A web app for guided courses. The first course is "Build an MCP Server" (Python)
 
 The root `Makefile` is the single entry point to install, check, lint, typecheck, and test every part, and CI runs the same targets. Run `make` from the repo root; plain `make` (or `make help`) lists every target with a one-line description.
 
+Run `make install` first, after cloning and after pulling a change to a lock file. The other targets do not install anything: `uv run` syncs the backend by itself, but the frontend targets fail with "command not found" or "Cannot find module" until `npm ci` has run.
+
 | Command | What it does |
 |---|---|
 | `make install` | Install every part (`uv sync --locked` in `backend/`, `npm ci` in `frontend/`) |
