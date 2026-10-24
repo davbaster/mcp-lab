@@ -72,10 +72,12 @@ describe("the other READMEs", () => {
   });
 
   it("README.md and AGENTS.md name the new targets", () => {
-    for (const target of ["build-content", "update-content-ids", "check-content-ids", "check-content-ids-base"]) {
+    for (const target of ["build-content", "update-content-ids", "check-content-ids", "check-content-ids-base", "check-images"]) {
       expect(ROOT_README, target).toContain(`\`${target}\``);
       expect(AGENTS, target).toContain(target);
     }
+    expect(ROOT_README).toContain("docker compose exec backend ls /app/course-build/private");
+    expect(ROOT_README).toContain("`docker-images` job");
     expect(ROOT_README).toContain("npm run build -- ../courses ../build");
     expect(AGENTS).toContain("npm run build -- ../courses ../build");
   });

@@ -1,0 +1,26 @@
+# The build context of the backend image is the repo root (compose.yaml: context: .), so this file is an
+# allowlist: everything is ignored except what the Dockerfile copies. A stale local build/ folder, the rest of
+# frontend/, and every other part never enter the context. BuildKit reads this file because it sits next to the
+# Dockerfile and is named Dockerfile.dockerignore; a .dockerignore at the repo root is not used for this image.
+# Later lines win. Patterns start with **/ so they match in subfolders too (a bare name only matches at the context root).
+*
+
+# The Python stages copy from backend/, the content stage from the other three.
+!backend
+!content-build
+!frontend/src/content-components/schemas
+!courses
+
+# Never in the image, wherever they are.
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+**/.git
+**/.env*
+backend/tests
+backend/Dockerfile
+backend/Dockerfile.dockerignore

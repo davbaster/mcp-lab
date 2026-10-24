@@ -17,7 +17,8 @@ TEST_DB_PORT ?= 5433
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
-	build-content update-content-ids check-content-ids check-content-ids-base
+	build-content update-content-ids check-content-ids check-content-ids-base \
+	check-images
 
 HELP_TARGETS = help \
 	install install-backend install-frontend install-content-build \
@@ -26,7 +27,8 @@ HELP_TARGETS = help \
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
-	build-content update-content-ids check-content-ids check-content-ids-base
+	build-content update-content-ids check-content-ids check-content-ids-base \
+	check-images
 
 HELP.help = Show this list (the default target)
 HELP.install = Install every part (install-backend, install-frontend, install-content-build)
@@ -55,6 +57,7 @@ HELP.build-content = Build every course in courses/ into build/ (writes files, n
 HELP.update-content-ids = Write courses/<id>/ids.json for every course (writes files, not in any aggregate)
 HELP.check-content-ids = Check courses/<id>/ids.json holds the IDs the courses have now
 HELP.check-content-ids-base = Check no published ID was removed without a note, as in make check-content-ids-base BASE=origin/main (needs git history, not in any aggregate)
+HELP.check-images = Build the backend and frontend images, check the course build is in the backend image and no course data in the frontend one (needs Docker, not in any aggregate)
 
 help:
 	$(info Usage: make <target>   (run from the repo root, a variable goes after the target: make test-backend DATABASE_URL=<url>))
@@ -115,6 +118,9 @@ check-content-ids:
 
 check-content-ids-base:
 	cd content-build && npm run ids:check -- ../courses --base $(BASE)
+
+check-images:
+	cd backend && uv run python scripts/check_images.py
 
 check-openapi:
 	cd backend && uv run python scripts/export_openapi.py --check

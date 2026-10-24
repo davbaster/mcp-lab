@@ -39,6 +39,7 @@ The root `Makefile` is the single entry point, and CI calls the same targets. Ru
 - `make test` - run every test suite (`test-backend`, `test-frontend`, `test-content-build`); the backend needs `DATABASE_URL` set to a `_test` database
 - `make check` - `check-openapi`, `check-api-client`, and `check-content-ids` (the generated files are up to date; no database or git history needed)
 - `make build-content` - build every course in `courses/` into `build/` (writes files, so it is in no aggregate); `make update-content-ids` writes `courses/<id>/ids.json` (also in no aggregate); `make check-content-ids-base BASE=origin/main` fails when a published ID was removed without a note in `MIGRATIONS.md` (needs git history, in no aggregate)
+- `make check-images` - build the backend and frontend Docker images and look inside them (needs Docker; in no aggregate); CI runs it in the `docker-images` job
 - `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
 - `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
 

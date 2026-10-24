@@ -102,3 +102,19 @@ jobs:
           # A pull request or a push to another branch compares with main. A push to main compares with the commit
           # before the push (all zeros for the first push, which the check skips). Make reads BASE as a variable.
           BASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.before || 'origin/main' }}
+
+  docker-images:
+    name: docker-images
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          # Keep equal to the uv version in backend/Dockerfile.
+          version: 0.11.32
+      # The check script runs with uv, in backend/. It builds both images and looks inside them.
+      - run: make install-backend
+      - run: make check-images

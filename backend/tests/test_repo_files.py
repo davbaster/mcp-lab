@@ -32,10 +32,109 @@ def test_dockerfile_starts_through_the_entrypoint_and_does_not_enable_migrations
     assert 'ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]' in dockerfile
     assert 'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]' in dockerfile
     copies = re.findall(r"^COPY (?!--from)(.+)$", dockerfile, re.MULTILINE)
-    for path in ("alembic.ini", "migrations", "docker-entrypoint.sh"):
-        assert any(path in c.split() for c in copies), path
+    for path in ("alembic.ini", "migrations", "docker-entrypoint.sh"):  # the build context is the repo root
+        assert any(f"backend/{path}" in c.split() for c in copies), path
     assert "RUN_MIGRATIONS_ON_START" not in dockerfile
     assert dockerfile.index("docker-entrypoint.sh ./") < dockerfile.index("USER app")
+    assert dockerfile.index("COPY --from=content") < dockerfile.index("USER app")
+
+
+def _stages(dockerfile):
+    """The Dockerfile split into its stages: the `FROM` line and the text up to the next one."""
+    parts = re.split(r"^(?=FROM )", dockerfile, flags=re.MULTILINE)
+    return [part for part in parts if part.startswith("FROM ")]
+
+
+def test_backend_dockerfile_builds_the_course_content_in_its_first_stage():
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    stages = _stages(dockerfile)
+    node_major = (ROOT / ".nvmrc").read_text().strip()
+
+    assert [stage.splitlines()[0] for stage in stages] == [
+        f"FROM node:{node_major}-alpine AS content",
+        "FROM python:3.12-slim AS build",
+        "FROM python:3.12-slim",
+    ]
+    content = stages[0]
+    assert "RUN cd content-build && npm ci\n" in content
+    # npm ci runs on the lock file alone, before the sources are copied, so the layer is cached.
+    assert content.index("package-lock.json") < content.index("npm ci") < content.index("COPY content-build content-build")
+    assert "COPY content-build content-build\n" in content
+    assert "COPY frontend/src/content-components/schemas frontend/src/content-components/schemas\n" in content
+    assert "ARG COURSES_DIR=courses\n" in content
+    assert "COPY ${COURSES_DIR} courses\n" in content
+    assert content.rstrip().endswith("RUN cd content-build && npm run build -- ../courses ../build")
+    # The COURSES variable chooses what is served at run time; the image holds every course.
+    assert not re.search(r"^\s*(ARG|ENV) COURSES\b(?!_DIR)", dockerfile, re.MULTILINE)
+
+
+def test_backend_image_holds_the_build_output_and_tells_the_app_where_it_is():
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    runtime = _stages(dockerfile)[-1]
+
+    assert "COPY --from=content /repo/build /app/course-build\n" in runtime
+    assert "COURSE_BUILD_DIR=/app/course-build" in runtime
+    # The Python stages copy from backend/, because the build context is the repo root.
+    for stage in _stages(dockerfile)[1:]:
+        for source in re.findall(r"^COPY (?!--from)(.+) \S+$", stage, re.MULTILINE):
+            assert all(path.startswith("backend/") for path in source.split()), source
+    assert dockerfile.rstrip().splitlines()[-1].startswith("CMD ")
+
+
+def test_compose_builds_the_backend_from_the_repo_root_and_the_frontend_from_its_folder():
+    compose = (ROOT / "compose.yaml").read_text()
+    backend = compose.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
+    frontend = compose.split("  frontend:\n", 1)[1].split("\n  caddy:\n", 1)[0]
+
+    assert re.search(r"^    build:\n(?:      #.*\n)*      context: \.\n      dockerfile: backend/Dockerfile$", backend, re.MULTILINE)
+    assert re.search(r"^    build:\n      context: \./frontend$", frontend, re.MULTILINE)
+    assert "dockerfile" not in frontend
+
+
+def _dockerignore_rules(path):
+    return [line for line in path.read_text().splitlines() if line.strip() and not line.startswith("#")]
+
+
+def test_backend_dockerignore_is_an_allowlist_next_to_the_dockerfile():
+    assert not (BACKEND_DIR / ".dockerignore").exists()  # it no longer applies: the context is the repo root
+    rules = _dockerignore_rules(BACKEND_DIR / "Dockerfile.dockerignore")
+
+    assert rules[0] == "*"
+    allowed = [rule[1:] for rule in rules if rule.startswith("!")]
+    assert allowed == ["backend", "content-build", "frontend/src/content-components/schemas", "courses"]
+    # Excluded again after the allowlist, wherever they are, because a later line wins.
+    excluded = rules[1 + len(allowed) :]
+    for pattern in (
+        "**/.venv",
+        "**/__pycache__",
+        "**/*.pyc",
+        "**/.pytest_cache",
+        "**/.ruff_cache",
+        "**/.mypy_cache",
+        "**/node_modules",
+        "**/.env*",
+        "backend/tests",
+    ):
+        assert pattern in excluded, pattern
+    assert not any(rule.startswith("!") for rule in excluded)
+    # Nothing else of the repo is allowed in: not the root build/ folder, not the rest of frontend/.
+    assert "build" not in allowed and "frontend" not in allowed
+
+
+def test_frontend_image_copies_nothing_from_outside_its_folder_and_ignores_course_output():
+    dockerfile = (ROOT / "frontend" / "Dockerfile").read_text()
+    sources = [
+        source
+        for line in re.findall(r"^(?:COPY|ADD) (?!--from)(.+)$", dockerfile, re.MULTILINE)
+        for source in line.split()[:-1]
+    ]
+
+    assert sources
+    for source in sources:
+        assert not source.startswith(("..", "/")), source
+    assert "courses" not in dockerfile and "course-build" not in dockerfile
+    rules = _dockerignore_rules(ROOT / "frontend" / ".dockerignore")
+    assert "**/build" in rules and "**/private" in rules
 
 
 def test_compose_does_not_publish_postgres_and_keeps_the_db_network_internal():
@@ -262,6 +361,24 @@ def test_ci_id_check_gets_its_base_from_the_step_env_and_never_from_a_run_line()
     assert "${{" not in "\n".join(re.findall(r"^\s*(?:-\s+)?run:.*$", content_build, re.MULTILINE))  # nothing expanded in a run: line
 
 
+def test_ci_docker_images_job_runs_the_image_check_like_the_other_jobs():
+    job = _ci_job("docker-images")
+
+    assert "name: docker-images" in job
+    assert re.search(r"^    runs-on: \[self-hosted, Linux, X64, ubuntu-24\]$", job, re.MULTILINE)
+    assert re.search(r"^    if: (.+)$", job, re.MULTILINE).group(0) in _ci_job("frontend")  # the fork guard
+    assert re.findall(r"^      - uses: (.+)$", job, re.MULTILINE) == [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+        "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0",
+    ]
+    assert re.findall(r"^      - run: (.+)$", job, re.MULTILINE) == ["make install-backend", "make check-images"]
+    assert re.search(r"^          version: (\S+)$", job, re.MULTILINE).group(1) == re.search(
+        r"\buv==(\S+)", (BACKEND_DIR / "Dockerfile").read_text()
+    ).group(1)
+    assert "working-directory" not in job
+    assert "fetch-depth" not in job
+
+
 def test_content_build_uses_the_shared_node_version_and_requires_it():
     assert not (ROOT / "content-build" / ".nvmrc").exists()  # one .nvmrc at the root
     package = json.loads((ROOT / "content-build" / "package.json").read_text())
@@ -451,6 +568,15 @@ def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
 
 
 CONTENT_TARGETS = ("build-content", "update-content-ids", "check-content-ids", "check-content-ids-base")
+
+
+def test_check_images_runs_the_script_from_the_backend_folder_and_is_in_no_aggregate():
+    rules = _rules()
+
+    assert rules["check-images"].recipe == ["cd backend && uv run python scripts/check_images.py"]
+    assert rules["check-images"].prerequisites == []
+    assert "check-images" in _phony_targets() and _help_description("check-images")
+    assert "check-images" not in {p for r in rules.values() for p in r.prerequisites}  # it needs Docker
 
 
 def test_content_targets_run_the_content_build_commands_from_its_folder():
