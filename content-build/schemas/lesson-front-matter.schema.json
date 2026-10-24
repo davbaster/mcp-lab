@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lesson front matter",
+  "description": "The block between the --- lines at the top of a lesson .mdx file. Checks the shape only.",
+  "type": "object",
+  "required": ["title", "order"],
+  "additionalProperties": false,
+  "properties": {
+    "title": { "type": "string", "pattern": "\\S" },
+    "order": { "type": "integer", "minimum": 1 },
+    "id": {
+      "description": "An optional stable lesson id. Without it the id comes from the file name.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    }
+  }
+}

@@ -15,7 +15,11 @@ ENV PATH=/opt/venv/bin:$PATH \
 RUN useradd --system --uid 10001 --no-create-home app
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app
+COPY alembic.ini docker-entrypoint.sh ./
+COPY migrations ./migrations
 COPY app ./app
 USER app
 EXPOSE 8000
+# Runs `alembic upgrade head` first if compose.yaml (or the caller) asks for it, then the CMD.
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

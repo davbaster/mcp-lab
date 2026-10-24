@@ -1,0 +1,6 @@
+id: lesson-order-wrong-type
+title: A course for the validator tests
+description: One small course that breaks one rule.
+chapters:
+  - 01-intro
+free_preview: []

@@ -1,0 +1,66 @@
+# The quiz of chapter 1. Its lessons are 01-welcome and `setup` (the explicit id of 02-setup.mdx).
+questions:
+  - id: first-steps-1
+    text: What is this course about?
+    options:
+      - id: a
+        text: A small sample
+      - id: b
+        text: A large production system
+    correct: a
+    explanation: The sample course exists to show the format.
+    lesson: 01-welcome
+  - id: first-steps-2
+    text: Which tool do you install first?
+    options:
+      - id: a
+        text: A text editor
+      - id: b
+        text: A database
+      - id: c
+        text: A browser
+    correct: a
+    explanation: |
+      Every later step edits files, so the editor comes first.
+    lesson: setup
+  - id: first-steps-3
+    text: What does this program print?
+    snippet:
+      language: python
+      code: |
+        def greet(name):
+            return "Hello, " + name
+
+        print(greet("world"))
+    options:
+      - id: a
+        text: Hello, world
+      - id: b
+        text: greet
+    correct: a
+    explanation: >
+      The function joins the greeting and the name,
+      and the program prints the result.
+    lesson: 01-welcome
+  - id: first-steps-4
+    text: ¿Cómo se dice «welcome» en español? 🌍
+    options:
+      - id: a
+        text: Bienvenido
+      - id: b
+        text: Adiós
+    correct: a
+    explanation: «Bienvenido» means welcome, and «adiós» means goodbye.
+    lesson: 01-welcome
+  - id: first-steps-5
+    text: Where do you find the settings of this course?
+    options:
+      - id: a
+        text: In course.yaml
+      - id: b
+        text: In a database
+      - id: c
+        text: In the lesson body
+    correct: a
+    explanation: course.yaml names the chapters and the free-preview chapters.
+    lesson: setup

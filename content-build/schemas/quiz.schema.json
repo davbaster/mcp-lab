@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "quiz.yaml",
+  "description": "A chapter quiz at courses/<id>/chapters/<chapter>/quiz.yaml. Checks the shape only; src/quiz.ts checks the rest (how many questions and options, unique ids, the correct option, the lesson link, the length limits).",
+  "type": "object",
+  "required": ["questions"],
+  "additionalProperties": false,
+  "properties": {
+    "questions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/question" }
+    }
+  },
+  "definitions": {
+    "question": {
+      "type": "object",
+      "required": ["id", "text", "options", "correct", "explanation", "lesson"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/name" },
+        "text": { "$ref": "#/definitions/text" },
+        "snippet": { "$ref": "#/definitions/snippet" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/option" }
+        },
+        "correct": {
+          "description": "The id of one option. Whether an option has that id is checked in src/quiz.ts.",
+          "type": "string"
+        },
+        "explanation": { "$ref": "#/definitions/text" },
+        "lesson": {
+          "description": "The id of a lesson in the same chapter. Whether there is one is checked in src/quiz.ts.",
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/definitions/name" },
+        "text": { "$ref": "#/definitions/text" }
+      }
+    },
+    "snippet": {
+      "type": "object",
+      "required": ["language", "code"],
+      "additionalProperties": false,
+      "properties": {
+        "language": {
+          "description": "A language name for the code viewer, such as python. No white space.",
+          "type": "string",
+          "pattern": "^\\S+$"
+        },
+        "code": { "$ref": "#/definitions/text" }
+      }
+    },
+    "name": {
+      "description": "An id: lowercase letters, digits, and hyphens.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "text": {
+      "description": "A string with at least one character that is not white space.",
+      "type": "string",
+      "pattern": "\\S"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+id: description-empty
+title: A course for the validator tests
+description: ""
+chapters:
+  - 01-intro
+free_preview: []

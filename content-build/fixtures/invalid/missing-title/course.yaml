@@ -1,0 +1,5 @@
+id: missing-title
+description: One small course that breaks one rule.
+chapters:
+  - 01-intro
+free_preview: []

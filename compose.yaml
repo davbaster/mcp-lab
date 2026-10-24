@@ -26,6 +26,9 @@ services:
     image: mcp-lab-backend:local
     build:
       context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mcp_lab}:${POSTGRES_PASSWORD:-mcp_lab_dev_password}@postgres:5432/${POSTGRES_DB:-mcp_lab}
+      RUN_MIGRATIONS_ON_START: "true"
     networks:
       - db
       - web

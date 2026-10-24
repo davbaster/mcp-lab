@@ -1,0 +1,96 @@
+questions:
+  - id: first-steps-1
+    text: Question number 1?
+    snippet:
+      language: python
+      code: |
+        def f(x):
+            return x + 1
+        
+        print(f(1))
+    options:
+      - id: a
+        text: First choice
+      - id: b
+        text: Second choice
+      - id: c
+        text: Third choice
+    correct: c
+    explanation: Explanation 1.
+    lesson: setup
+  - id: first-steps-2
+    text: Question number 2?
+    snippet:
+      language: python
+      code: |
+        def f(x):
+            return x + 1
+        
+        print(f(2))
+    options:
+      - id: a
+        text: First choice
+      - id: b
+        text: Second choice
+      - id: c
+        text: Third choice
+    correct: c
+    explanation: Explanation 2.
+    lesson: setup
+  - id: first-steps-3
+    text: Question number 3?
+    snippet:
+      language: python
+      code: |
+        def f(x):
+            return x + 1
+        
+        print(f(3))
+    options:
+      - id: a
+        text: First choice
+      - id: b
+        text: Second choice
+      - id: c
+        text: Third choice
+    correct: c
+    explanation: Explanation 3.
+    lesson: setup
+  - id: first-steps-4
+    text: Question number 4?
+    snippet:
+      language: python
+      code: |
+        def f(x):
+            return x + 1
+        
+        print(f(4))
+    options:
+      - id: a
+        text: First choice
+      - id: b
+        text: Second choice
+      - id: c
+        text: Third choice
+    correct: c
+    explanation: Explanation 4.
+    lesson: setup
+  - id: first-steps-5
+    text: Question number 5?
+    snippet:
+      language: python
+      code: |
+        def f(x):
+            return x + 1
+        
+        print(f(5))
+    options:
+      - id: a
+        text: First choice
+      - id: b
+        text: Second choice
+      - id: c
+        text: Third choice
+    correct: c
+    explanation: Explanation 5.
+    lesson: setup

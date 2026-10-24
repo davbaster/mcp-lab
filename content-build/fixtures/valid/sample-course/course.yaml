@@ -1,0 +1,8 @@
+id: sample-course
+title: Sample course
+description: A small course that shows the format and that the validator accepts.
+chapters:
+  - 01-first-steps
+  - 02-going-further
+free_preview:
+  - 01-first-steps
