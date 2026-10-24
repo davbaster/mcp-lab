@@ -185,6 +185,33 @@ cd frontend
 npm run dev
 ```
 
+The dev server proxies `/api` to the backend, so start the backend too (see the backend section) and open <http://localhost:5173/api/health> to check the connection. The proxy target defaults to `http://localhost:8000`. To use another backend address, set `API_PROXY_TARGET` before starting the dev server (bash; in PowerShell use `$env:API_PROXY_TARGET = "http://127.0.0.1:9000"`):
+
+```
+cd frontend
+API_PROXY_TARGET=http://127.0.0.1:9000 npm run dev
+```
+
+`API_PROXY_TARGET` is read by Node in `vite.config.ts` and is never part of the browser bundle. The proxy applies to `npm run dev` only; Docker and production route `/api` through Caddy.
+
+API client (`frontend/src/api/`): the frontend calls the backend only through the typed client generated from `openapi.yaml`. Import `api` from `src/api/client`; direct `fetch` calls are a lint error.
+
+Regenerate the types (writes `src/api/schema.d.ts` from `../openapi.yaml`):
+
+```
+cd frontend
+npm run generate:api
+```
+
+Check that the committed types are up to date (CI runs this; it changes no file and prints the fix when they differ):
+
+```
+cd frontend
+npm run check:api
+```
+
+Run `npm run generate:api` and commit `frontend/src/api/schema.d.ts` in the same change as any `openapi.yaml` change.
+
 ## Docker stack
 
 The stack runs the frontend, backend, Postgres, and Caddy together at a single local address, the same way the app runs in production. The native dev servers from the Commands section above remain the fast edit loop; use the Docker stack to check the whole thing end to end.
