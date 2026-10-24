@@ -4,7 +4,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateCourse } from "../src/course.ts";
-import { courseYaml, error, makeCourse } from "./helpers.ts";
+import { chapterList, courseYaml, error, makeCourse } from "./helpers.ts";
 
 const NAME_RULE = "must use only lowercase letters, digits, and hyphens";
 
@@ -24,7 +24,7 @@ describe("a valid course.yaml", () => {
       "title: Sample course",
       "description: >",
       "  A small course.",
-      "chapters: [01-first-steps, 02-going-further]",
+      "chapters: [{id: 01-first-steps, title: First steps}, {id: 02-going-further, title: Going further}]",
       "free_preview: []",
       "",
     ].join("\n");
@@ -94,10 +94,10 @@ describe("types and empty values", () => {
     ]);
   });
 
-  it("rejects an empty chapter name and an empty id", () => {
-    const problems = check({ "course.yaml": courseYaml({ id: "", chapters: [""] }) });
+  it("rejects an empty chapter id and an empty course id", () => {
+    const problems = check({ "course.yaml": courseYaml({ id: "", chapters: chapterList("") }) });
 
-    expect(problems.map((p) => p.message)).toContain("`chapters[0]` must not be empty");
+    expect(problems.map((p) => p.message)).toContain("`chapters[0].id` must not be empty");
     expect(problems.map((p) => p.message)).toContain("`id` must not be empty");
   });
 
@@ -108,7 +108,7 @@ describe("types and empty values", () => {
   });
 });
 
-describe("ids and chapter names", () => {
+describe("ids and chapter ids", () => {
   it("names both values when the id differs from the folder name", () => {
     const [problem] = check({ "course.yaml": courseYaml({ id: "another-id" }) });
 
@@ -133,24 +133,30 @@ describe("ids and chapter names", () => {
     ["an underscore", "01_first"],
     ["capital letters", "01-First"],
     ["non-ASCII letters", "01-café"],
-  ])("rejects a chapter name with %s", (_what, name) => {
-    const problems = check({ "course.yaml": courseYaml({ chapters: [name], free_preview: [] }) });
+  ])("rejects a chapter id with %s", (_what, name) => {
+    const problems = check({ "course.yaml": courseYaml({ chapters: chapterList(name), free_preview: [] }) });
 
-    expect(problems.map((p) => p.message)).toContain(`\`chapters[0]\` ${NAME_RULE} (got ${JSON.stringify(name)})`);
+    expect(problems.map((p) => p.message)).toContain(`\`chapters[0].id\` ${NAME_RULE} (got ${JSON.stringify(name)})`);
   });
 
-  it("does not look for a folder named by a bad chapter name", () => {
-    const problems = check({ "course.yaml": courseYaml({ chapters: ["../x"], free_preview: [] }) });
+  it("does not look for a folder named by a bad chapter id", () => {
+    const problems = check({ "course.yaml": courseYaml({ chapters: chapterList("../x"), free_preview: [] }) });
 
     expect(problems.some((p) => p.message.includes("does not exist"))).toBe(false);
   });
 
   it("names a duplicate chapter and points at the repeat", () => {
-    const yaml = courseYaml({ chapters: ["01-first-steps", "02-going-further", "01-first-steps"] });
+    const yaml = courseYaml({ chapters: chapterList("01-first-steps", "02-going-further", "01-first-steps") });
 
     expect(check({ "course.yaml": yaml })).toEqual([
       error("course.yaml", "`chapters` lists `01-first-steps` more than once", 8),
     ]);
+  });
+
+  it("accepts the keys of a chapter in either order", () => {
+    const yaml = courseYaml({ chapters: [{ title: "First steps", id: "01-first-steps" }, { title: "Going further", id: "02-going-further" }] });
+
+    expect(check({ "course.yaml": yaml })).toEqual([]);
   });
 });
 
@@ -212,5 +218,236 @@ describe("several mistakes in one run", () => {
       "course.yaml: `title` must be a string",
       "course.yaml: unknown key `extra`",
     ]);
+  });
+});
+
+const CHAPTER_2 = { id: "02-going-further", title: "Going further" };
+const TITLE = "`chapters[0].title`";
+const ONE_LINE = `${TITLE} must be one line of plain text, without line breaks or control characters`;
+
+/** A course.yaml whose first chapter is `item` (YAML text on one line, or lines that continue the item) and whose second is fine. */
+function withChapter(...itemLines: string[]): string {
+  return [
+    "id: sample-course",
+    "title: Sample course",
+    "description: A small course.",
+    "chapters:",
+    ...itemLines,
+    "  - {id: 02-going-further, title: Going further}",
+    "free_preview: []",
+    "",
+  ].join("\n");
+}
+
+describe("chapters: the shape of an item", () => {
+  it.each([
+    ["a bare name", "  - 01-first-steps"],
+    ["a number", "  - 2"],
+    ["an empty item", "  -"],
+    ["a list", "  - [01-first-steps]"],
+  ])("rejects %s with the message that shows the form, at the item", (_what, item) => {
+    expect(check({ "course.yaml": withChapter(item) })).toEqual([
+      error(
+        "course.yaml",
+        "`chapters[0]` must be a mapping with the keys `id` and `title`, for example `{id: 01-intro, title: Introduction}`",
+        5,
+      ),
+    ]);
+  });
+
+  it("reports the old form for each item and nothing about folders or free_preview", () => {
+    const yaml = courseYaml({ chapters: ["01-first-steps", "02-going-further"] });
+
+    expect(check({ "course.yaml": yaml }).map((p) => [p.line, p.message])).toEqual([
+      [6, "`chapters[0]` must be a mapping with the keys `id` and `title`, for example `{id: 01-intro, title: Introduction}`"],
+      [7, "`chapters[1]` must be a mapping with the keys `id` and `title`, for example `{id: 01-intro, title: Introduction}`"],
+    ]);
+  });
+
+  it("reports only the item that is in the old form when the forms are mixed", () => {
+    const yaml = courseYaml({ chapters: [{ id: "01-first-steps", title: "First steps" }, "02-going-further"] });
+
+    expect(check({ "course.yaml": yaml }).map((p) => [p.line, p.message.slice(0, 20)])).toEqual([[7, "`chapters[1]` must b"]]);
+  });
+
+  it("reports a missing id at the item, and skips the folder checks", () => {
+    const problems = check({ "course.yaml": withChapter("  - {title: First steps}") });
+
+    expect(problems).toEqual([error("course.yaml", "missing required field `chapters[0].id`", 5)]);
+  });
+
+  it("reports a missing title at the item", () => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps") })).toEqual([
+      error("course.yaml", "missing required field `chapters[0].title`", 5),
+    ]);
+  });
+
+  it("reports both missing keys of an empty mapping", () => {
+    expect(check({ "course.yaml": withChapter("  - {}") }).map((p) => p.message)).toEqual([
+      "missing required field `chapters[0].id`",
+      "missing required field `chapters[0].title`",
+    ]);
+  });
+
+  it("reports an unknown key at that key", () => {
+    const yaml = withChapter("  - id: 01-first-steps", "    title: First steps", "    subtitle: x");
+
+    expect(check({ "course.yaml": yaml })).toEqual([error("course.yaml", "unknown key `chapters[0].subtitle`", 7)]);
+  });
+
+  it("reports the repeat of an id once, at the repeat, even when the titles differ", () => {
+    const yaml = withChapter("  - {id: 01-first-steps, title: A}", "  - {id: 01-first-steps, title: B}").replace("02-going-further", "03-x");
+
+    expect(check({ "course.yaml": yaml }).filter((p) => p.message.includes("more than once"))).toEqual([
+      error("course.yaml", "`chapters` lists `01-first-steps` more than once", 6),
+    ]);
+  });
+
+  it("does not take a title for a chapter id in free_preview", () => {
+    const yaml = withChapter("  - {id: 01-first-steps, title: First steps}").replace("free_preview: []", "free_preview: [First steps]");
+
+    expect(check({ "course.yaml": yaml }).map((p) => p.message)).toContain(
+      "`free_preview` names `First steps`, which is not listed in `chapters`",
+    );
+  });
+});
+
+describe("chapters: the title", () => {
+  it.each([
+    ["a number", "title: 2025"],
+    ["true", "title: true"],
+    ["null", "title: null"],
+    ["nothing", "title:"],
+    ["a list", "title: [a]"],
+  ])("rejects %s as not a string, at the title line", (_what, line) => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", `    ${line}`) })).toEqual([
+      error("course.yaml", `${TITLE} must be a string`, 6),
+    ]);
+  });
+
+  it.each(["title: \"2025\"", "title: \"true\"", "title: \"null\"", "title: 'Yes'", "title: Yes"])("accepts %s as text", (line) => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", `    ${line}`) })).toEqual([]);
+  });
+
+  it.each([
+    ["an empty string", '""'],
+    ["spaces", '"   "'],
+    ["a non-breaking space", '"\u00a0"'],
+    ["white space of every kind", String.raw`"\u00a0 \t\n\u2003"`],
+  ])("rejects %s as empty, at the title line", (_what, value) => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", `    title: ${value}`) })).toEqual([
+      error("course.yaml", `${TITLE} must not be empty`, 6),
+    ]);
+  });
+
+  it("accepts exactly 100 characters and rejects 101, naming the count", () => {
+    expect(check({ "course.yaml": courseYaml({ chapters: [{ id: "01-first-steps", title: "x".repeat(100) }, CHAPTER_2] }) })).toEqual([]);
+    expect(check({ "course.yaml": courseYaml({ chapters: [{ id: "01-first-steps", title: "x".repeat(101) }, CHAPTER_2] }) })).toEqual([
+      error("course.yaml", `${TITLE} must be at most 100 characters, but it has 101`, 6),
+    ]);
+  });
+
+  it("counts characters, not UTF-16 units: 100 emoji pass and 101 fail", () => {
+    const emoji = (count: number) => courseYaml({ chapters: [{ id: "01-first-steps", title: "🚀".repeat(count) }, CHAPTER_2] });
+
+    expect(check({ "course.yaml": emoji(100) })).toEqual([]);
+    expect(check({ "course.yaml": emoji(101) }).map((p) => p.message)).toEqual([
+      `${TITLE} must be at most 100 characters, but it has 101`,
+    ]);
+  });
+
+  it("counts the trimmed text: 100 characters with spaces around pass", () => {
+    const title = `  ${"x".repeat(100)}  `;
+
+    expect(check({ "course.yaml": courseYaml({ chapters: [{ id: "01-first-steps", title }, CHAPTER_2] }) })).toEqual([]);
+  });
+
+  it("accepts a padded title (the build trims it) and a block scalar with its trailing newline", () => {
+    expect(check({ "course.yaml": withChapter('  - {id: 01-first-steps, title: "  Padded  "}') })).toEqual([]);
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", "    title: |", "      Block title") })).toEqual([]);
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", "    title: >", "      Folded", "      title") })).toEqual([]);
+  });
+
+  it.each([
+    ["two lines in a block", ["    title: |", "      One", "      Two"], 6],
+    ["a line break in a quoted title", ['    title: "One\\nTwo"'], 6],
+    ["a tab inside", ['    title: "One\\tTwo"'], 6],
+    ["a NUL character", ['    title: "One\\u0000Two"'], 6],
+    ["a DEL character", ['    title: "One\\u007fTwo"'], 6],
+    ["an escape character", ['    title: "One\\u001bTwo"'], 6],
+    ["NEL alone", ['    title: "\\x85"'], 6],
+    ["NEL at the end", ['    title: "Intro\\x85"'], 6],
+    ["the first C1 control (U+0080)", ['    title: "One\\u0080Two"'], 6],
+    ["the last C1 control (U+009F)", ['    title: "One\\u009fTwo"'], 6],
+    ["a line separator (U+2028) inside", ['    title: "One\\u2028Two"'], 6],
+    ["a paragraph separator (U+2029) inside", ['    title: "One\\u2029Two"'], 6],
+    ["a lone high surrogate", ['    title: "One\\ud800Two"'], 6],
+    ["a lone low surrogate at the end", ['    title: "One\\udc00"'], 6],
+  ])("rejects %s, at the title line", (_what, lines, line) => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", ...lines) })).toEqual([error("course.yaml", ONE_LINE, line)]);
+  });
+
+  it("accepts zero-width spaces and a valid surrogate pair", () => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", '    title: "One\\u200bTwo\\ud83d\\ude80"') })).toEqual([]);
+  });
+
+  it("reports a title that is both too long and has a line break as two problems", () => {
+    const title = `${"x".repeat(60)}\n${"y".repeat(60)}`;
+    const yaml = courseYaml({ chapters: [{ id: "01-first-steps", title }, CHAPTER_2] });
+
+    expect(check({ "course.yaml": yaml }).map((p) => p.message)).toEqual([
+      `${TITLE} must be at most 100 characters, but it has 121`,
+      ONE_LINE,
+    ]);
+  });
+
+  it("accepts plain text that looks like Markdown or HTML, two equal titles, a title equal to its id, and one letter", () => {
+    const chapters = [
+      { id: "01-first-steps", title: "<b>Bold</b> and *stars* and `code`" },
+      { id: "02-going-further", title: "<b>Bold</b> and *stars* and `code`" },
+      { id: "03-x", title: "03-x" },
+      { id: "04-y", title: "A" },
+    ];
+
+    // The extra chapters have no folders, so only those messages appear; the titles raise nothing.
+    expect(check({ "course.yaml": courseYaml({ chapters, free_preview: [] }) }).map((p) => p.message)).toEqual([
+      "chapter `03-x` is listed in `chapters` but chapters/03-x does not exist",
+      "chapter `04-y` is listed in `chapters` but chapters/04-y does not exist",
+    ]);
+  });
+
+  it("takes a title with a colon and a space when it is quoted, and reports invalid YAML when it is not", () => {
+    expect(check({ "course.yaml": withChapter('  - {id: 01-first-steps, title: "Building tools: the notes CRUD"}') })).toEqual([]);
+
+    const problems = check({ "course.yaml": withChapter("  - id: 01-first-steps", "    title: Building tools: the notes CRUD") });
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatchObject({ severity: "error", file: "course.yaml", line: 6 });
+    expect(problems[0]?.message).toMatch(/^invalid YAML: /);
+  });
+
+  it("still checks the folders of a chapter whose title is wrong", () => {
+    const yaml = withChapter("  - {id: 01-first-steps, title: 5}", "  - {id: 02-gone, title: Gone}").replace("  - {id: 02-going-further, title: Going further}\n", "");
+
+    expect(check({ "course.yaml": yaml, "chapters/02-going-further": null })).toEqual([
+      error("course.yaml", "`chapters[0].title` must be a string", 5),
+      error("course.yaml", "chapter `02-gone` is listed in `chapters` but chapters/02-gone does not exist", 6),
+    ]);
+  });
+
+  it("reports a wrong title and a problem inside the chapter in the same run", () => {
+    const yaml = withChapter("  - {id: 01-first-steps, title: '  '}");
+    const problems = check({ "course.yaml": yaml, "chapters/01-first-steps/quiz.yaml": null });
+
+    expect(problems.map((p) => `${p.file}: ${p.message}`)).toEqual([
+      "chapters/01-first-steps/quiz.yaml: quiz.yaml is missing",
+      "course.yaml: `chapters[0].title` must not be empty",
+    ]);
+  });
+
+  it("does not need a title for a chapter folder that is not listed", () => {
+    const course = makeCourse("sample-course", { "chapters/03-later/code/step-1/main.py": "print(1)\n" });
+
+    expect(validateCourse(course).map((p) => [p.severity, p.file])).toEqual([["warning", "chapters/03-later"]]);
   });
 });

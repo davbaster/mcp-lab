@@ -319,13 +319,14 @@ The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is 
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "course_id": "sample-course",
   "title": "Sample course",
   "description": "A small course that ...",
   "chapters": [
     {
       "id": "01-first-steps",
+      "title": "First steps",
       "free_preview": true,
       "has_code": true,
       "lessons": [{ "id": "01-welcome", "title": "Welcome", "order": 1 }]
@@ -334,7 +335,7 @@ The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is 
 }
 ```
 
-`chapters` is in the order of `course.yaml`, and only the chapters it lists are here (a chapter in progress is not). `free_preview` says whether the chapter is in `free_preview` of `course.yaml`. `has_code` is true exactly when `private/code/<course_id>/<chapter_id>.json` exists. The lessons are sorted by `order`. A chapter has no `title` yet: `course.yaml` has no field for it. Chapter titles are a follow-up ([#103](https://github.com/davbaster/mcp-lab/issues/103)).
+`chapters` is in the order of `course.yaml`, and only the chapters it lists are here (a chapter in progress is not). `free_preview` says whether the chapter is in `free_preview` of `course.yaml`. `has_code` is true exactly when `private/code/<course_id>/<chapter_id>.json` exists. The lessons are sorted by `order`. A chapter's `title` is the trimmed `title` of the chapter in `course.yaml`, as typed: it is not empty, is one line, and has at most 100 characters (the `id` stays the folder name). `schema_version` is 2; it goes up when the shape of the manifest changes.
 
 **A lesson file** `private/lessons/<course_id>/<lesson_id>.json` is `{ "course_id", "chapter_id", "lesson_id", "tree" }`. `tree` is the `compileLesson` tree after `rewriteAssetUrls`: asset references are `/api/courses/<course_id>/assets/<hashed name>`. The files are flat per course because lesson IDs are unique in a course.
 

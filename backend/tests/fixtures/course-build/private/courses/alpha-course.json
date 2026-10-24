@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "course_id": "alpha-course",
+  "title": "Alpha course",
+  "description": "The first fixture course, with two chapters.",
+  "chapters": [
+    {
+      "id": "01-basics",
+      "title": "Basics",
+      "free_preview": true,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "hello",
+          "title": "Hello",
+          "order": 1
+        },
+        {
+          "id": "01-setup",
+          "title": "Setup",
+          "order": 2
+        }
+      ]
+    },
+    {
+      "id": "02-more",
+      "title": "More",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "next-steps",
+          "title": "Next steps",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

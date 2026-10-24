@@ -2,5 +2,5 @@ id: chapter-lessons-without-mdx
 title: A course for the validator tests
 description: One small course that breaks one rule.
 chapters:
-  - 01-intro
+  - {id: 01-intro, title: Introduction}
 free_preview: []

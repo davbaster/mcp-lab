@@ -8,7 +8,7 @@ import type { LessonTree } from "./lesson-tree.ts";
 import { rewriteAssetUrls } from "./rewrite-assets.ts";
 
 /** The version of the manifest and the lesson files. A change to their shape raises it. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /** The content of `<buildDir>/private/courses/<course_id>.json`, with the keys in the order they are written. */
 export type CourseManifestJson = {
@@ -18,6 +18,8 @@ export type CourseManifestJson = {
   description: string;
   chapters: {
     id: string;
+    /** The chapter's `title` in `course.yaml`, trimmed: not empty, one line, at most 100 characters. */
+    title: string;
     free_preview: boolean;
     /** Whether `private/code/<course_id>/<chapter_id>.json` exists. */
     has_code: boolean;
@@ -37,13 +39,16 @@ export function jsonText(value: unknown): string {
 export function buildManifest(courseId: string, inspection: Inspection): CourseManifestJson | undefined {
   const { course, chapters, lessons, code } = inspection;
   if (course === undefined || chapters === undefined || lessons === undefined || code === undefined) return undefined;
+  const titles = chapters.map((id) => course.chapterTitles.get(id));
+  if (titles.some((title) => title === undefined)) return undefined;
   return {
     schema_version: SCHEMA_VERSION,
     course_id: courseId,
     title: course.title,
     description: course.description,
-    chapters: chapters.map((id) => ({
+    chapters: chapters.map((id, index) => ({
       id,
+      title: titles[index] as string,
       free_preview: course.freePreview.includes(id),
       has_code: code.chapters.some((chapter) => chapter.chapter_id === id),
       lessons: lessons.filter((lesson) => lesson.chapter_id === id).map(({ id: lessonId, title, order }) => ({ id: lessonId, title, order })),

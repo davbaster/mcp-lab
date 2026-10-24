@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "course_id": "beta-course",
+  "title": "Beta course",
+  "description": "The second fixture course, with one chapter.",
+  "chapters": [
+    {
+      "id": "01-only",
+      "title": "The only chapter",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "only-lesson",
+          "title": "The only lesson",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

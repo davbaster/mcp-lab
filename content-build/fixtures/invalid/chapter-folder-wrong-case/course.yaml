@@ -2,5 +2,5 @@ id: chapter-folder-wrong-case
 title: A course for the validator tests
 description: One small course that breaks one rule.
 chapters:
-  - 01-tools
+  - {id: 01-tools, title: Introduction}
 free_preview: []

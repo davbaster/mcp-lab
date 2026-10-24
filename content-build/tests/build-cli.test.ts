@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PART_DIR, lessonText, temporaryFolder } from "./helpers.ts";
+import { PART_DIR, SLOW_PROCESS_TIMEOUT_MS, lessonText, temporaryFolder } from "./helpers.ts";
 import { VALID_COURSES, coursesFolder, filesOf, newBuildFolder, runBuild, snapshotOf } from "./build-support.ts";
 
 const USAGE = "usage: npm run build -- <courses folder> <build folder>";
@@ -219,6 +219,23 @@ describe("all or nothing", () => {
     expect(Object.keys(before.files)).toHaveLength(5);
   });
 
+  it.each([
+    ["a missing title", "  - {id: 01-first-steps}", "missing required field `chapters[0].title`"],
+    ["a blank title", '  - {id: 01-first-steps, title: "  "}', "`chapters[0].title` must not be empty"],
+    ["a title that is not a string", "  - {id: 01-first-steps, title: 2025}", "`chapters[0].title` must be a string"],
+  ])("does not build a course with %s, prints the problem, and changes nothing", async (_name, item, message) => {
+    const yaml = ["id: sample-course", "title: Sample", "description: A.", "chapters:", item, "  - {id: 02-going-further, title: Going further}", "free_preview: []", ""].join("\n");
+    const courses = coursesFolder({ "sample-course": { "course.yaml": yaml } });
+    const build = filled();
+    const before = snapshotOf(build);
+
+    const result = await runBuild([courses, build]);
+
+    expect(result.code).toBe(1);
+    expect(result.stdout).toContain(`/sample-course/course.yaml:5: error: ${message}`);
+    expect(snapshotOf(build)).toEqual(before);
+  });
+
   it("does not write the good course when another course is bad", async () => {
     const courses = coursesFolder({ "sample-course": {}, "second-course": { "course.yaml": "id: [" } });
     const build = newBuildFolder();
@@ -315,5 +332,5 @@ describe("the real command", () => {
     expect(failed.stdout).toContain("fixtures/invalid/asset-empty-file/assets/images/empty.png: error: the file is empty (0 bytes)");
     expect(usage.code).toBe(2);
     expect(usage.stderr).toContain(USAGE);
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 });

@@ -105,6 +105,17 @@ describe("ids:update", () => {
     expect(JSON.parse(readFileSync(idsFile(courses), "utf8")).chapters).toEqual(["01-first-steps", "02-going-further"]);
   });
 
+  it("does not change ids.json when only a chapter title changes", () => {
+    const course = readFileSync(join(VALID_COURSES, "sample-course", "course.yaml"), "utf8").replace("title: First steps", "title: Getting started");
+    const courses = coursesFolder({ "sample-course": { "course.yaml": course, "ids.json": null } });
+
+    runIds("update", [courses]);
+
+    expect(course).toContain("Getting started");
+    expect(readFileSync(idsFile(courses), "utf8")).toBe(readFileSync(idsFile(VALID_COURSES), "utf8"));
+    expect(runIds("check", [courses])).toEqual({ code: 0, stdout: "ids ok in 1 course(s)\n", stderr: "" });
+  });
+
   it("uses a lesson's explicit id, and keeps the question IDs of a chapter together", () => {
     const courses = coursesFolder({ "sample-course": { "ids.json": null } });
     runIds("update", [courses]);

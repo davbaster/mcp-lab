@@ -1,0 +1,23 @@
+{
+  "course_id": "alpha-course",
+  "chapter_id": "01-basics",
+  "questions": [
+    {
+      "id": "01-basics-1",
+      "text": "QUESTION-SENTINEL-alpha-1",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-alpha-1"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-alpha-1"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-alpha-1",
+      "lesson": "hello"
+    }
+  ]
+}

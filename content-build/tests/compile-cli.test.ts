@@ -5,7 +5,7 @@ import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../src/compile-cli.ts";
-import { COMPONENT_FIXTURES, LESSON_FIXTURES, PART_DIR, temporaryFolder, toLf } from "./helpers.ts";
+import { COMPONENT_FIXTURES, LESSON_FIXTURES, PART_DIR, SLOW_PROCESS_TIMEOUT_MS, temporaryFolder, toLf } from "./helpers.ts";
 
 const VALID = join(LESSON_FIXTURES, "valid");
 const INVALID = join(LESSON_FIXTURES, "invalid");
@@ -170,7 +170,7 @@ describe("the real command", () => {
 
     expect(elsewhere.code).toBe(0);
     expect(elsewhere.stdout.equals(here.stdout)).toBe(true);
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 
   it("writes the same bytes for a copy with CRLF endings and a byte order mark, written to a temporary folder", () => {
     const folder = temporaryFolder();
@@ -201,7 +201,7 @@ describe("the real command", () => {
     expect(b.code).toBe(1);
     expect(a.stderr).toContain("expression-text.mdx:6:15: error: ");
     expect(b.stderr).toContain("expression-text-crlf.mdx:6:15: error: ");
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 
   it("exits 1 for a rejected lesson, with nothing on stdout", () => {
     const result = node(PART_DIR, "fixtures\\lessons\\invalid\\import-statement.mdx");
@@ -217,7 +217,7 @@ describe("the real command", () => {
     expect(node(PART_DIR).code).toBe(2);
     expect(node(PART_DIR).stderr).toContain("usage: npm run compile -- <lesson.mdx>");
     expect(node(PART_DIR, "a.mdx", "b.mdx").code).toBe(2);
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 
   it("exits 1 for a missing file", () => {
     const result = node(PART_DIR, "nowhere.mdx");

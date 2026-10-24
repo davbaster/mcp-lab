@@ -1,0 +1,19 @@
+{
+  "course_id": "alpha-course",
+  "chapter_id": "01-basics",
+  "lesson_id": "hello",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "LESSON-SENTINEL-alpha-hello"
+          }
+        ]
+      }
+    ]
+  }
+}

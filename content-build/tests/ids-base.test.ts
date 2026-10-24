@@ -33,6 +33,23 @@ function renameWelcome(repo: Repo) {
   repo.commit("rename the lesson");
 }
 
+describe("a chapter that is retitled", () => {
+  it("passes without a note: the ID is the folder name, not the title", () => {
+    const repo = makeRepo();
+    branch(repo);
+    const yaml = `${COURSE}/course.yaml`;
+    repo.put(yaml, read(repo, yaml).replace("title: First steps", "title: Getting started"));
+    repo.update();
+    repo.commit("retitle the chapter");
+
+    const result = check(repo);
+
+    expect(read(repo, yaml)).toContain("Getting started");
+    expect(result).toMatchObject({ code: 0, stderr: "" });
+    expect(result.stdout).toContain("ids ok in 1 course(s)");
+  });
+});
+
 describe("a lesson that is renamed", () => {
   it("fails without a note, names the course, the kind, and the ID, and says which line to add", () => {
     const repo = makeRepo();
@@ -120,7 +137,7 @@ describe("IDs that are added", () => {
 describe("a removed chapter, with its lessons and questions", () => {
   function removeSecondChapter(repo: Repo) {
     repo.put(`${COURSE}/chapters/02-going-further`, null);
-    repo.put(`${COURSE}/course.yaml`, read(repo, `${COURSE}/course.yaml`).replace("  - 02-going-further\n", ""));
+    repo.put(`${COURSE}/course.yaml`, read(repo, `${COURSE}/course.yaml`).replace("  - id: 02-going-further\n    title: Going further\n", ""));
     repo.update();
     repo.commit("remove the chapter");
   }

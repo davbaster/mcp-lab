@@ -37,9 +37,11 @@ describe("content-build/README.md", () => {
     const build = newBuildFolder();
     expect((await runBuild([VALID_COURSES, build])).code).toBe(0);
     const manifest = JSON.parse(readFileSync(join(build, "private", "courses", "sample-course.json"), "utf8")) as Record<string, unknown>;
-    for (const key of [...Object.keys(manifest), "id", "free_preview", "has_code", "lessons", "order"]) expect(building, key).toContain(`"${key}"`);
+    for (const key of [...Object.keys(manifest), "id", "title", "free_preview", "has_code", "lessons", "order"]) expect(building, key).toContain(`"${key}"`);
     expect(building).toContain("COURSE_BUILD_DIR");
-    expect(building).toContain("[#103]");
+    expect(building).not.toContain("[#103]");
+    expect(building).toContain("A chapter's `title` is the trimmed `title` of the chapter in `course.yaml`");
+    expect(building).toContain('"schema_version": 2');
   });
 
   it("documents the new checks, the ids commands, the note format, and the CI base", () => {
@@ -69,6 +71,23 @@ describe("the other READMEs", () => {
       expect(COURSES_README, text).toContain(text);
     }
     expect(COURSES_README).not.toContain("checked in #12");
+  });
+
+  it("courses/README.md and the plan describe the chapter title", () => {
+    for (const text of [
+      "id, title, description, chapters (id and title), free-preview chapters",
+      "  - id: 01-first-steps",
+      "    title: First steps",
+      'title: "Building tools: the notes CRUD"',
+      "at most 100 characters",
+      "A bare name (`- 01-first-steps`) is an error.",
+      "Retitling a chapter",
+    ]) {
+      expect(COURSES_README, text).toContain(text);
+    }
+    const plan = readFileSync(join(ROOT, "_docs", "plan.md"), "utf8");
+    expect(plan).toContain("# id, title, description, chapter order and titles, free-preview chapters");
+    expect(plan).toContain("Each chapter has a title in `course.yaml`");
   });
 
   it("README.md and AGENTS.md name the new targets", () => {

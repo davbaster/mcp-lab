@@ -4,7 +4,7 @@ Course content, one folder per course: `courses/<id>/`. The content build (`cont
 
 ```
 courses/<id>/
-├── course.yaml                  # id, title, description, chapter order, free-preview chapters
+├── course.yaml                  # id, title, description, chapters (id and title), free-preview chapters
 ├── assets/                      # images, .glb models, diagram sources, .vtt captions
 ├── ids.json                     # published IDs (generated; see Stable IDs below)
 ├── MIGRATIONS.md                # notes for removed IDs (see Stable IDs below)
@@ -26,20 +26,25 @@ Exactly these keys, and no others:
 id: sample-course          # the course folder's name
 title: Sample course
 description: One sentence about the course.
-chapters:                  # chapter folder names, in order; at least one
-  - 01-first-steps
-  - 02-going-further
-free_preview:              # chapters visitors can read without an account; may be empty
+chapters:                  # in order; at least one
+  - id: 01-first-steps     # the chapter folder's name
+    title: First steps     # what learners see
+  - id: 02-going-further
+    title: "Going further: next steps"   # quoted, because it has a colon and a space
+free_preview:              # chapter IDs visitors can read without an account; may be empty
   - 01-first-steps
 ```
 
-- `id`, `title`, and `description` are non-empty strings. `chapters` and `free_preview` are lists of strings.
-- `id` and every chapter name use only lowercase letters, digits, and hyphens. Chapter names are unique.
-- `free_preview` names only chapters that are in `chapters`.
+- The course `id`, `title`, and `description` are non-empty strings. `free_preview` is a list of chapter IDs.
+- `chapters` is a list of mappings, each with exactly the keys `id` and `title` (in either order), and the order of the list is the chapter order. A bare name (`- 01-first-steps`) is an error.
+- A chapter's `id` is its folder name. The course `id` and every chapter `id` use only lowercase letters, digits, and hyphens. Chapter IDs are unique.
+- A chapter's `title` is the name that learners see in lists and menus. It is plain text on one line: Markdown and HTML are not parsed, so `<b>` and `*x*` stay as typed. Leading and trailing spaces are removed, and what is left is at most 100 characters, counted as Unicode code points (a letter or most emoji count as one, but an emoji made of several code points, such as a flag or a family, counts as more), and has no line break, tab, or other control character (this includes the C1 controls U+0080 to U+009F, such as U+0085, and the separators U+2028 and U+2029), and is valid Unicode text (no lone surrogate). Zero-width spaces are allowed. Two chapters may have the same title.
+- Put a title in quotes when it has a colon followed by a space, or when YAML would read it as something else: a number, `true`, or `null` (`title: "2025"`; an unquoted `title: 2025` is a number and an error). For example, `title: "Building tools: the notes CRUD"`.
+- `free_preview` names only chapters that are in `chapters`, by `id`.
 
 ## Chapters and lessons
 
-- Each chapter listed in `chapters` is a folder `chapters/NN-slug/`, where `NN` is two digits and equals the chapter's position (`01` for the first, `02` for the second).
+- Each chapter listed in `chapters` is a folder `chapters/NN-slug/`, where `NN` is two digits and equals the chapter's position (`01` for the first, `02` for the second). The chapter's ID is its `id` in `course.yaml`, which is the folder name; its `title` can be edited at any time.
 - A chapter has a `lessons/` folder with at least one `.mdx` file, and a `quiz.yaml` (see [Quizzes](#quizzes)).
 - A lesson file is named `NN-slug.mdx` (lowercase letters, digits, hyphens) and starts with front matter between `---` lines:
 
@@ -252,7 +257,7 @@ Check a course with `cd content-build` then `npm run validate -- ../courses/<id>
 
 ## Stable IDs
 
-Progress, quiz attempts, and feedback refer to chapter, lesson, and question IDs, so an ID that was published must not disappear. A chapter ID is the chapter's folder name (`01-first-steps`), a lesson ID is described under [Chapters and lessons](#chapters-and-lessons), and a question ID is its `id` in `quiz.yaml`.
+Progress, quiz attempts, and feedback refer to chapter, lesson, and question IDs, so an ID that was published must not disappear. A chapter ID is the chapter's `id` in `course.yaml`, which is its folder name (`01-first-steps`), a lesson ID is described under [Chapters and lessons](#chapters-and-lessons), and a question ID is its `id` in `quiz.yaml`.
 
 `ids.json` is generated: run `make update-content-ids` (or `cd content-build` then `npm run ids:update -- ../courses`) after you add a chapter, a lesson, or a question, and commit the file with the change. It lists the IDs the course has now, in this form:
 
@@ -275,4 +280,4 @@ removed question what-is-mcp-2: replaced by what-is-mcp-6
 removed chapter 03-old: cut from the course
 ```
 
-`removed <kind> <id>: <reason>`, where `<kind>` is `chapter`, `lesson`, or `question` and the reason is not empty. A leading `- ` or `* ` is fine. Other lines are prose and are ignored; a line that starts with `removed ` and does not match is a warning. Renaming an ID is a removal of the old one. Adding IDs needs no note. Do not remove a course: v1 keeps every published course. The details are in [`content-build/README.md`](../content-build/README.md#stable-ids).
+`removed <kind> <id>: <reason>`, where `<kind>` is `chapter`, `lesson`, or `question` and the reason is not empty. A leading `- ` or `* ` is fine. Other lines are prose and are ignored; a line that starts with `removed ` and does not match is a warning. Renaming an ID is a removal of the old one. Retitling a chapter (changing its `title` in `course.yaml`) does not change its ID and needs no note. Adding IDs needs no note. Do not remove a course: v1 keeps every published course. The details are in [`content-build/README.md`](../content-build/README.md#stable-ids).

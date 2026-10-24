@@ -9,7 +9,7 @@ import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { writeCodeSteps, writeQuizzes } from "../src/index.ts";
 import type { CodeStepsJson } from "../src/index.ts";
-import { CODE, FIXTURES, PART_DIR, VALID_COURSE, codeCourse, courseYaml, error, makeCourse, temporaryFolder } from "./helpers.ts";
+import { CODE, FIXTURES, PART_DIR, SLOW_PROCESS_TIMEOUT_MS, VALID_COURSE, codeCourse, courseYaml, error, makeCourse, temporaryFolder } from "./helpers.ts";
 
 const GOLDEN = join(FIXTURES, "expected", "private", "code", "sample-course");
 const GOLDEN_JSON = join(GOLDEN, "01-first-steps.json");
@@ -253,7 +253,7 @@ describe("writeCodeSteps: the same bytes everywhere", () => {
     const zip = first[`private/code/sample-course/${golden.zip.file}`];
     expect(zip).toBeInstanceOf(Buffer);
     expect(sha256(zip!)).toBe(golden.zip.sha256);
-  });
+  }, SLOW_PROCESS_TIMEOUT_MS);
 });
 
 describe("the ZIP", () => {

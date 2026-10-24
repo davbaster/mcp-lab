@@ -1,16 +1,37 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.auth import install_auth_routes
+from app.course_routes import install_course_routes
+from app.courses import load_catalog_from_environment
 from app.errors import install_error_handling
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
 # It is not read from git, the clock, or package metadata, so the exported spec stays the same.
 API_VERSION = "0.1.0"
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Load the courses named in COURSES once, before the first request.
+
+    Not done at import: `scripts/export_openapi.py` and most tests import this module with no
+    course settings. A problem raises `CourseLoadError` and the app does not start. The
+    catalog is read-only memory; it opens no database connection.
+    """
+    app.state.catalog = load_catalog_from_environment()
+    try:
+        yield
+    finally:
+        del app.state.catalog
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="mcp-lab API",
     version=API_VERSION,
     openapi_url="/api/openapi.json",
@@ -20,6 +41,7 @@ app = FastAPI(
 )
 install_error_handling(app)
 install_auth_routes(app)
+install_course_routes(app)
 
 
 class HealthResponse(BaseModel):

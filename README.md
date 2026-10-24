@@ -56,10 +56,32 @@ uv run ruff check .
 
 Typecheck: the backend has no typecheck step yet.
 
-Start the dev server on <http://localhost:8000> (the health check is at <http://localhost:8000/api/health>):
+Start the dev server on <http://localhost:8000> (the health check is at <http://localhost:8000/api/health>). It loads the courses at startup, so set `COURSES` and `COURSE_BUILD_DIR` first (see [Courses](#courses)):
 
 ```
 cd backend
+uv run uvicorn app.main:app --port 8000
+```
+
+#### Courses
+
+At startup the backend loads the built data of every course named in `COURSES` from the build folder `COURSE_BUILD_DIR` (the output of `make build-content`, see the content build below), keeps it in memory, and does not start if anything is missing or broken. The first problem stops it, and the message names the variable, course, file (path inside the build folder), or field. It opens no database connection for this. The load prints one INFO line per course, for example `loaded course alpha-course: 2 chapters, 3 lessons`. It then serves `GET /api/courses` (the courses in the order of `COURSES`) and `GET /api/courses/{course_id}/chapters` (chapters and lessons in order), both public.
+
+| Variable | Meaning |
+|---|---|
+| `COURSES` | The course IDs to serve, separated by commas (`alpha-course,beta-course`; spaces around an entry are ignored). Each is lowercase letters, digits, and hyphens. Required: unset, empty, an empty entry, an invalid ID, or a repeated ID stops the backend. A course in the build folder that is not listed is not served and not read. |
+| `COURSE_BUILD_DIR` | The folder the content build wrote (the one with `private/`). Required, and it has no default in the code. The Docker image sets it to `/app/course-build`. |
+
+To run the fixture course natively, build it and point the backend at the result (from the repo root, then the `backend/` folder). In PowerShell use `$env:COURSES = "sample-course"` instead of `export`:
+
+```
+cd content-build
+npm run build -- fixtures/valid ../build
+```
+
+```
+cd backend
+export COURSES=sample-course COURSE_BUILD_DIR=../build
 uv run uvicorn app.main:app --port 8000
 ```
 
@@ -369,6 +391,8 @@ docker compose exec backend ls /app/course-build/private
 ```
 
 `make check-images` builds both images (the backend one with the fixture course in place of `courses/`), looks for the build output in the backend image, readable by its non-root user, and searches the frontend image for any folder named `private` or `course-build` and any `01-first-steps.json` or `sample-course.json` (the empty system folder `/etc/ssl/private` of the base image is allowed). The same search in the backend image must find them, so it cannot pass by finding nothing. It needs Docker, fails when Docker is missing, and removes the images and containers it made. `COURSES` is read by the backend at run time (#13), not at image build.
+
+The backend serves the courses named in `COURSES`, which compose sets to `${COURSES:-mcp-server}`. Until the first course exists in `courses/` ([#26](https://github.com/davbaster/mcp-lab/issues/26)), `docker compose up` therefore stops the backend with `No manifest for the course mcp-server`. To run the fixture course instead, set both lines in `.env` (see `.env.example`): `COURSES_DIR=content-build/fixtures/valid` (the folder the image builds its courses from; compose passes it as the build argument) and `COURSES=sample-course`, then run `docker compose up --build` again.
 
 On start, the backend container applies the database migrations (`alembic upgrade head`) before it starts the server, and stops with the error in its logs if a migration fails. Restarting is safe: the migration is a no-op when the database is up to date.
 

@@ -1,0 +1,23 @@
+{
+  "course_id": "beta-course",
+  "chapter_id": "01-only",
+  "questions": [
+    {
+      "id": "01-only-1",
+      "text": "QUESTION-SENTINEL-beta-1",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-beta-1"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-beta-1"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-beta-1",
+      "lesson": "only-lesson"
+    }
+  ]
+}

@@ -50,12 +50,13 @@ describe("the manifest", () => {
     const manifest = json(await built(), "private/courses/sample-course.json");
 
     expect(Object.keys(manifest)).toEqual(["schema_version", "course_id", "title", "description", "chapters"]);
-    expect(manifest.schema_version).toBe(1);
+    expect(manifest.schema_version).toBe(2);
     expect(manifest.course_id).toBe("sample-course");
     expect(manifest.title).toBe("Sample course");
     expect(manifest.chapters).toEqual([
       {
         id: "01-first-steps",
+        title: "First steps",
         free_preview: true,
         has_code: true,
         lessons: [
@@ -63,9 +64,9 @@ describe("the manifest", () => {
           { id: "setup", title: "Setup", order: 2 },
         ],
       },
-      { id: "02-going-further", free_preview: false, has_code: false, lessons: [{ id: "01-next", title: "Next steps", order: 1 }] },
+      { id: "02-going-further", title: "Going further", free_preview: false, has_code: false, lessons: [{ id: "01-next", title: "Next steps", order: 1 }] },
     ]);
-    expect(Object.keys(manifest.chapters[0])).toEqual(["id", "free_preview", "has_code", "lessons"]);
+    for (const chapter of manifest.chapters) expect(Object.keys(chapter)).toEqual(["id", "title", "free_preview", "has_code", "lessons"]);
   });
 
   it("has_code is true exactly when private/code/<course>/<chapter>.json exists", async () => {
@@ -92,7 +93,7 @@ describe("the manifest", () => {
     ]);
   });
 
-  it("has no title for a chapter yet, and does not list a chapter in progress or write its lessons", async () => {
+  it("does not list a chapter in progress, which needs no title, or write its code", async () => {
     const courses = coursesFolder({
       "sample-course": { "chapters/03-later/code/step-1/main.py": "print(1)\n", "chapters/03-later/lessons/01-draft.mdx": null },
     });
@@ -100,22 +101,84 @@ describe("the manifest", () => {
     const manifest = json(build, "private/courses/sample-course.json");
 
     expect(manifest.chapters.map((chapter: { id: string }) => chapter.id)).toEqual(["01-first-steps", "02-going-further"]);
-    for (const chapter of manifest.chapters) expect(chapter).not.toHaveProperty("title");
     expect(filesOf(build).has("private/code/sample-course/03-later.json")).toBe(false);
   });
 
-  it("copies the title and the description, whatever the line endings", async () => {
+  it("copies the titles and the description, whatever the line endings and a byte order mark", async () => {
     const courses = coursesFolder({
       "sample-course": {
-        "course.yaml":
-          "id: sample-course\r\ntitle: Ünïcode title\r\ndescription: >-\r\n  First line\r\n  second line.\r\nchapters:\r\n  - 01-first-steps\r\n  - 02-going-further\r\nfree_preview: []\r\n",
+        "course.yaml": [
+          "\uFEFFid: sample-course",
+          "title: Ünïcode title",
+          "description: >-",
+          "  First line",
+          "  second line.",
+          "chapters:",
+          "  - id: 01-first-steps",
+          "    title: Première étape ✓",
+          "  - title: >-",
+          "      Going",
+          "      further",
+          "    id: 02-going-further",
+          "free_preview: []",
+          "",
+        ].join("\r\n"),
+      },
+    });
+    const build = await built(courses);
+    const manifest = json(build, "private/courses/sample-course.json");
+
+    expect(manifest.title).toBe("Ünïcode title");
+    expect(manifest.description).toBe("First line second line.");
+    expect(manifest.chapters.map((chapter: { title: string }) => chapter.title)).toEqual(["Première étape ✓", "Going further"]);
+    expect(manifest.chapters.every((chapter: { free_preview: boolean }) => chapter.free_preview === false)).toBe(true);
+    // Non-ASCII text stays as typed: no \u escapes.
+    const text = readFileSync(join(build, "private", "courses", "sample-course.json"), "utf8");
+    expect(text).toContain('"title": "Première étape ✓"');
+    expect(text).not.toContain("\\u");
+  });
+
+  it("trims a title, including the newline that a block scalar keeps", async () => {
+    const courses = coursesFolder({
+      "sample-course": {
+        "course.yaml": [
+          "id: sample-course",
+          "title: Sample course",
+          "description: A small course.",
+          "chapters:",
+          '  - {id: 01-first-steps, title: "  Padded\u00a0 "}',
+          "  - id: 02-going-further",
+          "    title: |",
+          "      Block title",
+          "free_preview: []",
+          "",
+        ].join("\n"),
       },
     });
     const manifest = json(await built(courses), "private/courses/sample-course.json");
 
-    expect(manifest.title).toBe("Ünïcode title");
-    expect(manifest.description).toBe("First line second line.");
-    expect(manifest.chapters.every((chapter: { free_preview: boolean }) => chapter.free_preview === false)).toBe(true);
+    expect(manifest.chapters.map((chapter: { title: string }) => chapter.title)).toEqual(["Padded", "Block title"]);
+  });
+
+  it("keeps a title with a colon, quotes, a tag, and an emoji as typed", async () => {
+    const title = `Building tools: the "notes" CRUD <b>& *more* 🚀`;
+    const courses = coursesFolder({
+      "sample-course": {
+        "course.yaml": [
+          "id: sample-course",
+          "title: Sample course",
+          "description: A small course.",
+          "chapters:",
+          `  - {id: 01-first-steps, title: ${JSON.stringify(title)}}`,
+          "  - {id: 02-going-further, title: Going further}",
+          "free_preview: []",
+          "",
+        ].join("\n"),
+      },
+    });
+    const manifest = json(await built(courses), "private/courses/sample-course.json");
+
+    expect(manifest.chapters[0].title).toBe(title);
   });
 });
 

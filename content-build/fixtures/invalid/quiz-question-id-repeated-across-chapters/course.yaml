@@ -2,6 +2,6 @@ id: quiz-question-id-repeated-across-chapters
 title: A course for the validator tests
 description: One small course that breaks one rule.
 chapters:
-  - 01-intro
-  - 02-more
+  - {id: 01-intro, title: Introduction}
+  - {id: 02-more, title: More}
 free_preview: []

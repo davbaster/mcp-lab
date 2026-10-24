@@ -325,7 +325,7 @@ describe("what writeAssets removes and leaves", () => {
     const a = assetCourse({ "a.png": PNG });
     const second = join(temporaryFolder(), "other-course");
     cpSync(makeCourse("sample-course", { assets: null, [NEXT]: null, "chapters/02-going-further": null, "course.yaml": null, "assets/b.png": PNG }), second, { recursive: true });
-    writeFileSync(join(second, "course.yaml"), "id: other-course\ntitle: Other\ndescription: Another course.\nchapters:\n  - 01-first-steps\nfree_preview: []\n");
+    writeFileSync(join(second, "course.yaml"), "id: other-course\ntitle: Other\ndescription: Another course.\nchapters:\n  - id: 01-first-steps\n    title: First steps\nfree_preview: []\n");
 
     writeAssets(a, build);
     const afterA = snapshot(build);

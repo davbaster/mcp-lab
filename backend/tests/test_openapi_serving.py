@@ -57,6 +57,8 @@ def test_docs_and_spec_routes_are_not_listed_in_the_spec(spec):
         "/api/auth/logout",
         "/api/auth/me",
         "/api/auth/register",
+        "/api/courses",
+        "/api/courses/{course_id}/chapters",
         "/api/health",
     ]
 

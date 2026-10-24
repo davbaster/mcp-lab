@@ -160,7 +160,7 @@ Each course is a self-contained folder under `courses/`, separate from the app c
 
 ```
 courses/mcp-server/
-├── course.yaml                # id, title, description, chapter order, free-preview chapters
+├── course.yaml                # id, title, description, chapter order and titles, free-preview chapters
 ├── assets/                    # images, .glb 3D models, diagram sources (no video)
 ├── ids.json                   # published chapter, lesson, and question IDs (generated)
 ├── MIGRATIONS.md              # notes for removed IDs
@@ -170,7 +170,7 @@ courses/mcp-server/
     └── quiz.yaml              # the chapter quiz
 ```
 
-The MCP course's chapter folders are `01-what-is-mcp`, `02-first-server`, `03-tools`, `04-resources-prompts`, `05-transports`, and `06-shipping`. A chapter is added to `course.yaml` once its lessons exist. A chapter folder that holds only `code/` is a chapter in progress: the build warns about it and does not publish it, so code steps can be written before their lessons.
+The MCP course's chapter folders are `01-what-is-mcp`, `02-first-server`, `03-tools`, `04-resources-prompts`, `05-transports`, and `06-shipping`. Each chapter has a title in `course.yaml`, next to its folder name, which is its ID. A chapter is added to `course.yaml` once its lessons exist. A chapter folder that holds only `code/` is a chapter in progress: the build warns about it and does not publish it, so code steps can be written before their lessons.
 
 - **Lessons are restricted MDX:** Markdown plus component tags from the [content component library](#content-component-library), with literal props only, e.g. `<Video src="..." />`. JavaScript expressions, `import`/`export`, inline `<script>`, raw HTML event handlers, and unknown components fail the build.
 - **Build output is data, not code.** The content build compiles each lesson to a JSON tree (Markdown nodes plus allowlisted component nodes with validated props). The backend serves that tree through the API, so lesson access control (free preview, locked chapters) stays on the server. The frontend renders it with a fixed component registry. No course ever ships executable code.
