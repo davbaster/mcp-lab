@@ -10,6 +10,80 @@ components:
       - username
       title: AccountResponse
       type: object
+    ChapterSummary:
+      additionalProperties: false
+      properties:
+        free_preview:
+          title: Free Preview
+          type: boolean
+        id:
+          title: Id
+          type: string
+        lessons:
+          items:
+            $ref: '#/components/schemas/LessonSummary'
+          title: Lessons
+          type: array
+        title:
+          title: Title
+          type: string
+      required:
+      - id
+      - title
+      - free_preview
+      - lessons
+      title: ChapterSummary
+      type: object
+    CourseChaptersResponse:
+      additionalProperties: false
+      properties:
+        chapters:
+          items:
+            $ref: '#/components/schemas/ChapterSummary'
+          title: Chapters
+          type: array
+        course_id:
+          title: Course Id
+          type: string
+      required:
+      - course_id
+      - chapters
+      title: CourseChaptersResponse
+      type: object
+    CourseSummary:
+      additionalProperties: false
+      properties:
+        chapter_count:
+          title: Chapter Count
+          type: integer
+        description:
+          title: Description
+          type: string
+        id:
+          title: Id
+          type: string
+        title:
+          title: Title
+          type: string
+      required:
+      - id
+      - title
+      - description
+      - chapter_count
+      title: CourseSummary
+      type: object
+    CoursesResponse:
+      additionalProperties: false
+      properties:
+        courses:
+          items:
+            $ref: '#/components/schemas/CourseSummary'
+          title: Courses
+          type: array
+      required:
+      - courses
+      title: CoursesResponse
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -42,6 +116,20 @@ components:
       required:
       - status
       title: HealthResponse
+      type: object
+    LessonSummary:
+      additionalProperties: false
+      properties:
+        id:
+          title: Id
+          type: string
+        title:
+          title: Title
+          type: string
+      required:
+      - id
+      - title
+      title: LessonSummary
       type: object
     LoginRequest:
       properties:
@@ -238,6 +326,63 @@ paths:
       summary: Create an account and sign in
       tags:
       - auth
+  /api/courses:
+    get:
+      operationId: listCourses
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoursesResponse'
+          description: Successful Response
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: List the courses
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters:
+    get:
+      operationId: listChapters
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseChaptersResponse'
+          description: Successful Response
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: List the chapters of a course, with their lessons
+      tags:
+      - courses
   /api/health:
     get:
       operationId: health

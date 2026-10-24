@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the courses */
+        get: operations["listCourses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/chapters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the chapters of a course, with their lessons */
+        get: operations["listChapters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -98,6 +132,40 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** ChapterSummary */
+        ChapterSummary: {
+            /** Free Preview */
+            free_preview: boolean;
+            /** Id */
+            id: string;
+            /** Lessons */
+            lessons: components["schemas"]["LessonSummary"][];
+            /** Title */
+            title: string;
+        };
+        /** CourseChaptersResponse */
+        CourseChaptersResponse: {
+            /** Chapters */
+            chapters: components["schemas"]["ChapterSummary"][];
+            /** Course Id */
+            course_id: string;
+        };
+        /** CourseSummary */
+        CourseSummary: {
+            /** Chapter Count */
+            chapter_count: number;
+            /** Description */
+            description: string;
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /** CoursesResponse */
+        CoursesResponse: {
+            /** Courses */
+            courses: components["schemas"]["CourseSummary"][];
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Code */
@@ -116,6 +184,13 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** LessonSummary */
+        LessonSummary: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -298,6 +373,84 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoursesResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listChapters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseChaptersResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

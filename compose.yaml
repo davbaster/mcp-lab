@@ -28,9 +28,15 @@ services:
       # The repo root: the image also builds the course content from courses/ and content-build/.
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        # The folder of courses the image builds. Set COURSES_DIR=content-build/fixtures/valid (and
+        # COURSES=sample-course) to run the fixture course; see .env.example.
+        COURSES_DIR: ${COURSES_DIR:-courses}
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-mcp_lab}:${POSTGRES_PASSWORD:-mcp_lab_dev_password}@postgres:5432/${POSTGRES_DB:-mcp_lab}
       RUN_MIGRATIONS_ON_START: "true"
+      # The course IDs to serve, separated by commas. The backend does not start without it.
+      COURSES: ${COURSES:-mcp-server}
     networks:
       - db
       - web

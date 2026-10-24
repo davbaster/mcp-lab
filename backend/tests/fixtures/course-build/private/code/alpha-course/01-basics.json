@@ -1,0 +1,24 @@
+{
+  "course_id": "alpha-course",
+  "chapter_id": "01-basics",
+  "zip": {
+    "file": "01-basics-0000000000000000.zip",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "size": 1
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "added",
+          "content": "print('CODE-SENTINEL-alpha')\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    }
+  ]
+}

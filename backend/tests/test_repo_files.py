@@ -161,6 +161,32 @@ def test_compose_sets_database_settings_on_the_backend_only():
     ) in compose
 
 
+def test_compose_gives_the_backend_the_courses_to_serve_and_the_folder_to_build_from():
+    compose = (ROOT / "compose.yaml").read_text()
+    sections = re.split(r"^  (?=\w[\w-]*:\n)", compose, flags=re.MULTILINE)
+    with_courses = [s.split(":", 1)[0] for s in sections if re.search(r"^ +COURSES:", s, re.MULTILINE)]
+    backend = compose.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
+
+    assert with_courses == ["backend"]
+    assert "      COURSES: ${COURSES:-mcp-server}\n" in backend
+    # The build argument that the Dockerfile has (ARG COURSES_DIR), so the fixture course can be built in.
+    assert re.search(r"^      args:\n(?:        #.*\n)*        COURSES_DIR: \${COURSES_DIR:-courses}$", backend, re.MULTILINE)
+    # COURSE_BUILD_DIR comes from the image, not from compose.
+    assert "COURSE_BUILD_DIR" not in compose
+
+
+def test_env_example_and_readme_document_the_course_settings():
+    example = (ROOT / ".env.example").read_text()
+    readme = (ROOT / "README.md").read_text()
+
+    assert "# COURSES_DIR=content-build/fixtures/valid\n# COURSES=sample-course\n" in example
+    assert "mcp-server" in example
+    for text in (example, readme):
+        assert "COURSE_BUILD_DIR" in text
+    assert "| `COURSES` |" in readme
+    assert "| `COURSE_BUILD_DIR` |" in readme
+
+
 def test_ci_backend_job_has_postgres_service_and_ordered_steps():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     backend = ci.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
