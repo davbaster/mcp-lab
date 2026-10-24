@@ -1069,6 +1069,68 @@ def test_when_the_read_after_the_write_fails_nothing_is_saved_and_no_result_is_r
     assert progress_row(db) is None
 
 
+def test_a_real_database_error_leaves_the_learners_answers_out_of_the_response_and_the_log(
+    server_errors, db, monkeypatch, caplog
+):
+    """Postgres prints the failing row, `answers` included, in the error DETAIL.
+
+    The route's `hide_database_details()` is what keeps that text out of the log. A plain
+    exception (as the tests above inject) would not notice the wrapper missing, so this one
+    breaks the row with a real CHECK violation: the route saves the attempt under a chapter ID
+    that the table's format check refuses.
+    """
+
+    import app.quiz_routes as routes
+
+    real = routes.record_attempt
+
+    def record_under_a_bad_chapter_id(db_session, **kwargs):
+        return real(db_session, **{**kwargs, "chapter_id": "BAD CHAPTER ID"})
+
+    monkeypatch.setattr(routes, "record_attempt", record_under_a_bad_chapter_id)
+    which = {2: "y", 4: "y"}
+    learners_options = [a["option_id"] for a in answers(1, right=(1, 3), which=which)]
+    assert "w9d2-1-2-y" in learners_options
+    caplog.clear()
+
+    response = submit(server_errors, right=(1, 3), which=which)
+
+    assert_error(response, 500, "internal_error")
+    assert response.json() == {
+        "error": {"code": "internal_error", "message": "Internal server error."}
+    }
+    assert attempt_count(db) == 0
+    assert progress_row(db) is None
+    logged = caplog.text + "\n".join(str(r.__dict__) for r in caplog.records)
+    assert "Database error (SQLSTATE" in logged  # the failure was logged, without its detail
+    for secret in (*learners_options, "k3q7", "w9d2", "Failing row", "BAD CHAPTER ID", "SENTINEL"):
+        assert secret not in logged
+        assert secret not in response.text
+
+
+def test_the_real_database_error_does_carry_the_row_so_the_wrapper_is_what_hides_it(db):
+    """The control for the test above: without the wrapper the error text holds the answers."""
+    import uuid
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import DBAPIError
+
+    from tests.test_accounts_db import add_account
+
+    with pytest.raises(DBAPIError) as excinfo, db.begin() as conn:
+        account = add_account(conn, "Ana1")
+        conn.execute(
+            text(
+                "INSERT INTO app.quiz_attempts (id, account_id, course_id, chapter_id, score,"
+                " passed, answers, created_at) VALUES (:id, :a, 'c', 'BAD CHAPTER ID', 1, false,"
+                " CAST(:answers AS jsonb), now())"
+            ),
+            {"id": uuid.uuid4(), "a": account, "answers": json.dumps({"q": "ANSWER-SENTINEL-9z"})},
+        )
+
+    assert "ANSWER-SENTINEL-9z" in str(excinfo.value.orig)
+
+
 def test_the_next_request_after_a_failed_one_works(server_errors, db, monkeypatch):
     import app.quiz_attempts as attempts
 
