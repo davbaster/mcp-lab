@@ -375,8 +375,20 @@ describe("chapters: the title", () => {
     ["a NUL character", ['    title: "One\\u0000Two"'], 6],
     ["a DEL character", ['    title: "One\\u007fTwo"'], 6],
     ["an escape character", ['    title: "One\\u001bTwo"'], 6],
+    ["NEL alone", ['    title: "\\x85"'], 6],
+    ["NEL at the end", ['    title: "Intro\\x85"'], 6],
+    ["the first C1 control (U+0080)", ['    title: "One\\u0080Two"'], 6],
+    ["the last C1 control (U+009F)", ['    title: "One\\u009fTwo"'], 6],
+    ["a line separator (U+2028) inside", ['    title: "One\\u2028Two"'], 6],
+    ["a paragraph separator (U+2029) inside", ['    title: "One\\u2029Two"'], 6],
+    ["a lone high surrogate", ['    title: "One\\ud800Two"'], 6],
+    ["a lone low surrogate at the end", ['    title: "One\\udc00"'], 6],
   ])("rejects %s, at the title line", (_what, lines, line) => {
     expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", ...lines) })).toEqual([error("course.yaml", ONE_LINE, line)]);
+  });
+
+  it("accepts zero-width spaces and a valid surrogate pair", () => {
+    expect(check({ "course.yaml": withChapter("  - id: 01-first-steps", '    title: "One\\u200bTwo\\ud83d\\ude80"') })).toEqual([]);
   });
 
   it("reports a title that is both too long and has a line break as two problems", () => {

@@ -269,6 +269,17 @@ function chapterTitle(item: unknown): string | undefined {
 }
 
 /**
+ * A character that cannot be in a one-line title: a C0 control (including tab and line feed), DEL, a C1 control (including
+ * NEL, U+0085, which Python's `strip()` removes but `trim()` does not), a line or paragraph separator (U+2028, U+2029), or
+ * a lone surrogate (text that is not well-formed UTF-16, which has no UTF-8 form). `characters` come from `[...title]`, so a
+ * surrogate seen here is always a lone one.
+ */
+function isNotPlainTextCharacter(character: string): boolean {
+  const code = character.codePointAt(0) ?? 0;
+  return code < 0x20 || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029 || (code >= 0xd800 && code <= 0xdfff);
+}
+
+/**
  * The rules of `chapters` that the schema cannot say: an id is listed once, and a title (trimmed) is not empty,
  * is one line, and is at most 100 characters. The type of a title and the keys of an item are the schema's.
  */
@@ -287,7 +298,7 @@ function checkChapterItems(items: unknown[], ids: (string | undefined)[], yaml: 
       return;
     }
     const characters = [...title];
-    if (characters.some((character) => (character.codePointAt(0) ?? 0) < 0x20 || character === "\u007f")) {
+    if (characters.some(isNotPlainTextCharacter)) {
       report.error("course.yaml", `${field} must be one line of plain text, without line breaks or control characters`, line);
     }
     const length = characters.length;
