@@ -5,7 +5,7 @@ import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../src/compile-cli.ts";
-import { COMPONENT_FIXTURES, LESSON_FIXTURES, PART_DIR, temporaryFolder } from "./helpers.ts";
+import { COMPONENT_FIXTURES, LESSON_FIXTURES, PART_DIR, temporaryFolder, toLf } from "./helpers.ts";
 
 const VALID = join(LESSON_FIXTURES, "valid");
 const INVALID = join(LESSON_FIXTURES, "invalid");
@@ -174,7 +174,7 @@ describe("the real command", () => {
 
   it("writes the same bytes for a copy with CRLF endings and a byte order mark, written to a temporary folder", () => {
     const folder = temporaryFolder();
-    const text = readFileSync(join(VALID, "components.mdx"), "utf8");
+    const text = toLf(readFileSync(join(VALID, "components.mdx"), "utf8"));
     const file = join(folder, "01-crlf.mdx");
     writeFileSync(file, Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text.replaceAll("\n", "\r\n"), "utf8")]));
 
@@ -188,7 +188,7 @@ describe("the real command", () => {
 
   it("reports the same line and column for a copy with CRLF endings and a byte order mark", () => {
     const folder = temporaryFolder();
-    const text = readFileSync(join(INVALID, "expression-text.mdx"), "utf8");
+    const text = toLf(readFileSync(join(INVALID, "expression-text.mdx"), "utf8"));
     const plain = join(folder, "expression-text.mdx");
     const windows = join(folder, "expression-text-crlf.mdx");
     copyFileSync(join(INVALID, "expression-text.mdx"), plain);

@@ -7,11 +7,11 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../src/cli.ts";
-import { CODE_LIMITS } from "../src/code-steps.ts";
+import { CODE_LIMITS, stepPathProblems } from "../src/code-steps.ts";
 import { inspectCourse, validateCourse } from "../src/course.ts";
 import { formatProblem } from "../src/problem.ts";
 import type { Problem } from "../src/problem.ts";
-import { CODE, FIXTURES, PART_DIR, VALID_COURSE, codeCourse, error, makeCourse, temporaryFolder, warning } from "./helpers.ts";
+import { CODE, FIXTURES, PART_DIR, VALID_COURSE, canCreate, codeCourse, error, makeCourse, temporaryFolder, warning } from "./helpers.ts";
 
 const STEP_1 = `${CODE}/step-1`;
 const NOT_A_STEP =
@@ -87,7 +87,7 @@ describe("which chapters are checked", () => {
 });
 
 describe("step folder names", () => {
-  it.each(["Step-1", "step-01", "step-0", "step-", "step-1a", "step_1", "steps", "draft", "step-1.bak", "STEP-1"])(
+  it.each(["step-01", "step-0", "step-", "step-1a", "step_1", "steps", "draft", "step-1.bak"])(
     "rejects a folder named %s",
     (name) => {
       const course = codeCourse({ "step-1/main.py": "x = 1\n", [`${name}/main.py`]: "x = 1\n" });
@@ -95,6 +95,22 @@ describe("step folder names", () => {
       expectProblems(course, [error(`${CODE}/${name}`, NOT_A_STEP)]);
     },
   );
+
+  // With step-1 gone, Step-1 is a different name on every file system, so these run everywhere.
+  it.each(["Step-1", "STEP-1"])("rejects a folder named %s when it is the only step folder", (name) => {
+    const course = codeCourse({ [`${name}/main.py`]: "x = 1\n" });
+
+    expectProblems(course, [error(CODE, missing(1)), error(`${CODE}/${name}`, NOT_A_STEP)]);
+  });
+
+  // Beside step-1, a file system that ignores letter case cannot hold both folders (the rule for case-only names is in windows-paths.test.ts).
+  for (const name of ["Step-1", "STEP-1"]) {
+    it.skipIf(!canCreate("step-1/main.py", `${name}/main.py`))(`rejects a folder named ${name} beside step-1 [needs a file system that tells letter case apart]`, () => {
+      const course = codeCourse({ "step-1/main.py": "x = 1\n", [`${name}/main.py`]: "x = 1\n" });
+
+      expectProblems(course, [error(`${CODE}/${name}`, NOT_A_STEP)]);
+    });
+  }
 
   it("rejects a file in code/, whatever its name", () => {
     const course = codeCourse({ "step-1/main.py": "x = 1\n", "README.md": "# Notes\n", "step-2": "not a folder" });
@@ -308,42 +324,50 @@ describe("entries that are not plain files or folders", () => {
 });
 
 describe("paths that Windows cannot extract", () => {
-  it("fails for a bad character, a trailing dot or space, a device name, and a case-only difference", () => {
-    const course = codeCourse({
-      "step-1/ok.py": "x",
-      "step-1/bad|name.py": "x",
-      "step-1/ends.": "x",
-      "step-1/ends ": "x",
-      "step-1/src/NUL.txt": "x",
-      "step-1/Util.py": "x",
-      "step-1/util.py": "x",
-    });
+  const CHARACTER = `${WINDOWS}the name has a character that Windows does not allow in file names (one of < > : " \\ | ? * or a control character)`;
+  const CASE = (other: string) => `${WINDOWS}\`${other}\` in the same folder differs only in letter case, and Windows and macOS keep only one of them`;
+  const BAD_NAMES = ["ok.py", "bad|name.py", "ends.", "ends ", "src/NUL.txt", "Util.py", "util.py"];
+  const BAD_NAME_PROBLEMS = [
+    error(`${STEP_1}/Util.py`, CASE("util.py")),
+    error(`${STEP_1}/bad|name.py`, CHARACTER),
+    error(`${STEP_1}/ends `, `${WINDOWS}the name ends with a space or a dot, which Windows removes`),
+    error(`${STEP_1}/ends.`, `${WINDOWS}the name ends with a space or a dot, which Windows removes`),
+    error(
+      `${STEP_1}/src/NUL.txt`,
+      `${WINDOWS}the name is a Windows device name (CON, PRN, AUX, NUL, COM1 to COM9, LPT1 to LPT9), alone or with an extension`,
+    ),
+    error(`${STEP_1}/util.py`, CASE("Util.py")),
+  ];
 
-    expectProblems(course, [
-      error(`${STEP_1}/Util.py`, `${WINDOWS}\`util.py\` in the same folder differs only in letter case, and Windows and macOS keep only one of them`),
-      error(
-        `${STEP_1}/bad|name.py`,
-        `${WINDOWS}the name has a character that Windows does not allow in file names (one of < > : " \\ | ? * or a control character)`,
-      ),
-      error(`${STEP_1}/ends `, `${WINDOWS}the name ends with a space or a dot, which Windows removes`),
-      error(`${STEP_1}/ends.`, `${WINDOWS}the name ends with a space or a dot, which Windows removes`),
-      error(
-        `${STEP_1}/src/NUL.txt`,
-        `${WINDOWS}the name is a Windows device name (CON, PRN, AUX, NUL, COM1 to COM9, LPT1 to LPT9), alone or with an extension`,
-      ),
-      error(`${STEP_1}/util.py`, `${WINDOWS}\`Util.py\` in the same folder differs only in letter case, and Windows and macOS keep only one of them`),
-    ]);
+  // The rule on path strings runs on every platform; the tests that write the files run where the file system can hold the names.
+  it("fails, on path strings, for a bad character, a trailing dot or space, a device name, and a case-only difference", () => {
+    expect(stepPathProblems(BAD_NAMES, STEP_1)).toEqual(BAD_NAME_PROBLEMS);
   });
 
-  it("fails once for a bad folder name, however many files are in it", () => {
+  it("fails once, on path strings, for a bad folder name, however many files are in it", () => {
+    expect(stepPathProblems(["what?/a.py", "what?/b.py"], STEP_1)).toEqual([error(`${STEP_1}/what?`, CHARACTER)]);
+  });
+
+  it("fails, on path strings, for a path of 101 characters and accepts 100", () => {
+    const hundred = "d".repeat(100);
+
+    expect(stepPathProblems([hundred], STEP_1)).toEqual([]);
+    expect(stepPathProblems([`${hundred}z`], STEP_1)).toEqual([error(`${STEP_1}/${hundred}z`, `${WINDOWS}it is 101 characters long and the most allowed is 100`)]);
+  });
+
+  it.skipIf(!canCreate(...BAD_NAMES.map((name) => `step-1/${name}`)))(
+    "fails on disk for a bad character, a trailing dot or space, a device name, and a case-only difference [needs a file system that can create these names]",
+    () => {
+      const course = codeCourse(Object.fromEntries(BAD_NAMES.map((name) => [`step-1/${name}`, "x"])));
+
+      expectProblems(course, BAD_NAME_PROBLEMS);
+    },
+  );
+
+  it.skipIf(!canCreate("step-1/what?/a.py"))("fails on disk once for a bad folder name, however many files are in it [needs a file system that can create `what?`]", () => {
     const course = codeCourse({ "step-1/what?/a.py": "x", "step-1/what?/b.py": "x" });
 
-    expectProblems(course, [
-      error(
-        `${STEP_1}/what?`,
-        `${WINDOWS}the name has a character that Windows does not allow in file names (one of < > : " \\ | ? * or a control character)`,
-      ),
-    ]);
+    expectProblems(course, [error(`${STEP_1}/what?`, CHARACTER)]);
   });
 
   it("fails for a path of 101 characters inside the step, and accepts 100", () => {

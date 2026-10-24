@@ -4,11 +4,12 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { inspectCourse } from "../src/course.ts";
 import { writeAssets, writeCodeSteps, writeQuizzes } from "../src/index.ts";
 import { GLB, GLTF, JPG, NEXT, PNG, SVG, VTT, WEBP, assetCourse, fixtureAsset } from "./asset-helpers.ts";
-import { FIXTURES, VALID_COURSE, makeCourse, temporaryFolder } from "./helpers.ts";
+import { FIXTURES, PART_DIR, VALID_COURSE, makeCourse, temporaryFolder, toLf } from "./helpers.ts";
 
 const GOLDEN = join(FIXTURES, "expected");
 
@@ -186,7 +187,7 @@ describe("text files are normalized before they are hashed", () => {
   it("gives the same output for CRLF, lone CR, and a byte order mark as for LF", () => {
     const build = (change: (text: string) => string) => {
       const folder = buildFolder();
-      const course = assetCourse(Object.fromEntries(Object.entries(texts).map(([path, text]) => [path, change(text)])));
+      const course = assetCourse(Object.fromEntries(Object.entries(texts).map(([path, text]) => [path, change(toLf(text))])));
       expect(writeAssets(course, folder)).toEqual([]);
       return folder;
     };
@@ -250,12 +251,34 @@ describe("determinism", () => {
     const build = buildFolder();
     const expected = buildFolder();
     writeAssets(VALID_COURSE, expected);
-    const script = `import("${join(dirname(FIXTURES), "src", "index.ts").replaceAll("\\", "/")}").then((m) => { const p = m.writeAssets(process.argv[1], process.argv[2]); if (p.length) process.exit(1); });`;
+    // A file: URL, because `import("C:/...")` is not valid for the ESM loader on Windows; it also encodes a space or `#` in the path.
+    const script = `import(${JSON.stringify(importUrl(join(PART_DIR, "src", "index.ts")))}).then((m) => { const p = m.writeAssets(process.argv[1], process.argv[2]); if (p.length) process.exit(1); });`;
 
     const result = spawnSync(process.execPath, ["-e", script, VALID_COURSE, build], { cwd: temporaryFolder(), encoding: "utf8" });
 
     expect(result.status, result.stderr).toBe(0);
     expect(snapshot(build)).toEqual(snapshot(expected));
+  });
+});
+
+/** The URL that a child process imports a file by, as a script writes it. */
+const importUrl = (file: string) => pathToFileURL(file).href;
+
+describe("importing a file by its path in a child process", () => {
+  it("works when a folder name has a space or a number sign, as a user name like `John Smith` does", () => {
+    const folder = join(temporaryFolder(), "John Smith #1");
+    mkdirSync(folder);
+    const module = join(folder, "module with # and spaces.mjs");
+    writeFileSync(module, "export const answer = 42;\n");
+
+    const result = spawnSync(process.execPath, ["-e", `import(${JSON.stringify(importUrl(module))}).then((m) => console.log(m.answer));`], { cwd: temporaryFolder(), encoding: "utf8" });
+
+    expect(result.stderr).toBe("");
+    expect(result.stdout.trim()).toBe("42");
+  });
+
+  it("uses a file: URL, which has no drive letter that the loader would read as a scheme", () => {
+    expect(importUrl(join(PART_DIR, "src", "index.ts"))).toMatch(/^file:\/\/\//);
   });
 });
 

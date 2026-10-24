@@ -4,8 +4,9 @@ import { symlinkSync, truncateSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { inspectCourse, validateCourse } from "../src/course.ts";
+import { nameProblems } from "../src/asset-files.ts";
 import { GLB, GLTF, JPG, PNG, SVG, VTT, WEBP, assetCourse, errorsOf, lessonWith, lines, mediaConfigFile } from "./asset-helpers.ts";
-import { makeCourse, temporaryFolder } from "./helpers.ts";
+import { canCreate, makeCourse, temporaryFolder } from "./helpers.ts";
 
 const ALLOWED = "the allowed types are .png, .jpg, .jpeg, .webp, .svg, .glb, .gltf, and .vtt";
 const VIDEO_HINT = "videos are not kept in assets/: put them on the media CDN and use them with `Video`";
@@ -220,25 +221,68 @@ describe("empty files and sizes", () => {
   });
 });
 
-describe("names", () => {
-  it.each([
-    ["a space", "my pic.png"],
-    ["a percent sign", "a%b.png"],
-    ["a number sign", "a#b.png"],
-    ["a question mark", "a?b.png"],
-    ["an ampersand", "a&b.png"],
-    ["a plus sign", "a+b.png"],
-    ["a tilde", "a~b.png"],
-    ["a parenthesis", "a(b).png"],
-    ["a non-ASCII letter", "café.png"],
-    ["a leading dot", ".hidden.png"],
-    ["a comma", "a,b.png"],
-    ["an apostrophe", "it's.png"],
-  ])("rejects %s in a file name, naming the file", (_name, name) => {
-    expect(only(name, PNG).filter((message) => message.includes("the name may use only"))).toEqual([
-      `assets/${name}: the name may use only letters, digits, \`.\`, \`_\`, and \`-\`, and may not start with \`.\`, so that a path never needs URL-encoding`,
-    ]);
+/** The names that a URL would need to encode: each is one case of the rule, run on path strings and on disk. */
+const URL_NAMES: [string, string][] = [
+  ["a space", "my pic.png"],
+  ["a percent sign", "a%b.png"],
+  ["a number sign", "a#b.png"],
+  ["a question mark", "a?b.png"],
+  ["an ampersand", "a&b.png"],
+  ["a plus sign", "a+b.png"],
+  ["a tilde", "a~b.png"],
+  ["a parenthesis", "a(b).png"],
+  ["a non-ASCII letter", "café.png"],
+  ["a leading dot", ".hidden.png"],
+  ["a comma", "a,b.png"],
+  ["an apostrophe", "it's.png"],
+];
+const URL_NAME_MESSAGE = "the name may use only letters, digits, `.`, `_`, and `-`, and may not start with `.`, so that a path never needs URL-encoding";
+
+/** The names that Windows cannot extract: the rule, and the kind of message it gives. */
+const WINDOWS_NAMES: [string, string, RegExp][] = [
+  ["a device name", "CON.png", /Windows does not allow|device name/],
+  ["a device name with an extension, in a folder", "nul.dir/x.png", /device name/],
+  ["COM1", "com1.png", /device name/],
+  ["a trailing space", "pic.png ", /ends with a space or a dot/],
+  ["a trailing dot", "pic.png.", /ends with a space or a dot/],
+  ["a colon", "a:b.png", /character that Windows does not allow/],
+  ["a question mark", "a?b.png", /character that Windows does not allow/],
+];
+
+/** The problems `nameProblems` gives for these paths, as `path: message`; no file is read or written. */
+function nameProblemLines(...paths: string[]): string[] {
+  const found: string[] = [];
+  nameProblems(paths, (path, message) => found.push(`${path}: ${message}`));
+  return found;
+}
+
+describe("names, checked on path strings (the same on every platform)", () => {
+  it.each(URL_NAMES)("rejects %s in a file name, naming the file", (_name, name) => {
+    expect(nameProblemLines(name).filter((line) => line.includes("the name may use only"))).toEqual([`${name}: ${URL_NAME_MESSAGE}`]);
   });
+
+  it.each(WINDOWS_NAMES)("rejects %s, as windowsPathProblems does for code", (_name, path, message) => {
+    const found = nameProblemLines(path).filter((line) => message.test(line));
+
+    expect(found.length).toBeGreaterThanOrEqual(1);
+    // Each names the file or a folder on its way, never another path.
+    expect(found.every((line) => path.startsWith(line.slice(0, line.indexOf(": "))))).toBe(true);
+  });
+
+  it("returns the paths it reported, once each, and the shortest path for a folder", () => {
+    const reported = nameProblems(["my folder/a.png", "my folder/b.png", "ok/fine.png", "ok/a:b.png"], () => {});
+
+    expect([...reported].sort()).toEqual(["my folder", "ok/a:b.png"]);
+  });
+});
+
+describe("names", () => {
+  // These write the file, so they run where the file system can create the name; the same rule is run on strings above.
+  for (const [what, name] of URL_NAMES) {
+    it.skipIf(!canCreate(name))(`rejects ${what} in a file name on disk, naming the file [needs a file system that can create the name]`, () => {
+      expect(only(name, PNG).filter((message) => message.includes("the name may use only"))).toEqual([`assets/${name}: ${URL_NAME_MESSAGE}`]);
+    });
+  }
 
   it("names the shortest path that has the problem: the folder, not the files under it", () => {
     const problems = check({ "my folder/a.png": PNG, "my folder/b.png": PNG, "my folder/deeper/c.png": PNG });
@@ -256,19 +300,14 @@ describe("names", () => {
     expect(check({ [path]: PNG })).toEqual([]);
   });
 
-  it.each([
-    ["a device name", "CON.png", /Windows does not allow|device name/],
-    ["a device name with an extension, in a folder", "nul.dir/x.png", /device name/],
-    ["COM1", "com1.png", /device name/],
-    ["a trailing space", "pic.png ", /ends with a space or a dot/],
-    ["a trailing dot", "pic.png.", /ends with a space or a dot/],
-    ["a colon", "a:b.png", /character that Windows does not allow/],
-  ])("rejects %s, as windowsPathProblems does for code", (_name, path, message) => {
-    const found = check({ [path]: PNG }).filter((p) => message.test(p.message));
+  for (const [what, path, message] of WINDOWS_NAMES) {
+    it.skipIf(!canCreate(path))(`rejects ${what} on disk, as windowsPathProblems does for code [needs a file system that can create the name]`, () => {
+      const found = check({ [path]: PNG }).filter((p) => message.test(p.message));
 
-    expect(found.length).toBeGreaterThanOrEqual(1);
-    expect(found.every((p) => p.file.startsWith("assets/"))).toBe(true);
-  });
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      expect(found.every((p) => p.file.startsWith("assets/"))).toBe(true);
+    });
+  }
 
   it("rejects a path of more than 100 characters from assets/, and accepts 100", () => {
     const path = (length: number) => `${"d".repeat(40)}/${"e".repeat(40)}/${"f".repeat(length - 86)}.png`;
