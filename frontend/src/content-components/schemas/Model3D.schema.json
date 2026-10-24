@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Model3D",
+  "description": "An interactive 3D model. The props of <Model3D ... /> in a lesson.",
+  "type": "object",
+  "required": ["src", "alt", "poster"],
+  "additionalProperties": false,
+  "properties": {
+    "src": { "description": "The URL of the .glb or .gltf model.", "type": "string", "minLength": 1, "x-kind": "url" },
+    "alt": { "description": "A text description of the model.", "type": "string", "minLength": 1 },
+    "poster": { "description": "The URL of the image shown while the model loads or when it cannot be shown.", "type": "string", "minLength": 1, "x-kind": "url" }
+  },
+  "x-children": "none"
+}

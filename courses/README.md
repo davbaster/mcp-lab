@@ -53,6 +53,89 @@ free_preview:              # chapters visitors can read without an account; may 
 - Anything else (a stray file, a subfolder in `lessons/`, a non-`.mdx` file there) is a warning. `.DS_Store` and `Thumbs.db` are ignored.
 - Names must match exactly, including capitals, on every platform: `01-Tools` is not `01-tools`.
 - YAML and MDX files may use CRLF line endings and start with a UTF-8 byte order mark.
+- The body of every lesson is compiled when you check the course (see [Lessons](#lessons)).
+
+## Lessons
+
+A lesson is the front matter (see above) followed by the body: restricted MDX, which is Markdown plus a few components. The build turns the body into a JSON tree. It never runs anything in a lesson, and it rejects a lesson with a message that names the file, the line, and the column.
+
+````mdx
+---
+title: Your first tool
+order: 2
+---
+
+# Your first tool
+
+A tool is a function that the model can call. Register it with `@mcp.tool()`:
+
+```python
+@mcp.tool()
+def add(a: int, b: int) -> int:
+    return a + b
+```
+
+<Callout type="tip" title="Type hints matter">
+
+The type hints become the tool's input schema, so always write them.
+
+</Callout>
+
+<Tabs>
+
+<Tab label="macOS">
+
+Run `uv run server.py` in Terminal.
+
+</Tab>
+
+<Tab label="Windows">
+
+Run `uv run server.py` in PowerShell.
+
+</Tab>
+
+</Tabs>
+
+<Image src="images/tools.png" alt="A model calling a tool" />
+
+See the [MCP specification](https://modelcontextprotocol.io/) for more.
+
+<CodeSteps step="1" file="server.py" />
+````
+
+**You may write**
+
+- Markdown: headings, paragraphs, *emphasis*, **strong text**, `inline code`, links, images, ordered and unordered lists (also nested), block quotes, horizontal rules, hard line breaks (two spaces or a backslash at the end of a line), and fenced code blocks with an optional language (` ```python `).
+- These components, each with the props below. Put the opening tag and the closing tag on their own lines, with a blank line before and after what is between them. A component that takes no children is written as one self-closing tag on its own line.
+
+  | Component | Props | Children |
+  |---|---|---|
+  | `Video` | `src`, `title`; optional `captions`, `poster` | none |
+  | `Model3D` | `src`, `alt`, `poster` | none |
+  | `Diagram` | `alt`, and exactly one of `src` (a URL) or `source` (Mermaid text) | none |
+  | `Image` | `src`, `alt` | none |
+  | `Callout` | `type` (`tip`, `warning`, or `note`); optional `title` | Markdown and components |
+  | `Tabs` | none | two or more `Tab` |
+  | `Tab` (only inside `Tabs`) | `label` | Markdown and components |
+  | `CodeSteps` | `step` (a whole number of 1 or more); optional `file` | none |
+
+- Props are written as text in quotes (`alt="A server"`). A prop must not be empty. The text can hold character references such as `&amp;`.
+- Links and URL props (`src`, `captions`, `poster`) that are relative (`../a.md`, `/x`, `#section`, `?q=1`) or start with `http:`, `https:`, or `mailto:`.
+- Code that only looks like code: inside a code fence or in `inline code`, anything goes (`import x`, `<script>`, `{1 + 1}`, `onClick`). In ordinary text, write a brace as `\{`. The text `a < b` is fine.
+
+**You may not write** (each is an error)
+
+- JavaScript: `{1 + 1}` in text or in a prop, a spread `{...props}`, a comment `{/* note */}`, or `import` and `export` lines.
+- HTML: `<div>`, `<script>`, `<iframe>`, or any tag that starts with a lowercase letter; fragments (`<>`); names such as `<a:b>` or `<a.b>`.
+- An attribute whose name starts with `on` (`onClick`, `onload`), in any letter case.
+- A component that is not in the table, a prop that is not listed, a prop written twice, a missing or empty required prop, a value that does not fit (a `Callout` of type `danger`), or children that the component does not take.
+- A component inside a paragraph (`<Callout>text</Callout>` on one line).
+- A URL with any other scheme (`javascript:`, `data:`, `vbscript:`, `file:`), and a URL that starts with `//`.
+- Reference-style links and images (`[text][label]`, `![alt][label]`) and their definitions (`[label]: url`), and anything after the language on a code fence (` ```python title="x" `).
+- Tables, strikethrough, task lists, and footnotes are not part of the format: they are not parsed and stay plain text. Ask for them in an issue if a course needs them.
+
+A tag that is not closed, or closed by another tag, is a parse error: the build reports the first one and stops checking that lesson (the other lessons are still checked). To try a lesson, run `npm run compile -- <lesson.mdx>` in `content-build/`, which prints the tree or the problems. The tree format, the schemas, and how to add a component are in [`content-build/README.md`](../content-build/README.md#lessons).
 
 ## Code steps
 

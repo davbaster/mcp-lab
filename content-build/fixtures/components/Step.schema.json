@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Step",
+  "description": "A component whose required prop has a pattern.",
+  "type": "object",
+  "required": ["step"],
+  "additionalProperties": false,
+  "properties": {
+    "step": { "type": "string", "pattern": "^[1-9][0-9]*$" }
+  },
+  "x-children": "none"
+}

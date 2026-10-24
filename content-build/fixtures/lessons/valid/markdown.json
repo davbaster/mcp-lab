@@ -1,0 +1,373 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 1,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading one"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading two"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 3,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading three"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 4,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading four"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 5,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading five"
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "depth": 6,
+      "children": [
+        {
+          "type": "text",
+          "value": "Heading six"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "A paragraph with "
+        },
+        {
+          "type": "emphasis",
+          "children": [
+            {
+              "type": "text",
+              "value": "emphasis"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "strong",
+          "children": [
+            {
+              "type": "text",
+              "value": "strong text"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "inlineCode",
+          "value": "inline code"
+        },
+        {
+          "type": "text",
+          "value": ", and a "
+        },
+        {
+          "type": "link",
+          "url": "https://example.com/a",
+          "title": "A title",
+          "children": [
+            {
+              "type": "text",
+              "value": "link"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " next to a "
+        },
+        {
+          "type": "link",
+          "url": "../a.md",
+          "children": [
+            {
+              "type": "text",
+              "value": "relative link"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Two lines end with a hard break"
+        },
+        {
+          "type": "break"
+        },
+        {
+          "type": "text",
+          "value": "and continue here."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "image",
+          "url": "images/pic.png",
+          "alt": "An image",
+          "title": "Image title"
+        },
+        {
+          "type": "text",
+          "value": " and "
+        },
+        {
+          "type": "image",
+          "url": "images/plain.png",
+          "alt": ""
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "ordered": false,
+      "children": [
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "First item"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Second item"
+                }
+              ]
+            },
+            {
+              "type": "list",
+              "ordered": false,
+              "children": [
+                {
+                  "type": "listItem",
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "children": [
+                        {
+                          "type": "text",
+                          "value": "Nested item"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "children": [
+                    {
+                      "type": "paragraph",
+                      "children": [
+                        {
+                          "type": "text",
+                          "value": "Another nested item"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Third item"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "start": 3,
+      "children": [
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Third"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Fourth"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "ordered": true,
+      "start": 1,
+      "children": [
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "One"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "listItem",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Two"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "A quote with "
+            },
+            {
+              "type": "strong",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "strong text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "."
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "A second paragraph."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "thematicBreak"
+    },
+    {
+      "type": "code",
+      "lang": "python",
+      "value": "print(\"hello\")"
+    },
+    {
+      "type": "code",
+      "value": "no language here"
+    }
+  ]
+}

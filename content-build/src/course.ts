@@ -6,9 +6,13 @@ import type { Kind } from "./folder.ts";
 import { sortProblems } from "./problem.ts";
 import type { Problem } from "./problem.ts";
 import { courseShape, checkShape } from "./schema.ts";
+import { DEFAULT_SCHEMA_DIR, loadComponentSchemas } from "./component-schemas.ts";
+import type { ComponentSchemas } from "./component-schemas.ts";
+import { compileLesson } from "./lesson.ts";
 import { parseYaml } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
 import { validateChapter } from "./chapter.ts";
+import type { LessonChecker } from "./chapter.ts";
 import { checkChapterCode, makeCodeCollector } from "./code-steps.ts";
 import type { CodeCollector } from "./code-steps.ts";
 import { makeQuizCollector } from "./quiz.ts";
@@ -35,10 +39,21 @@ const CHAPTER_ENTRIES = {
  * problems, sorted by file and then message. An empty list means the course is fine; warnings do not
  * make a course invalid. Only the files named in the format are read, and never a path taken from
  * a file's content.
+ *
+ * It also compiles every lesson of every listed chapter (see `compileLesson`) and returns the lesson's
+ * problems, which have a line and a column. A component schema that is not valid is not a problem of
+ * the course: it throws a `SetupError`.
  */
-export function validateCourse(courseDir: string): Problem[] {
-  return inspectCourse(courseDir).problems;
+export function validateCourse(courseDir: string, options: { schemaDir?: string } = {}): Problem[] {
+  return inspectCourse(courseDir, { compileLessons: true, ...options }).problems;
 }
+
+export type InspectOptions = {
+  /** Compile the lessons too, and add their problems. `validateCourse` does; the steps that only build quizzes or code do not. */
+  compileLessons?: boolean;
+  /** The folder of the component schemas, for `compileLessons`. */
+  schemaDir?: string;
+};
 
 export type Inspection = {
   /** What `validateCourse` returns. */
@@ -52,7 +67,7 @@ export type Inspection = {
 };
 
 /** `validateCourse` and what else the check found out, for the steps that build from the course. */
-export function inspectCourse(courseDir: string): Inspection {
+export function inspectCourse(courseDir: string, options: InspectOptions = {}): Inspection {
   const root = resolveCoursePath(courseDir);
   const kind = pathKind(root);
   if (kind === undefined) return { problems: [{ severity: "error", file: "", message: "the course folder does not exist" }] };
@@ -70,8 +85,19 @@ export function inspectCourse(courseDir: string): Inspection {
   const quizzes = makeQuizCollector(folderName);
   const code = makeCodeCollector(folderName);
   const course = readCourseYaml(root, found, folderName, report);
-  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes, code);
+  const checkLesson = options.compileLessons === true ? lessonChecker(options.schemaDir ?? DEFAULT_SCHEMA_DIR) : undefined;
+  if (course.chapters !== undefined) checkChapters(root, found, course.chapters, course.yaml, report, quizzes, code, checkLesson);
   return { problems: sortProblems(report.problems), quizzes, chapters: course.chapters, code };
+}
+
+/** Compiles a lesson with the component schemas, which are read once, when the first lesson needs them. */
+function lessonChecker(schemaDir: string): LessonChecker {
+  let components: ComponentSchemas | undefined;
+  return (text, file) => {
+    components ??= loadComponentSchemas(schemaDir);
+    const result = compileLesson(text, { path: file, components });
+    return "problems" in result ? result.problems : [];
+  };
 }
 
 type CourseYaml = {
@@ -146,6 +172,7 @@ function checkChapters(
   report: Report,
   quizzes: QuizCollector,
   code: CodeCollector,
+  checkLesson?: LessonChecker,
 ) {
   if (courseEntries.get("chapters") !== "directory") {
     report.error("chapters", "the chapters/ folder is missing");
@@ -179,7 +206,7 @@ function checkChapters(
     validateChapter(join(root, "chapters", name), `chapters/${name}`, CHAPTER_ENTRIES, report, {
       collector: quizzes,
       chapterId: name,
-    });
+    }, checkLesson);
     checkChapterCode(join(root, "chapters", name), `chapters/${name}`, name, report, code);
   });
 

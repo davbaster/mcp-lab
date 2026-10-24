@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Video",
+  "description": "A lesson video. The props of <Video ... /> in a lesson. The content build checks the scheme of every x-kind url prop; whether the URL is on an allowed media origin is checked in #9.",
+  "type": "object",
+  "required": ["src", "title"],
+  "additionalProperties": false,
+  "properties": {
+    "src": { "description": "The video URL.", "type": "string", "minLength": 1, "x-kind": "url" },
+    "title": { "description": "A short title for the video, read by screen readers.", "type": "string", "minLength": 1 },
+    "captions": { "description": "The URL of a .vtt captions file.", "type": "string", "minLength": 1, "x-kind": "url" },
+    "poster": { "description": "The URL of the image shown before the video plays.", "type": "string", "minLength": 1, "x-kind": "url" }
+  },
+  "x-children": "none"
+}

@@ -1,6 +1,6 @@
 # content-build
 
-A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. So far it validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, and each chapter's code steps, and it compiles the quizzes and the code steps to private JSON (and the code to ZIPs). The format is described in [`courses/README.md`](../courses/README.md).
+A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. So far it validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, and each chapter's code steps, it compiles every lesson to a JSON tree (or rejects it), and it compiles the quizzes and the code steps to private JSON (and the code to ZIPs). The format is described in [`courses/README.md`](../courses/README.md).
 
 It needs Node 24 (the version in the root `.nvmrc`). The scripts run `.ts` files with Node's built-in type stripping, so no TypeScript runner is installed, `engines.node` is `>=24`, and the code uses only erasable TypeScript syntax (`erasableSyntaxOnly` in `tsconfig.json`: no enums, namespaces, or constructor parameter properties). Imports of local files end in `.ts`.
 
@@ -13,8 +13,9 @@ Run from the repo root with `make install-content-build`, `make lint-content-bui
 - `npm run lint` - ESLint
 - `npm run typecheck` - `tsc --noEmit`
 - `npm run validate -- <course folder>` - check one course folder, for example `npm run validate -- fixtures/valid/sample-course` (the path may use `/` or `\`)
+- `npm run compile -- <lesson.mdx>` - compile one lesson to its JSON tree (see [Lessons](#lessons))
 
-`validate` prints each problem on its own line, on stdout, as `<path>[:<line>]: error: <message>` or `<path>[:<line>]: warning: <message>`, then `N error(s), M warning(s)`. `<path>` is the course path as given plus the file's path inside the course, always with `/`. All problems come in one run, sorted by path and then message. The exit code is 1 if there is an error, 0 otherwise (2 when no path is given).
+`validate` prints each problem on its own line, on stdout, as `<path>[:<line>[:<column>]]: error: <message>` or `<path>[:<line>[:<column>]]: warning: <message>`, then `N error(s), M warning(s)`. `<path>` is the course path as given plus the file's path inside the course, always with `/`. Only the problems of a lesson body have a column. All problems come in one run, sorted by path and then message. The exit code is 1 if there is an error, 0 otherwise, 2 when no path is given, and 3 when a component schema is not valid (see [Setup errors](#setup-errors)).
 
 ## Using it from code
 
@@ -25,7 +26,80 @@ const problems = validateCourse("courses/mcp-server");
 // [{ severity: "error" | "warning", file: "course.yaml", line?: 3, message: "..." }, ...]
 ```
 
-`file` is the path inside the course folder, with `/`. Later steps (#8, #12) add their checks next to the ones here and reuse `validateCourse`.
+`file` is the path inside the course folder, with `/`. A problem of a lesson body also has a `column`. Later steps (#12) add their checks next to the ones here and reuse `validateCourse`.
+
+## Lessons
+
+`validateCourse` compiles the body of every lesson of every listed chapter with `compileLesson`, and adds the problems to its list. A lesson whose front matter block cannot be found is not compiled, because the layout check already reports it. The format a lesson may use is in [`courses/README.md`](../courses/README.md#lessons).
+
+```ts
+import { compileLesson, serializeTree } from "./src/index.ts";
+
+const result = compileLesson(text, { path: "chapters/01-intro/lessons/01-welcome.mdx" });
+if ("problems" in result) {
+  // [{ severity: "error", file, line, column, message }, ...] in the order of the lesson
+} else {
+  const json = serializeTree(result.tree); // what `compile` prints; #12 writes it to the build output
+}
+```
+
+`compileLesson(source, options)` takes the lesson text and its path (used as `file` in the problems) and returns either `{ tree }` or `{ problems }`, never both and never a thrown lesson error. It reads no file except the component schemas. `options.schemaDir` is the folder of the component schemas; it defaults to `frontend/src/content-components/schemas/`, found from `src/lesson.ts` and not from the working folder.
+
+How it works:
+
+- The text is normalized first: every line ending becomes LF, and one leading byte order mark is removed. A CRLF file with a byte order mark gives the same tree, byte for byte, as the LF file, and the same lines and columns.
+- The front matter block is split off with the same `splitFrontMatter` as the layout check, and a missing or unclosed block is rejected with its message (at line 1, column 1). What the front matter holds is not checked again. The front matter lines are left blank, not cut, so a line number is a line of the file.
+- The body is parsed to a syntax tree by `remark-parse` and `remark-mdx` (through `unified`) and then read by `src/lesson.ts`. Nothing is evaluated or bundled: the JavaScript in a lesson is parsed to find it and reject it, and never run. A test uses a lesson that would set a global and checks that it stays unset.
+- Each node of the output is built by listing its fields, so nothing else from the parser reaches the output. The finished tree is checked against `schemas/lesson-tree.schema.json` before it is returned.
+- Lines and columns are the parser's: they start at 1, and a column counts UTF-16 code units, so a tab is one column and an emoji is two. A parse error (an unclosed tag, a closing tag that does not match, a JavaScript syntax error, `<!-- -->`, and so on) stops that lesson at the first error, with the parser's message and position. A lesson without a parse error reports all its problems, in the order of the lesson. The problems of different lessons are independent.
+
+### The tree
+
+The tree is data only: no functions, no code strings, no `position`, and no fields other than the ones below. `schemas/lesson-tree.schema.json` (draft-07) is the contract that the frontend renders from (#19).
+
+- The root is `{ "type": "root", "children": [...] }`. A lesson with front matter and no body is `{"type":"root","children":[]}`.
+- Markdown nodes are named like mdast and have only these fields: `heading` (`depth` 1 to 6, `children`), `paragraph`, `blockquote`, `list` (`ordered`, `start` only when ordered, `children`), `listItem`, `code` (`lang` when given, `value`), `thematicBreak`, `text` (`value`), `emphasis`, `strong`, `inlineCode` (`value`), `break`, `link` (`url`, `title` when given, `children`), and `image` (`url`, `alt`, `title` when given).
+- A component is `{ "type": "component", "name": "Callout", "props": { ... }, "children": [...] }`. `children` is always there, and is `[]` for a component that takes none. `props` holds each prop the author wrote, as a string or `true` for a bare attribute (`<X flag />`), with the keys in code-unit sorted order. `Tab` is a component node inside the `Tabs` node.
+- Components are block-level only (on their own lines, or inside a list item or a block quote). One in a paragraph is rejected.
+- The golden trees are in `fixtures/lessons/valid/<case>.json` beside the lesson, and a test compares them byte for byte.
+
+### Rejected content
+
+Each of these is an error with the file, the line, and the column. A test for each case is in `tests/lesson-rejections.test.ts`, with a lesson in `fixtures/lessons/invalid/`.
+
+- JavaScript: an expression in text or in a prop, a spread `{...props}`, a comment `{/* note */}`, and `import` or `export`. For a prop or a spread, the column is the start of the attribute.
+- HTML elements and `<script>`, fragments (`<>`), and names with `:` or `.`.
+- An attribute whose name starts with `on`, in any letter case, on a component or an element.
+- A component name that is not a file in the schema folder (compared exactly, from the folder listing, so `<CALLOUT>` is unknown even where the file system ignores case); a prop that the schema does not list, a prop written twice, a prop of the wrong type, outside its `enum` or `pattern`, empty, or a required one that is missing; a `oneOf` that is not met; children that the component does not take (see `x-children`). `__proto__` or `constructor` as a name is simply unknown.
+- A URL with a scheme other than `http`, `https`, or `mailto`, in a link, an image, or a URL prop. The check reads a URL as a browser does: it ignores the case, tabs and line breaks inside the scheme, and spaces or control characters in front, and it rejects `//` at the start. Relative URLs and `#`, `?`, `/` URLs are fine. Whether a URL points to an allowed origin or to a file that exists is #9.
+- Nesting more than 100 levels deep (`MAX_DEPTH` in `src/lesson.ts`): a lesson nested far deeper than that overflows the parser's stack, and is reported the same way.
+- Reference-style links and images and their definitions, and a code fence with text after the language. Tables, strikethrough, task lists, and footnotes are not parsed and stay plain text.
+
+Text that only looks like code is kept as it is: a code fence or inline code that holds `import x`, `<script>`, `{1 + 1}`, or `onClick`, an escaped brace `\{`, and the text `a < b`.
+
+### Component schemas
+
+`frontend/src/content-components/schemas/<Name>.schema.json` holds one draft-07 JSON Schema for the props object of each component: `type: object`, `required`, `properties`, and `additionalProperties: false`. Authors can only write a string or a bare attribute, so every property is `type: string` (with `enum`, `pattern`, or `minLength: 1` where needed) or `type: boolean`. The compiler lists the folder and reads each `<Name>.schema.json` in ajv's strict mode, so a keyword that ajv does not know is an error. Three annotations are registered, and their values are checked as the schema compiles:
+
+- `"x-kind": "url"` on a string property: the prop is a URL, and the compiler checks its scheme with the same function as for Markdown links (`src/url.ts`).
+- `"x-children"` (required in every schema): what may be between the tags. `"none"`, or `{ "markdown": true, "components": "all" }` (Markdown and every component), or `{ "markdown": false, "components": ["Tab"], "min": 2 }` (only the listed components, at least `min` of them).
+- `"x-nested"`: components that exist only inside this one, each a props schema of its own, with its own `x-children`. `Tab` is declared inside `Tabs.schema.json` and has no file, so each schema file still maps to one frontend component. A `Tab` outside `Tabs` is an unknown component.
+
+A `oneOf` over `required` is how a schema says "exactly one of these props" (`Diagram`: `src` or `source`). strictRequired is off for these schemas, and the loader checks that every name in `required` is a property.
+
+To add a component, add `<Name>.schema.json` (the name starts with a capital letter) and the entry in the component registry of the frontend (#19); both are an app change that is reviewed. Nothing in `frontend/` imports from `content-build/`, and the other way round.
+
+The rule tests use a small copy of the schemas in `fixtures/components/`, so they do not change when a real schema does; one test checks the real folder.
+
+### Setup errors
+
+A schema file that is not valid JSON, or not a valid component schema, stops the compile with a message that names the file. It is a problem of the build and not of a lesson, so it is thrown as a `SetupError` and never returned in the problems. `validate` and `compile` print it on stderr as `build setup error: <message>` and exit with 3.
+
+### The `compile` command
+
+`npm run compile -- <lesson.mdx>` (the path may use `/` or `\`) prints the tree on stdout, as UTF-8 with LF line endings, a 2-space indent, and a final newline, and exits 0. For a rejected lesson it prints nothing on stdout, each problem on stderr as `<path>:<line>:<column>: error: <message>` (the path with `/`) followed by `N error(s), M warning(s)`, and exits 1. A missing or unreadable file, or one that is not UTF-8 text, is a rejection too. No path, or more than one, prints the usage on stderr and exits 2.
+
+**Windows PowerShell 5.1:** `npm run compile -- lesson.mdx > tree.json` writes `tree.json` as UTF-16 with a byte order mark, because PowerShell 5.1 re-encodes what `>` redirects. A tree saved that way is not valid input for anything else (not for `JSON.parse`, the build, or the frontend). Use PowerShell 7, where `>` writes UTF-8, or `cmd /c "npm run compile -- lesson.mdx > tree.json"`, which writes the bytes as they are. The build output (#12) is written by Node, not by a redirect, and is always UTF-8 with LF.
 
 ## Quizzes
 
@@ -72,7 +146,7 @@ A file is `{ "course_id", "chapter_id", "questions": [...] }`. A question has, i
 
 Every problem has `file` set to the folder or file inside the course (`chapters/03-tools/code/step-2/server.py`) and no line number. A problem never quotes file content. A bad step does not stop the other chapters from being checked.
 
-`inspectCourse(courseDir).code` has `problems` (the problems of the code steps of the listed chapters) and `chapters`: for each listed chapter whose steps are all valid, `{ chapter_id, steps: [{ step, files }] }`, where `files` is a `Map` from each file path (with `/`, sorted) to its normalized text. #8 uses it to check the `step` and `file` props of `CodeSteps`.
+`inspectCourse(courseDir).code` has `problems` (the problems of the code steps of the listed chapters) and `chapters`: for each listed chapter whose steps are all valid, `{ chapter_id, steps: [{ step, files }] }`, where `files` is a `Map` from each file path (with `/`, sorted) to its normalized text. A later check can use it to look at the `step` and `file` props of `CodeSteps`, which the lesson compiler checks only for their shape.
 
 ### Text and diffs
 
@@ -122,11 +196,14 @@ const problems = await writeCodeSteps("courses/mcp-server", "build");
 - `src/quiz.ts` - `compileQuiz`: the quiz rules, the limits, and the data to write; `src/write-quizzes.ts` - `writeQuizzes`
 - `src/code-steps.ts` - the code step checks and `CODE_LIMITS`; `src/windows-paths.ts` - the Windows path rule; `src/text.ts` - normalizing and splitting text
 - `src/step-diff.ts` - `diffSteps`; `src/chapter-zip.ts` - `buildChapterZip`; `src/write-code-steps.ts` - `writeCodeSteps`
+- `src/lesson.ts` - `compileLesson`; `src/lesson-tree.ts` - the tree types, the check against its schema, and `serializeTree`; `src/component-schemas.ts` - reads the component schemas and `SetupError`; `src/url.ts` - the URL rule
+- `src/compile-cli.ts` and `src/compile.ts` - the `compile` command and its entry point
 - `src/schema.ts` - ajv checks, with messages that name the field instead of the schema keyword
-- `schemas/` - the JSON Schemas for `course.yaml`, the lesson front matter, and `quiz.yaml` (component props schemas live in `frontend/src/content-components/schemas/`, not here)
+- `schemas/` - the JSON Schemas for `course.yaml`, the lesson front matter, `quiz.yaml`, and the lesson tree (component props schemas live in `frontend/src/content-components/schemas/`, not here)
 - `src/folder.ts`, `src/yaml-file.ts`, `src/report.ts`, `src/problem.ts` - reading folders and YAML, collecting and printing problems
 - `src/cli.ts` and `src/validate.ts` - the `validate` command and its entry point
 - `fixtures/quizzes/valid/<case>.yaml` and `fixtures/quizzes/invalid/<case>.yaml` - single quiz files; a test puts one into a copy of the valid course as `chapters/01-first-steps/quiz.yaml`
+- `fixtures/lessons/valid/<case>.mdx` with `<case>.json` beside it (the golden tree), `fixtures/lessons/invalid/<case>.mdx` - one lesson per rejection; `fixtures/components/` - the small schema folder that the rule tests use
 - `fixtures/expected/` - the golden output of `writeQuizzes` and `writeCodeSteps` for the valid course
 - `fixtures/valid/` - a valid course; `fixtures/invalid/<case>/` - one course per rule it breaks; `fixtures/warnings/<case>/` - courses that are valid but get a warning. Each folder's name is the course `id`, except `invalid/id-mismatch`.
 - `tests/` - the Vitest tests. Cases that depend on line endings or a byte order mark are written to a temporary folder by the test, so git's line-ending settings cannot change them.

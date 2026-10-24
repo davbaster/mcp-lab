@@ -87,3 +87,14 @@ export function codeCourse(files: Record<string, string | Uint8Array>, changes: 
   const inCode = Object.fromEntries(Object.entries(files).map(([path, content]) => [`${CODE}/${path}`, content]));
   return makeCourse("sample-course", { [CODE]: null, ...inCode, ...changes });
 }
+
+export const LESSON_FIXTURES = join(FIXTURES, "lessons");
+/** The small schema folder that the rule tests use, so they do not change when a real component schema does. */
+export const COMPONENT_FIXTURES = join(FIXTURES, "components");
+/** The real component schemas, which the golden trees and one shape test use. */
+export const REAL_SCHEMAS = join(PART_DIR, "..", "frontend", "src", "content-components", "schemas");
+
+/** A problem of a lesson: always an error, with a line and a column. */
+export function lessonProblem(file: string, line: number, column: number, message: string): Problem {
+  return { severity: "error", file, line, column, message };
+}

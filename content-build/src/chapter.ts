@@ -2,6 +2,7 @@
 
 import { join } from "node:path";
 import { listFolder, readText } from "./folder.ts";
+import type { Problem } from "./problem.ts";
 import { checkQuizFile } from "./quiz.ts";
 import type { QuizCollector } from "./quiz.ts";
 import { checkKnownEntries } from "./report.ts";
@@ -12,6 +13,9 @@ import type { ParsedYaml } from "./yaml-file.ts";
 
 const LESSON_FILE = /^(\d{2})-[a-z0-9-]+\.mdx$/;
 const LESSON_ID = /^[a-z0-9-]+$/;
+
+/** Compiles one lesson, given its text and its file inside the course, and returns the problems it has. */
+export type LessonChecker = (text: string, file: string) => Problem[];
 
 type Lesson = {
   /** The file name, such as `01-intro.mdx`. */
@@ -26,6 +30,7 @@ type Lesson = {
 /**
  * `folder` is the chapter on disk, `file` the same folder inside the course, as used in messages. With
  * `quiz`, the chapter's quiz.yaml is checked too (it needs the lesson IDs, so it comes after the lessons).
+ * With `checkLesson`, every lesson whose front matter block is found is compiled too.
  */
 export function validateChapter(
   folder: string,
@@ -33,6 +38,7 @@ export function validateChapter(
   spec: EntrySpec,
   report: Report,
   quiz?: { collector: QuizCollector; chapterId: string },
+  checkLesson?: LessonChecker,
 ) {
   const found = listFolder(folder);
   if (found === undefined) {
@@ -43,7 +49,7 @@ export function validateChapter(
 
   let lessonIds: string[] | undefined;
   if (found.get("lessons") === "directory") {
-    lessonIds = validateLessons(join(folder, "lessons"), `${file}/lessons`, report);
+    lessonIds = validateLessons(join(folder, "lessons"), `${file}/lessons`, report, checkLesson);
   } else {
     report.error(`${file}/lessons`, "the lessons/ folder is missing");
   }
@@ -58,7 +64,7 @@ export function validateChapter(
 }
 
 /** The stable IDs of the lessons, or undefined when there are none to link to. */
-function validateLessons(folder: string, file: string, report: Report): string[] | undefined {
+function validateLessons(folder: string, file: string, report: Report, checkLesson?: LessonChecker): string[] | undefined {
   const found = listFolder(folder);
   if (found === undefined) {
     report.error(file, "the lessons/ folder cannot be read");
@@ -71,7 +77,7 @@ function validateLessons(folder: string, file: string, report: Report): string[]
       report.warning(`${file}/${name}`, `this ${what} is ignored; lessons/ holds only .mdx lesson files`);
       continue;
     }
-    lessons.push(readLesson(join(folder, name), `${file}/${name}`, name, report));
+    lessons.push(readLesson(join(folder, name), `${file}/${name}`, name, report, checkLesson));
   }
   if (lessons.length === 0) {
     report.error(file, "lessons/ must contain at least one .mdx lesson file");
@@ -81,7 +87,7 @@ function validateLessons(folder: string, file: string, report: Report): string[]
   return lessons.map((lesson) => lesson.id);
 }
 
-function readLesson(path: string, file: string, name: string, report: Report): Lesson {
+function readLesson(path: string, file: string, name: string, report: Report, checkLesson?: LessonChecker): Lesson {
   const lesson: Lesson = { name, id: lessonId(name, undefined) };
   if (!LESSON_FILE.test(name)) {
     report.error(
@@ -99,6 +105,8 @@ function readLesson(path: string, file: string, name: string, report: Report): L
     report.error(file, front.problem, 1);
     return lesson;
   }
+  // What the front matter holds is checked below; the body is compiled whatever the front matter holds.
+  if (checkLesson !== undefined) report.problems.push(...checkLesson(read.text, file));
   const yaml = parseYaml(front.yaml, 2);
   if (yaml.errors.length > 0) {
     for (const { line, message } of yaml.errors) report.error(file, `invalid YAML in the front matter: ${message}`, line);
@@ -130,15 +138,18 @@ function withOrder(lesson: Lesson, data: Record<string, unknown>, yaml: ParsedYa
   return { ...lesson, order, orderLine: yaml.lineOf(["order"]) };
 }
 
-/** The text between the opening and closing `---` lines, or why there is none. */
-export function splitFrontMatter(text: string): { yaml: string } | { problem: string } {
+/**
+ * The text between the opening and closing `---` lines, and the line number of the closing one (the
+ * body starts on the next line), or why there is no front matter block.
+ */
+export function splitFrontMatter(text: string): { yaml: string; closingLine: number } | { problem: string } {
   const lines = stripBom(text).split("\n").map((l) => l.replace(/\r$/, ""));
   if (lines[0]?.trimEnd() !== "---") {
     return { problem: "the lesson must start with a front-matter block: a `---` line, the settings, and a closing `---` line" };
   }
   const end = lines.findIndex((line, index) => index > 0 && line.trimEnd() === "---");
   if (end === -1) return { problem: "the front matter that starts here has no closing `---` line" };
-  return { yaml: lines.slice(1, end).join("\n") };
+  return { yaml: lines.slice(1, end).join("\n"), closingLine: end + 1 };
 }
 
 /** `order` values are unique and run 1..N; a file-name prefix that disagrees with `order` is a warning. */

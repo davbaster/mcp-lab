@@ -8,6 +8,8 @@ export type Problem = {
   file: string;
   /** 1-based line in `file`, when the problem has one. */
   line?: number;
+  /** 1-based column on `line` (lesson problems have one; it is only set together with `line`). */
+  column?: number;
   message: string;
 };
 
@@ -32,13 +34,13 @@ export function toPosix(path: string): string {
 }
 
 /**
- * One output line: `<path>[:<line>]: error|warning: <message>`. `coursePath` is the course path as
+ * One output line: `<path>[:<line>[:<column>]]: error|warning: <message>`. `coursePath` is the course path as
  * the user gave it. The message is kept on one line so each problem stays on its own line.
  */
 export function formatProblem(coursePath: string, problem: Problem): string {
   const base = toPosix(coursePath);
   const where = problem.file === "" ? base : base === "/" ? `/${problem.file}` : `${base}/${problem.file}`;
-  const line = problem.line === undefined ? "" : `:${problem.line}`;
+  const line = problem.line === undefined ? "" : `:${problem.line}${problem.column === undefined ? "" : `:${problem.column}`}`;
   return `${where}${line}: ${problem.severity}: ${oneLine(problem.message)}`;
 }
 

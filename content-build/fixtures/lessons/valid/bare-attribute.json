@@ -1,0 +1,14 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "component",
+      "name": "Flag",
+      "props": {
+        "flag": true,
+        "name": "x"
+      },
+      "children": []
+    }
+  ]
+}

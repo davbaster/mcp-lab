@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Diagram",
+  "description": "A pinned copy for the rule tests, so they do not change when a real schema does.",
+  "type": "object",
+  "required": ["alt"],
+  "additionalProperties": false,
+  "properties": {
+    "alt": { "type": "string", "minLength": 1 },
+    "src": { "type": "string", "minLength": 1, "x-kind": "url" },
+    "source": { "type": "string", "minLength": 1 }
+  },
+  "oneOf": [{ "required": ["src"] }, { "required": ["source"] }],
+  "x-children": "none"
+}

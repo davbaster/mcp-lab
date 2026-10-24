@@ -11,3 +11,5 @@ Makefile text eol=lf
 # Quiz fixtures and the golden quiz output are compared byte for byte; a Windows checkout must not change them.
 content-build/fixtures/**/*.yaml text eol=lf
 content-build/fixtures/expected/**/*.json text eol=lf
+# Lesson fixtures are compared byte for byte (golden trees) or by exact line and column; a Windows checkout must not change them.
+content-build/fixtures/lessons/** text eol=lf

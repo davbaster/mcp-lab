@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tabs",
+  "description": "A pinned copy for the rule tests, so they do not change when a real schema does.",
+  "type": "object",
+  "required": [],
+  "additionalProperties": false,
+  "properties": {},
+  "x-children": { "markdown": false, "components": ["Tab"], "min": 2 },
+  "x-nested": {
+    "Tab": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": { "label": { "type": "string", "minLength": 1 } },
+      "x-children": { "markdown": true, "components": "all" }
+    }
+  }
+}

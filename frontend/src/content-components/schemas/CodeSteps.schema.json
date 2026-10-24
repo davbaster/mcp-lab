@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodeSteps",
+  "description": "The code viewer for one step of the chapter's code. The props of <CodeSteps ... /> in a lesson. Whether the step and the file exist is checked in #9.",
+  "type": "object",
+  "required": ["step"],
+  "additionalProperties": false,
+  "properties": {
+    "step": { "description": "The step number, a whole number of 1 or more.", "type": "string", "pattern": "^[1-9][0-9]*$" },
+    "file": { "description": "The file to show first.", "type": "string", "minLength": 1 }
+  },
+  "x-children": "none"
+}

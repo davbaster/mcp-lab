@@ -79,8 +79,18 @@ describe("lesson front matter", () => {
     expect(check({ [`${LESSONS}/01-welcome.mdx`]: lessonText("Welcome", 1, "id: welcome-lesson\n"), [`${FIRST}/quiz.yaml`]: quiz })).toEqual([]);
   });
 
-  it("does not read the body", () => {
-    expect(lesson("---\ntitle: Welcome\norder: 1\n---\n<Anything ={ not: checked } />\nimport x from 'y'\n")).toEqual([]);
+  it("leaves the body to the lesson compiler (#8), which stops at the first parse error", () => {
+    // #7 did not read the body at all; since #8 the body is compiled, so a body that is not valid MDX is a problem.
+    expect(lesson("---\ntitle: Welcome\norder: 1\n---\n<Anything ={ not: checked } />\nimport x from 'y'\n")).toEqual([
+      {
+        severity: "error",
+        file: `${LESSONS}/01-welcome.mdx`,
+        line: 5,
+        column: 11,
+        message:
+          "Unexpected character `=` (U+003D) after name, expected a character that can start an attribute name, such as a letter, `$`, or `_`; whitespace before attributes; or the end of the tag",
+      },
+    ]);
   });
 
   it("reports an empty front-matter block as missing title and order", () => {
