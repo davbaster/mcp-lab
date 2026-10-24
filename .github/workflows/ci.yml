@@ -14,15 +14,47 @@ jobs:
     # The self-hosted runner lives on the owner's VPS. Never run code from fork
     # pull requests on it: forks only get CI after it is pushed to this repo.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    defaults:
-      run:
-        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mcp_lab_test
+        ports:
+          # No fixed host port: 5432 may be taken on the runner. Docker picks a free one.
+          - 5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
-      - run: uv sync
-      - run: uv run ruff check .
-      - run: uv run pytest
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          # Keep equal to the uv version in backend/Dockerfile.
+          version: 0.11.32
+      # make runs from the repo root. Its recipes run uv in backend/, which picks the
+      # Python from backend/.python-version.
+      - run: make install-backend
+      - run: make lint-backend
+      - name: Check openapi.yaml is up to date
+        run: make check-openapi
+      - run: make migrate-backend
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
+      - run: make check-migrations
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
+      - run: make test-backend
+        env:
+          # The `job` context is not available in job-level env, so each step sets it.
+          # A throwaway password for the disposable service container, not a secret.
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/mcp_lab_test
 
   frontend:
     name: frontend
@@ -30,17 +62,34 @@ jobs:
     # The self-hosted runner lives on the owner's VPS. Never run code from fork
     # pull requests on it: forks only get CI after it is pushed to this repo.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    defaults:
-      run:
-        working-directory: frontend
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
+      - run: make install-frontend
+      - name: Check the generated API client is up to date
+        run: make check-api-client
+      - run: make lint-frontend
+      - run: make typecheck-frontend
+      - run: make test-frontend
+
+  content-build:
+    name: content-build
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: content-build/package-lock.json
+      - run: make install-content-build
+      - run: make lint-content-build
+      - run: make typecheck-content-build
+      - run: make test-content-build

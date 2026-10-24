@@ -31,14 +31,27 @@ Some of these folders don't exist until their backlog task creates them.
 
 ## Commands
 
-Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
+The root `Makefile` is the single entry point, and CI calls the same targets. Run `make` from the repo root; plain `make` lists every target. A variable goes after the target and reaches the commands (`make test-backend DATABASE_URL=<url>`). A failing command stops `make` with a non-zero exit code.
+
+- `make install` - install every part (`install-backend`, `install-frontend`, `install-content-build`)
+- `make lint` - lint every part (`lint-backend`, `lint-frontend`, `lint-content-build`)
+- `make typecheck` - typecheck every part that has one (`typecheck-frontend`, `typecheck-content-build`; the backend has none yet)
+- `make test` - run every test suite (`test-backend`, `test-frontend`, `test-content-build`); the backend needs `DATABASE_URL` set to a `_test` database
+- `make check` - `check-openapi` and `check-api-client` (the generated files are up to date; no database needed)
+- `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
+- `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
+
+Each task that adds a new part (`oncall-mcp/` in #40) also adds that part's targets to the `Makefile` and to the aggregate targets, and CI calls them. Recipes stay portable: one command per line, or `cd <dir> && <command>`; no pipes, `;`, `||`, `$(shell ...)`, `VAR=value` prefixes, single quotes, or Unix-only tools. `backend/tests/test_repo_files.py` checks this.
+
+The per-folder commands are what the targets run. Use them directly to run one test file, start a dev server, or build. Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
 
 `backend/`:
 
-- `cd backend` then `uv sync` - install dependencies
+- `cd backend` then `uv sync --locked` - install dependencies
 - `cd backend` then `uv run pytest` - the whole suite
 - `cd backend` then `uv run pytest tests/test_home.py` - one test file
 - `cd backend` then `uv run ruff check .` - lint
+- `cd backend` then `uv run python scripts/export_openapi.py` - re-export `openapi.yaml` (add `--check` to only compare)
 - `cd backend` then `uv run uvicorn app.main:app --port 8000` - dev server
 
 `frontend/`:
@@ -50,7 +63,15 @@ Each command is on its own line and starts with `cd`, so it works in PowerShell 
 - `cd frontend` then `npm run build` - production build into `dist/`
 - `cd frontend` then `npm run dev` - dev server
 
-Content-build and on-call commands will be added as their tasks are done.
+`content-build/` (needs Node 24, the version in `.nvmrc`; it runs TypeScript with Node's built-in type stripping):
+
+- `cd content-build` then `npm ci` - install dependencies
+- `cd content-build` then `npm test` - the whole suite (single run, no watch)
+- `cd content-build` then `npm run lint` - ESLint
+- `cd content-build` then `npm run typecheck` - `tsc --noEmit`
+- `cd content-build` then `npm run validate -- <course folder>` - check one course folder (for example `fixtures/valid/sample-course`; `/` or `\` both work); prints `<path>[:<line>]: error|warning: <message>` for each problem and exits non-zero on any error
+
+On-call commands will be added as their task is done.
 
 ## Rules
 

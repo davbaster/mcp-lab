@@ -1,0 +1,51 @@
+questions:
+  - id: first-steps-1
+    text: Question number 1?
+    options:
+      - id: a
+        text: Option A of question 1
+      - id: b
+        text: Option B of question 1
+    correct: a
+    explanation: Explanation 1.
+    lesson: 01-welcome
+  - id: first-steps-2
+    text: Question number 2?
+    options:
+      - id: a
+        text: "   "
+      - id: b
+        text: Other text
+    correct: a
+    explanation: Explanation 2.
+    lesson: 01-welcome
+  - id: first-steps-3
+    text: Question number 3?
+    options:
+      - id: a
+        text: Option A of question 3
+      - id: b
+        text: Option B of question 3
+    correct: a
+    explanation: Explanation 3.
+    lesson: 01-welcome
+  - id: first-steps-4
+    text: Question number 4?
+    options:
+      - id: a
+        text: Option A of question 4
+      - id: b
+        text: Option B of question 4
+    correct: a
+    explanation: Explanation 4.
+    lesson: 01-welcome
+  - id: first-steps-5
+    text: Question number 5?
+    options:
+      - id: a
+        text: Option A of question 5
+      - id: b
+        text: Option B of question 5
+    correct: a
+    explanation: Explanation 5.
+    lesson: 01-welcome

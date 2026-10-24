@@ -1,0 +1,5 @@
+id: chapters-empty
+title: A course for the validator tests
+description: One small course that breaks one rule.
+chapters: []
+free_preview: []

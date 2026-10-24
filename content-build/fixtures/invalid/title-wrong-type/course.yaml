@@ -1,0 +1,6 @@
+id: title-wrong-type
+title: 42
+description: One small course that breaks one rule.
+chapters:
+  - 01-intro
+free_preview: []

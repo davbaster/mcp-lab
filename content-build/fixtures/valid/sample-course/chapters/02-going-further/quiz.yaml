@@ -1,0 +1,57 @@
+# The quiz of chapter 2. Question ids are unique across the whole course, so they start with the chapter.
+questions:
+  - id: going-further-1
+    text: What comes after the basics?
+    options:
+      - id: a
+        text: The next steps
+      - id: b
+        text: Nothing
+    correct: a
+    explanation: The course goes on with the next steps.
+    lesson: 01-next
+  - id: going-further-2
+    text: How is a lesson linked from a question?
+    options:
+      - id: a
+        text: By its id
+      - id: b
+        text: By its title
+    correct: a
+    explanation: A lesson has a stable id that no rename changes.
+    lesson: 01-next
+  - id: going-further-3
+    text: Which line adds two numbers?
+    snippet:
+      language: python
+      code: "total = 1 + 2"
+    options:
+      - id: a
+        text: The line shown above
+      - id: b
+        text: No line shown above
+      - id: c
+        text: Every line shown above
+    correct: a
+    explanation: The assignment adds 1 and 2.
+    lesson: 01-next
+  - id: going-further-4
+    text: Is a hyphen allowed in an id?
+    options:
+      - id: yes
+        text: Yes
+      - id: no
+        text: No
+    correct: yes
+    explanation: Ids use lowercase letters, digits, and hyphens.
+    lesson: 01-next
+  - id: going-further-5
+    text: What is the last question of the quiz?
+    options:
+      - id: a
+        text: This one
+      - id: b
+        text: The first one
+    correct: a
+    explanation: The quiz has five questions, and this is the fifth.
+    lesson: 01-next

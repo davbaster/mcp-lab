@@ -1,0 +1,7 @@
+id: free-preview-unlisted-chapter
+title: A course for the validator tests
+description: One small course that breaks one rule.
+chapters:
+  - 01-intro
+free_preview:
+  - 02-extra

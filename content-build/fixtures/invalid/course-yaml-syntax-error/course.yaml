@@ -1,0 +1,6 @@
+id: course-yaml-syntax-error
+title: A course
+  description: indented under the title
+chapters:
+  - 01-intro
+free_preview: []
