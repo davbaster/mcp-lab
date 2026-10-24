@@ -1,0 +1,232 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "A Markdown image: "
+        },
+        {
+          "type": "image",
+          "url": "/api/courses/sample-course/assets/photo-7f90f179c62328f7.jpg",
+          "alt": "A photo",
+          "title": "A title"
+        },
+        {
+          "type": "text",
+          "value": ", and a link that is not an asset: "
+        },
+        {
+          "type": "link",
+          "url": "images/pic.png",
+          "children": [
+            {
+              "type": "text",
+              "value": "a file"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    },
+    {
+      "type": "component",
+      "name": "Image",
+      "props": {
+        "alt": "A picture",
+        "src": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Diagram",
+      "props": {
+        "alt": "A flow",
+        "src": "/api/courses/sample-course/assets/flow-889796e748a77dcb.svg"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Diagram",
+      "props": {
+        "alt": "Message flow",
+        "source": "graph TD; A-->B"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Model3D",
+      "props": {
+        "alt": "A server",
+        "poster": "/api/courses/sample-course/assets/banner-9523775ba3da5de4.webp",
+        "src": "/api/courses/sample-course/assets/server-eda47e6f1c7979c4.glb"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Video",
+      "props": {
+        "captions": "/api/courses/sample-course/assets/intro-a5e4372a760aafa6.vtt",
+        "poster": "/api/courses/sample-course/assets/banner-9523775ba3da5de4.webp",
+        "src": "https://media.mcp-lab.example/videos/intro.mp4",
+        "title": "Intro"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Video",
+      "props": {
+        "captions": "https://media.mcp-lab.example/c.vtt",
+        "poster": "https://media.mcp-lab.example/p.png",
+        "src": "https://www.youtube-nocookie.com/embed/abc",
+        "title": "Embedded"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Callout",
+      "props": {
+        "title": "Nested",
+        "type": "note"
+      },
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "image",
+              "url": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png",
+              "alt": "Inside a callout"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "ordered": false,
+          "children": [
+            {
+              "type": "listItem",
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "A list with "
+                    },
+                    {
+                      "type": "image",
+                      "url": "/api/courses/sample-course/assets/photo-7f90f179c62328f7.jpg",
+                      "alt": "an image"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "blockquote",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "A quote with "
+                },
+                {
+                  "type": "emphasis",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "emphasis and "
+                    },
+                    {
+                      "type": "image",
+                      "url": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png",
+                      "alt": "an image"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "name": "Image",
+          "props": {
+            "alt": "Nested",
+            "src": "/api/courses/sample-course/assets/logo-0db13e1dc6f176a2.svg"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "component",
+      "name": "Tabs",
+      "props": {},
+      "children": [
+        {
+          "type": "component",
+          "name": "Tab",
+          "props": {
+            "label": "One"
+          },
+          "children": [
+            {
+              "type": "component",
+              "name": "Model3D",
+              "props": {
+                "alt": "A box",
+                "poster": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png",
+                "src": "/api/courses/sample-course/assets/box-4dc2fb427c16aceb.gltf"
+              },
+              "children": []
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "name": "Tab",
+          "props": {
+            "label": "Two"
+          },
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Nothing here."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "component",
+      "name": "CodeSteps",
+      "props": {
+        "file": "server.py",
+        "step": "2"
+      },
+      "children": []
+    }
+  ]
+}

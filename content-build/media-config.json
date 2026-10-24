@@ -1,0 +1,32 @@
+{
+  "mediaOrigins": [
+    "https://media.mcp-lab.example"
+  ],
+  "embeds": [
+    {
+      "origin": "https://www.youtube-nocookie.com",
+      "pathPrefix": "/embed/",
+      "idPattern": "^[A-Za-z0-9_-]+$",
+      "watchHosts": [
+        "www.youtube.com",
+        "youtube.com",
+        "m.youtube.com",
+        "youtu.be"
+      ]
+    },
+    {
+      "origin": "https://player.vimeo.com",
+      "pathPrefix": "/video/",
+      "idPattern": "^[0-9]+$",
+      "watchHosts": [
+        "vimeo.com",
+        "www.vimeo.com"
+      ]
+    }
+  ],
+  "assetLimits": {
+    "imageBytes": 5242880,
+    "modelBytes": 26214400,
+    "captionBytes": 1048576
+  }
+}

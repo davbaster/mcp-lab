@@ -1,0 +1,180 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "component",
+      "name": "Video",
+      "props": {
+        "captions": "captions/intro.vtt",
+        "poster": "images/intro.png",
+        "src": "https://www.youtube.com/watch?v=abc",
+        "title": "Intro video"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Model3D",
+      "props": {
+        "alt": "A server",
+        "poster": "images/server.png",
+        "src": "models/server.glb"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Diagram",
+      "props": {
+        "alt": "Request flow",
+        "src": "diagrams/flow.svg"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Diagram",
+      "props": {
+        "alt": "Message flow",
+        "source": "graph TD; A-->B"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Image",
+      "props": {
+        "alt": "A picture",
+        "src": "images/pic.png"
+      },
+      "children": []
+    },
+    {
+      "type": "component",
+      "name": "Callout",
+      "props": {
+        "title": "Careful",
+        "type": "warning"
+      },
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "Do not share your "
+            },
+            {
+              "type": "strong",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "key"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "."
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "name": "Image",
+          "props": {
+            "alt": "A key",
+            "src": "images/key.png"
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "component",
+      "name": "Tabs",
+      "props": {},
+      "children": [
+        {
+          "type": "component",
+          "name": "Tab",
+          "props": {
+            "label": "macOS"
+          },
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Run "
+                },
+                {
+                  "type": "inlineCode",
+                  "value": "brew install uv"
+                },
+                {
+                  "type": "text",
+                  "value": "."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "component",
+          "name": "Tab",
+          "props": {
+            "label": "Windows"
+          },
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Run "
+                },
+                {
+                  "type": "inlineCode",
+                  "value": "winget install astral-sh.uv"
+                },
+                {
+                  "type": "text",
+                  "value": "."
+                }
+              ]
+            },
+            {
+              "type": "component",
+              "name": "Callout",
+              "props": {
+                "type": "note"
+              },
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "A nested callout."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "component",
+      "name": "CodeSteps",
+      "props": {
+        "file": "server.py",
+        "step": "2"
+      },
+      "children": []
+    }
+  ]
+}

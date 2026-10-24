@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Diagram",
+  "description": "A diagram. The props of <Diagram ... /> in a lesson: exactly one of src or source.",
+  "type": "object",
+  "required": ["alt"],
+  "additionalProperties": false,
+  "properties": {
+    "alt": { "description": "A text description of the diagram.", "type": "string", "minLength": 1 },
+    "src": { "description": "The URL of an SVG file.", "type": "string", "minLength": 1, "x-kind": "url" },
+    "source": { "description": "Mermaid text.", "type": "string", "minLength": 1 }
+  },
+  "oneOf": [{ "required": ["src"] }, { "required": ["source"] }],
+  "x-children": "none"
+}

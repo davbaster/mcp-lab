@@ -79,8 +79,18 @@ describe("lesson front matter", () => {
     expect(check({ [`${LESSONS}/01-welcome.mdx`]: lessonText("Welcome", 1, "id: welcome-lesson\n"), [`${FIRST}/quiz.yaml`]: quiz })).toEqual([]);
   });
 
-  it("does not read the body", () => {
-    expect(lesson("---\ntitle: Welcome\norder: 1\n---\n<Anything ={ not: checked } />\nimport x from 'y'\n")).toEqual([]);
+  it("leaves the body to the lesson compiler (#8), which stops at the first parse error", () => {
+    // #7 did not read the body at all; since #8 the body is compiled, so a body that is not valid MDX is a problem.
+    expect(lesson("---\ntitle: Welcome\norder: 1\n---\n<Anything ={ not: checked } />\nimport x from 'y'\n")).toEqual([
+      {
+        severity: "error",
+        file: `${LESSONS}/01-welcome.mdx`,
+        line: 5,
+        column: 11,
+        message:
+          "Unexpected character `=` (U+003D) after name, expected a character that can start an attribute name, such as a letter, `$`, or `_`; whitespace before attributes; or the end of the tag",
+      },
+    ]);
   });
 
   it("reports an empty front-matter block as missing title and order", () => {
@@ -230,12 +240,19 @@ describe("files that are not part of the format", () => {
     ]);
   });
 
-  it("does not look inside assets/", () => {
-    expect(check({ "assets/anything/at/all.bin": "x" })).toEqual([]);
+  // #9: assets/ used to be skipped. Its files are checked now (the asset tests cover the rules).
+  it("checks the files in assets/", () => {
+    expect(check({ "assets/anything/at/all.bin": "x" }).map((p) => [p.severity, p.file])).toEqual([["error", "assets/anything/at/all.bin"]]);
   });
 
   it("warns when assets/ is a file or ids.json is a folder", () => {
-    const course = makeCourse("sample-course", { assets: null, "ids.json": null, "ids.json/inside.txt": "x" });
+    // The lesson that uses the fixture's assets is replaced, because assets/ is not a folder here.
+    const course = makeCourse("sample-course", {
+      assets: null,
+      "ids.json": null,
+      "ids.json/inside.txt": "x",
+      [`chapters/02-going-further/lessons/01-next.mdx`]: lessonText("Next steps", 1),
+    });
     writeFileSync(join(course, "assets"), "not a folder");
 
     expect(validateCourse(course)).toEqual([

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="80" viewBox="0 0 200 80">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2878c8"/>
+      <stop offset="1" stop-color="#78c828"/>
+    </linearGradient>
+    <rect id="a" width="60" height="30" rx="4"/>
+    <style>.box { fill: url(#g); stroke: #222; }</style>
+  </defs>
+  <use href="#a" x="10" y="25" class="box"/>
+  <use xlink:href="#a" x="130" y="25" class="box"/>
+  <path d="M70 40 H130" stroke="#222" fill="none"/>
+</svg>

@@ -11,3 +11,15 @@ Makefile text eol=lf
 # Quiz fixtures and the golden quiz output are compared byte for byte; a Windows checkout must not change them.
 content-build/fixtures/**/*.yaml text eol=lf
 content-build/fixtures/expected/**/*.json text eol=lf
+# Lesson fixtures are compared byte for byte (golden trees) or by exact line and column; a Windows checkout must not change them.
+content-build/fixtures/lessons/** text eol=lf
+# The binary assets of the fixtures are committed as they are; the text ones are normalized before they are hashed, so line endings cannot change the golden output.
+content-build/fixtures/**/*.png binary
+content-build/fixtures/**/*.jpg binary
+content-build/fixtures/**/*.webp binary
+content-build/fixtures/**/*.glb binary
+# The golden asset output is compared byte for byte; its text files are LF already, so a Windows checkout must not change them.
+content-build/fixtures/expected/public/** -text
+content-build/fixtures/expected/assets-map/** text eol=lf
+# The SVG fixtures are scanned by line number.
+content-build/fixtures/svg/** text eol=lf

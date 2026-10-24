@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Callout",
+  "description": "A tip, warning, or note box. The props of <Callout ...> in a lesson; its children are Markdown and components.",
+  "type": "object",
+  "required": ["type"],
+  "additionalProperties": false,
+  "properties": {
+    "type": { "description": "The kind of box.", "type": "string", "enum": ["tip", "warning", "note"] },
+    "title": { "description": "A heading for the box.", "type": "string", "minLength": 1 }
+  },
+  "x-children": { "markdown": true, "components": "all" }
+}

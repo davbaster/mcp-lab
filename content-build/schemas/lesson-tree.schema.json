@@ -1,0 +1,606 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lesson tree",
+  "description": "The compiled form of a lesson .mdx file: a tree of Markdown nodes (named and shaped like mdast) and component nodes. Data only: no functions, no code, no position. The content build checks every tree it writes against this schema, and the frontend renders from it (#19). A component node holds the props the author wrote: a string, or true for a bare attribute. Which component names and props are allowed is the business of the component schemas in frontend/src/content-components/schemas/, not of this file.",
+  "type": "object",
+  "required": [
+    "type",
+    "children"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "root"
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/block"
+      }
+    }
+  },
+  "definitions": {
+    "block": {
+      "description": "A node that can stand in a block position: the root, a block quote, a list item, or a component. The node's type picks the one schema that it must match.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "heading",
+            "paragraph",
+            "blockquote",
+            "list",
+            "code",
+            "thematicBreak",
+            "component"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "heading"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/heading"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "paragraph"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/paragraph"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "blockquote"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/blockquote"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "list"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/list"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "code"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/code"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "thematicBreak"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/thematicBreak"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "component"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/component"
+          }
+        }
+      ]
+    },
+    "phrasing": {
+      "description": "A node that can stand inside a paragraph, a heading, a link, or emphasis. The node's type picks the one schema that it must match.",
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "text",
+            "emphasis",
+            "strong",
+            "inlineCode",
+            "break",
+            "link",
+            "image"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/text"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "emphasis"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/emphasis"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "strong"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/strong"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "inlineCode"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/inlineCode"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "break"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/break"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "link"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/link"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "image"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/definitions/image"
+          }
+        }
+      ]
+    },
+    "phrasingChildren": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/phrasing"
+      }
+    },
+    "blockChildren": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/block"
+      }
+    },
+    "heading": {
+      "type": "object",
+      "required": [
+        "type",
+        "depth",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "heading"
+        },
+        "depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "children": {
+          "$ref": "#/definitions/phrasingChildren"
+        }
+      }
+    },
+    "paragraph": {
+      "type": "object",
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "paragraph"
+        },
+        "children": {
+          "$ref": "#/definitions/phrasingChildren"
+        }
+      }
+    },
+    "blockquote": {
+      "type": "object",
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "blockquote"
+        },
+        "children": {
+          "$ref": "#/definitions/blockChildren"
+        }
+      }
+    },
+    "list": {
+      "description": "A list. An ordered list has start, the number of its first item; an unordered list has no start.",
+      "type": "object",
+      "required": [
+        "type",
+        "ordered",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "list"
+        },
+        "ordered": {
+          "type": "boolean"
+        },
+        "start": {
+          "type": "integer"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/listItem"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "ordered": {
+            "const": true
+          }
+        },
+        "required": [
+          "ordered"
+        ]
+      },
+      "then": {
+        "required": [
+          "start"
+        ],
+        "properties": {
+          "start": {
+            "type": "integer"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "start": false
+        }
+      }
+    },
+    "listItem": {
+      "type": "object",
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "listItem"
+        },
+        "children": {
+          "$ref": "#/definitions/blockChildren"
+        }
+      }
+    },
+    "code": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "code"
+        },
+        "lang": {
+          "description": "The language after the opening fence. Absent when there is none.",
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "thematicBreak": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "thematicBreak"
+        }
+      }
+    },
+    "text": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "emphasis": {
+      "type": "object",
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "emphasis"
+        },
+        "children": {
+          "$ref": "#/definitions/phrasingChildren"
+        }
+      }
+    },
+    "strong": {
+      "type": "object",
+      "required": [
+        "type",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "strong"
+        },
+        "children": {
+          "$ref": "#/definitions/phrasingChildren"
+        }
+      }
+    },
+    "inlineCode": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "inlineCode"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "break": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "break"
+        }
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": [
+        "type",
+        "url",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "link"
+        },
+        "url": {
+          "description": "A relative URL, or one with the scheme http, https, or mailto.",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "children": {
+          "$ref": "#/definitions/phrasingChildren"
+        }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": [
+        "type",
+        "url",
+        "alt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "url": {
+          "description": "A relative URL, or one with the scheme http, https, or mailto.",
+          "type": "string"
+        },
+        "alt": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": [
+        "type",
+        "name",
+        "props",
+        "children"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "component"
+        },
+        "name": {
+          "description": "The component's name, such as Callout.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$"
+        },
+        "props": {
+          "description": "The props the author wrote: a string, or true for a bare attribute such as <X flag />.",
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "const": true
+              }
+            ]
+          }
+        },
+        "children": {
+          "$ref": "#/definitions/blockChildren"
+        }
+      }
+    }
+  }
+}

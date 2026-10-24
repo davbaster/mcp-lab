@@ -5,14 +5,15 @@ import type { Problem, Severity } from "./problem.ts";
 
 export type Report = {
   problems: Problem[];
-  error(file: string, message: string, line?: number): void;
-  warning(file: string, message: string, line?: number): void;
+  error(file: string, message: string, line?: number, column?: number): void;
+  warning(file: string, message: string, line?: number, column?: number): void;
 };
 
 export function makeReport(): Report {
   const problems: Problem[] = [];
-  const add = (severity: Severity) => (file: string, message: string, line?: number) => {
-    problems.push(line === undefined ? { severity, file, message } : { severity, file, line, message });
+  const add = (severity: Severity) => (file: string, message: string, line?: number, column?: number) => {
+    if (line === undefined) problems.push({ severity, file, message });
+    else problems.push(column === undefined ? { severity, file, line, message } : { severity, file, line, column, message });
   };
   return { problems, error: add("error"), warning: add("warning") };
 }

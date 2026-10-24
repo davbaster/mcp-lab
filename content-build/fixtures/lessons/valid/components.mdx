@@ -1,0 +1,46 @@
+---
+title: Components
+order: 1
+---
+
+<Video src="https://www.youtube.com/watch?v=abc" title="Intro video" captions="captions/intro.vtt" poster="images/intro.png" />
+
+<Model3D src="models/server.glb" alt="A server" poster="images/server.png" />
+
+<Diagram alt="Request flow" src="diagrams/flow.svg" />
+
+<Diagram alt="Message flow" source="graph TD; A-->B" />
+
+<Image src="images/pic.png" alt="A picture" />
+
+<Callout type="warning" title="Careful">
+
+Do not share your **key**.
+
+<Image src="images/key.png" alt="A key" />
+
+</Callout>
+
+<Tabs>
+
+<Tab label="macOS">
+
+Run `brew install uv`.
+
+</Tab>
+
+<Tab label="Windows">
+
+Run `winget install astral-sh.uv`.
+
+<Callout type="note">
+
+A nested callout.
+
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+<CodeSteps step="2" file="server.py" />

@@ -1,0 +1,6 @@
+id: lesson-rejected
+title: A course for the validator tests
+description: One small course whose lessons break the lesson rules.
+chapters:
+  - 01-intro
+free_preview: []

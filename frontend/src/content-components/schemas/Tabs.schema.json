@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tabs",
+  "description": "Tabbed alternatives. <Tabs> takes no props and holds at least two <Tab label=\"...\"> elements. Tab is declared here (x-nested) and has no file of its own.",
+  "type": "object",
+  "required": [],
+  "additionalProperties": false,
+  "properties": {},
+  "x-children": { "markdown": false, "components": ["Tab"], "min": 2 },
+  "x-nested": {
+    "Tab": {
+      "description": "One tab of <Tabs>. Its children are Markdown and components.",
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "description": "The text on the tab.", "type": "string", "minLength": 1 }
+      },
+      "x-children": { "markdown": true, "components": "all" }
+    }
+  }
+}

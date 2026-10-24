@@ -9,7 +9,7 @@ A web app for guided courses. The first course is "Build an MCP Server" (Python)
   - `nvm-windows` ignores `.nvmrc`. Read the version in the file and run `nvm use <that version>` (for example `nvm use 24`).
   - With the original `nvm` on macOS or Linux, run `nvm use` in the repo folder.
 - [GNU Make](https://www.gnu.org/software/make/) (version 3.81 or newer) runs the targets in the root `Makefile`. macOS and Linux usually have it. On Windows, run `winget install GnuWin32.Make` or `choco install make`, then open a new terminal so `make` is on `PATH`. Run `make` from the repo root (the folder with the `Makefile`).
-- Docker (optional) for the [Docker stack](#docker-stack) and for `make test-db-up` (a disposable test database, see [Test database](#test-database)).
+- Docker (optional) for the [Docker stack](#docker-stack) and for `make test-db-up` (a disposable test database, see [Test database](#test-database)), and on Windows without `sh` for the backend entrypoint tests (see [Test database](#test-database)).
 
 ## Commands
 
@@ -117,6 +117,8 @@ The app does not migrate by itself. Only the Docker stack does, on start, becaus
 #### Test database
 
 The backend tests use a real Postgres database whose name ends in `_test`, taken from `DATABASE_URL`. The suite creates that database itself if it is missing (the role needs the `CREATEDB` permission; otherwise pytest prints the `createdb` command to run by hand), resets it to the migrated schema at the start of every run, and empties the tables before every test. It refuses to run against any other database name, and it stops before running any test if `DATABASE_URL` is unset.
+
+Nine tests in `backend/tests/test_entrypoint.py` run `backend/docker-entrypoint.sh` with `sh`. Where `sh` is on `PATH` (Linux, macOS, CI, or Windows with Git for Windows' `sh`), they use it. On Windows without `sh`, they run the script inside a `python:3.12-slim` container instead (the backend image's base, with no network, removed when it exits), so **Docker Desktop must be running**. If there is neither an `sh` nor a working Docker, these tests fail (they never skip) with a message that says so: start Docker Desktop, or put `sh` on `PATH`. The first run pulls the image.
 
 If `DATABASE_URL` is already set in your terminal for a development database, pytest refuses to run (by design) until you change it to a `_test` database. Run one pytest at a time per test database.
 

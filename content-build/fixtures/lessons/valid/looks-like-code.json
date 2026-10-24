@@ -1,0 +1,125 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Inline code is not code: "
+        },
+        {
+          "type": "inlineCode",
+          "value": "import x"
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "inlineCode",
+          "value": "<script>"
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "inlineCode",
+          "value": "{1 + 1}"
+        },
+        {
+          "type": "text",
+          "value": ", and "
+        },
+        {
+          "type": "inlineCode",
+          "value": "onClick"
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "lang": "python",
+      "value": "import x\n<script>\n{1 + 1}\nonClick"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "An escaped brace { stays, and so does the text a < b."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "A link to "
+        },
+        {
+          "type": "link",
+          "url": "#section",
+          "children": [
+            {
+              "type": "text",
+              "value": "a section"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "link",
+          "url": "?q=1",
+          "children": [
+            {
+              "type": "text",
+              "value": "a query"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "link",
+          "url": "/x",
+          "children": [
+            {
+              "type": "text",
+              "value": "a path"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", and "
+        },
+        {
+          "type": "link",
+          "url": "mailto:a@example.com",
+          "children": [
+            {
+              "type": "text",
+              "value": "mail"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

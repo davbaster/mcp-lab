@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Problem } from "../src/problem.ts";
 import { validateCourse } from "../src/course.ts";
-import { FIXTURES, VALID_COURSE, error, warning } from "./helpers.ts";
+import { assetInvalid, assetWarnings } from "./asset-fixtures.ts";
+import { FIXTURES, VALID_COURSE, error, lessonProblem, warning } from "./helpers.ts";
 
 const LESSONS = "chapters/01-intro/lessons";
 const NAME_RULE = "must use only lowercase letters, digits, and hyphens";
@@ -97,6 +98,30 @@ const invalid: Record<string, Problem[]> = {
   "lesson-order-gap": [
     error(LESSONS, "`order` values must be unique and run from 1 to 2 with no gaps, but they are 1, 3"),
   ],
+  // lesson bodies: every lesson of a listed chapter is compiled; a parse error stops only its own lesson
+  "lesson-rejected": [
+    lessonProblem(
+      `${LESSONS}/02-expression.mdx`,
+      8,
+      12,
+      "JavaScript expressions in curly braces are not allowed; to show a brace as text, write `\\{` or put it in a code span",
+    ),
+    lessonProblem(`${LESSONS}/03-broken-tag.mdx`, 8, 1, "Expected a closing tag for `<Callout>` (8:1-8:21)"),
+    lessonProblem(
+      `${LESSONS}/04-unknown.mdx`,
+      10,
+      1,
+      "link: the URL scheme `javascript:` is not allowed; use http, https, mailto, or a relative URL",
+    ),
+    lessonProblem(
+      `${LESSONS}/04-unknown.mdx`,
+      8,
+      1,
+      "unknown component `Iframe`; the components are `Callout`, `CodeSteps`, `Diagram`, `Image`, `Model3D`, `Tabs`, `Video`",
+    ),
+  ],
+  // assets/ and the asset and media references of the lessons (#9)
+  ...assetInvalid,
   // quiz.yaml: the rules that need a whole course (the single-file quiz fixtures are in quiz.test.ts)
   "quiz-question-id-repeated-across-chapters": [
     error(
@@ -114,6 +139,7 @@ const warnings: Record<string, Problem[]> = {
       "this chapter folder has only code/, so it is a chapter in progress: it is not listed in `chapters` and is not built",
     ),
   ],
+  ...assetWarnings,
   "lesson-prefix-mismatch": [warning(`${LESSONS}/05-second.mdx`, "the file name starts with 05 but `order` is 2", 3)],
   "stray-files": [
     warning(`${LESSONS}/README.txt`, "this file is ignored; lessons/ holds only .mdx lesson files"),

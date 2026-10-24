@@ -8,7 +8,12 @@ import type { ParsedYaml, PathSegment } from "./yaml-file.ts";
 
 export type ShapeProblem = { line?: number; message: string };
 
-const ajv = new Ajv({ allErrors: true, strict: true });
+/** A new ajv in the setup every schema here uses: strict mode, and every error reported. */
+export function newAjv(options: { strictRequired?: boolean } = {}): Ajv {
+  return new Ajv({ allErrors: true, strict: true, ...options });
+}
+
+const ajv = newAjv();
 
 export const courseShape: Shape = { validate: ajv.compile(courseSchema), root: "course.yaml" };
 export const lessonFrontMatterShape: Shape = {

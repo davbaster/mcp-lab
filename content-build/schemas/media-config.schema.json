@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Media config",
+  "description": "media-config.json: the only list of media origins and asset size limits. The content build checks video URLs and asset files against it, and #20 generates the Content-Security-Policy from it. The origins must also pass the extra checks in src/media-config.ts (exactly what new URL(origin).origin returns, no repeats).",
+  "type": "object",
+  "required": ["mediaOrigins", "embeds", "assetLimits"],
+  "additionalProperties": false,
+  "properties": {
+    "mediaOrigins": {
+      "description": "https origins of files on the media CDN (img-src and media-src).",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "embeds": {
+      "description": "Video sites that may be embedded as a frame (frame-src).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["origin", "pathPrefix", "idPattern", "watchHosts"],
+        "additionalProperties": false,
+        "properties": {
+          "origin": { "description": "The https origin of the embed player.", "type": "string" },
+          "pathPrefix": { "description": "The path before the video ID, with a slash at both ends.", "type": "string", "pattern": "^/([A-Za-z0-9._~-]+/)*$" },
+          "idPattern": { "description": "A regular expression for the video ID, from ^ to $.", "type": "string", "minLength": 1 },
+          "watchHosts": {
+            "description": "Hosts of the site's watch pages, which are rejected with a hint to use the embed URL.",
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "assetLimits": {
+      "type": "object",
+      "required": ["imageBytes", "modelBytes", "captionBytes"],
+      "additionalProperties": false,
+      "properties": {
+        "imageBytes": { "description": "The most bytes of an image file (.png, .jpg, .jpeg, .webp, .svg).", "type": "integer", "minimum": 1 },
+        "modelBytes": { "description": "The most bytes of a model file (.glb, .gltf).", "type": "integer", "minimum": 1 },
+        "captionBytes": { "description": "The most bytes of a captions file (.vtt).", "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
