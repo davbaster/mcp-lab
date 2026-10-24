@@ -1,0 +1,29 @@
+{
+  "course_id": "sample-course",
+  "chapter_id": "01-first-steps",
+  "lesson_id": "setup",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "heading",
+        "depth": 1,
+        "children": [
+          {
+            "type": "text",
+            "value": "Setup"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "Set up your tools."
+          }
+        ]
+      }
+    ]
+  }
+}

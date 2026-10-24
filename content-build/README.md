@@ -1,6 +1,6 @@
 # content-build
 
-A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. So far it validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, each chapter's code steps, and the files in `assets/` with the asset and media references of the lessons, it compiles every lesson to a JSON tree (or rejects it), it compiles the quizzes and the code steps to private JSON (and the code to ZIPs), and it writes the allowed assets under content-hashed names. The format is described in [`courses/README.md`](../courses/README.md).
+A Node + TypeScript tool that validates the courses in `courses/` and compiles their restricted MDX to JSON. It validates the folder layout, `course.yaml`, the lesson front matter, each chapter's `quiz.yaml`, each chapter's code steps, and the files in `assets/` with the asset and media references of the lessons, it compiles every lesson to a JSON tree (or rejects it), it compiles the quizzes and the code steps to private JSON (and the code to ZIPs), it writes the allowed assets under content-hashed names, and `build` writes all of it, with a manifest per course, to one build folder that the backend reads (see [Building the courses](#building-the-courses)). It also keeps the list of published IDs and fails when one is removed without a note (see [Stable IDs](#stable-ids)). The format is described in [`courses/README.md`](../courses/README.md).
 
 It needs Node 24 (the version in the root `.nvmrc`). The scripts run `.ts` files with Node's built-in type stripping, so no TypeScript runner is installed, `engines.node` is `>=24`, and the code uses only erasable TypeScript syntax (`erasableSyntaxOnly` in `tsconfig.json`: no enums, namespaces, or constructor parameter properties). Imports of local files end in `.ts`.
 
@@ -14,6 +14,9 @@ Run from the repo root with `make install-content-build`, `make lint-content-bui
 - `npm run typecheck` - `tsc --noEmit`
 - `npm run validate -- <course folder>` - check one course folder, for example `npm run validate -- fixtures/valid/sample-course` (the path may use `/` or `\`)
 - `npm run compile -- <lesson.mdx>` - compile one lesson to its JSON tree (see [Lessons](#lessons))
+- `npm run build -- <courses folder> <build folder>` - build every course, for example `npm run build -- ../courses ../build` (see [Building the courses](#building-the-courses); `make build-content` runs this)
+- `npm run ids:update -- <courses folder>` - write `ids.json` in every course (`make update-content-ids`)
+- `npm run ids:check -- <courses folder> [--base <git ref>]` - check `ids.json`, and with `--base` the removed IDs (see [Stable IDs](#stable-ids); `make check-content-ids` and `make check-content-ids-base BASE=origin/main`)
 
 `validate` prints each problem on its own line, on stdout, as `<path>[:<line>[:<column>]]: error: <message>` or `<path>[:<line>[:<column>]]: warning: <message>`, then `N error(s), M warning(s)`. `<path>` is the course path as given plus the file's path inside the course, always with `/`. Only the problems of a lesson body have a column. All problems come in one run, sorted by path and then message. The exit code is 1 if there is an error, 0 otherwise, 2 when no path is given, and 3 when a component schema is not valid (see [Setup errors](#setup-errors)).
 
@@ -26,7 +29,7 @@ const problems = validateCourse("courses/mcp-server");
 // [{ severity: "error" | "warning", file: "course.yaml", line?: 3, message: "..." }, ...]
 ```
 
-`file` is the path inside the course folder, with `/`. A problem of a lesson body also has a `column`. Later steps (#12) add their checks next to the ones here and reuse `validateCourse`.
+`file` is the path inside the course folder, with `/`. A problem of a lesson body also has a `column`. The checks of the build and of the ID list use `validateCourse` and `inspectCourse` (the same check, with what the build needs: the compiled lessons, quizzes, code steps, assets, and the fields of `course.yaml`).
 
 ## Lessons
 
@@ -39,7 +42,7 @@ const result = compileLesson(text, { path: "chapters/01-intro/lessons/01-welcome
 if ("problems" in result) {
   // [{ severity: "error", file, line, column, message }, ...] in the order of the lesson
 } else {
-  const json = serializeTree(result.tree); // what `compile` prints; #12 writes it to the build output
+  const json = serializeTree(result.tree); // what `compile` prints; `build` writes it, after `rewriteAssetUrls`, to the build output
 }
 ```
 
@@ -99,7 +102,7 @@ A schema file that is not valid JSON, or not a valid component schema, stops the
 
 `npm run compile -- <lesson.mdx>` (the path may use `/` or `\`) prints the tree on stdout, as UTF-8 with LF line endings, a 2-space indent, and a final newline, and exits 0. For a rejected lesson it prints nothing on stdout, each problem on stderr as `<path>:<line>:<column>: error: <message>` (the path with `/`) followed by `N error(s), M warning(s)`, and exits 1. A missing or unreadable file, or one that is not UTF-8 text, is a rejection too. No path, or more than one, prints the usage on stderr and exits 2.
 
-**Windows PowerShell 5.1:** `npm run compile -- lesson.mdx > tree.json` writes `tree.json` as UTF-16 with a byte order mark, because PowerShell 5.1 re-encodes what `>` redirects. A tree saved that way is not valid input for anything else (not for `JSON.parse`, the build, or the frontend). Use PowerShell 7, where `>` writes UTF-8, or `cmd /c "npm run compile -- lesson.mdx > tree.json"`, which writes the bytes as they are. The build output (#12) is written by Node, not by a redirect, and is always UTF-8 with LF.
+**Windows PowerShell 5.1:** `npm run compile -- lesson.mdx > tree.json` writes `tree.json` as UTF-16 with a byte order mark, because PowerShell 5.1 re-encodes what `>` redirects. A tree saved that way is not valid input for anything else (not for `JSON.parse`, the build, or the frontend). Use PowerShell 7, where `>` writes UTF-8, or `cmd /c "npm run compile -- lesson.mdx > tree.json"`, which writes the bytes as they are. The build output is written by Node, not by a redirect, and is always UTF-8 with LF.
 
 ## Quizzes
 
@@ -107,7 +110,7 @@ A schema file that is not valid JSON, or not a valid component schema, stops the
 
 - exactly 5 questions; 2 or 3 options per question; `correct` is the `id` of exactly one option
 - option IDs are unique in a question, option texts too (after trimming, with the same capitals); question IDs are unique in the whole course (the later question fails and the message names the file and line of the first use)
-- `lesson` is the ID of a lesson in the same chapter: the `id` in the lesson's front matter when it is valid, otherwise the file name without `.mdx` (`lessonId` in `src/chapter.ts`, which #12 reuses for `ids.json`)
+- `lesson` is the ID of a lesson in the same chapter: the `id` in the lesson's front matter when it is valid, otherwise the file name without `.mdx` (`lessonId` in `src/chapter.ts`, which `ids.json` reuses)
 - `explanation` is at most 1000 characters and `snippet.code` at most 2000, counted as Unicode characters after CRLF becomes LF
 
 A message names the question by its `id` (``question `tools-2`: missing required field `explanation` ``), or by its position (`question 3`) when it has no usable `id`; a part of a question is named too (``question `tools-2`, option `a`: ...``, ``question `tools-2`, snippet: ...``). Every problem has the file `chapters/<chapter>/quiz.yaml` and the line of the key or list item when the YAML has one. A problem never quotes question text, option text, an explanation, code, or the value of `correct`: a quiz holds the answer key, so only ids, counts, lines, and file paths are printed.
@@ -127,7 +130,7 @@ const problems = writeQuizzes("courses/mcp-server", "build");
 
 `compileQuiz` also takes `questionIds`, a `Map` that it fills with the question IDs it has seen, so that a caller checking several chapters finds a repeat in another chapter. Without `lessonIds` (or with none) the `lesson` links are not checked.
 
-`writeQuizzes(courseDir, buildDir)` checks every listed chapter's quiz as `validateCourse` does and, only if no quiz has a problem, writes one file per chapter at `<buildDir>/private/quizzes/<course_id>/<chapter_id>.json` (`course_id` is the course folder name, `chapter_id` the chapter folder name, such as `03-tools`). It first removes `<buildDir>/private/quizzes/<course_id>/`, and only that folder, so a removed chapter leaves no old file, and it writes nothing outside it. On a quiz problem it writes nothing and leaves the build folder as it was. It does not check the rest of the course: run `validateCourse` first. The build command and the real build folder come with #12.
+`writeQuizzes(courseDir, buildDir)` checks every listed chapter's quiz as `validateCourse` does and, only if no quiz has a problem, writes one file per chapter at `<buildDir>/private/quizzes/<course_id>/<chapter_id>.json` (`course_id` is the course folder name, `chapter_id` the chapter folder name, such as `03-tools`). It first removes `<buildDir>/private/quizzes/<course_id>/`, and only that folder, so a removed chapter leaves no old file, and it writes nothing outside it. On a quiz problem it writes nothing and leaves the build folder as it was. It does not check the rest of the course: run `validateCourse` first. `build` calls it for every course (see [Building the courses](#building-the-courses)).
 
 The files hold the answer key and the explanations, so they are private build data for the backend to read: they live under `private/` so that nothing served and no image of the frontend takes them.
 
@@ -278,11 +281,97 @@ The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is 
 }
 ```
 
-`file` is the hashed name, `sha256` the full hash, and `size` the bytes of the file written. The file is UTF-8 without a byte order mark, with LF line endings, a 2-space indent, and a final newline. The output is byte-identical whatever the course folder's location, the build folder, the working folder, the platform, and the line endings or byte order mark of the text files. `inspectCourse(...).assets` gives the checked files (path, hashed name, sha256, size, and the bytes) for the writer and for #12.
+`file` is the hashed name, `sha256` the full hash, and `size` the bytes of the file written. The file is UTF-8 without a byte order mark, with LF line endings, a 2-space indent, and a final newline. The output is byte-identical whatever the course folder's location, the build folder, the working folder, the platform, and the line endings or byte order mark of the text files. `inspectCourse(...).assets` gives the checked files (path, hashed name, sha256, size, and the bytes) for the writer and for `build`.
 
 ### Pointing a lesson at the hashed files
 
-`compileLesson` keeps the paths as the author wrote them. The pure function `rewriteAssetUrls(tree, courseId, assetMap)` returns a new tree (the input is not changed) in which every asset reference is `/api/courses/<course_id>/assets/<hashed file name>`, the URL that #58 serves. `assetMap` is the `files` object of the map. It reads the same table of props as the checks. Values that are URLs (an allowlisted `Video.poster` or `captions`) and `Video.src` are not changed, and a reference that is not in the map throws an internal error, because the checks should have caught it. `writeAssets` does not write lesson trees: the step that does (#12) calls `compileLesson` and then `rewriteAssetUrls`.
+`compileLesson` keeps the paths as the author wrote them. The pure function `rewriteAssetUrls(tree, courseId, assetMap)` returns a new tree (the input is not changed) in which every asset reference is `/api/courses/<course_id>/assets/<hashed file name>`, the URL that #58 serves. `assetMap` is the `files` object of the map. It reads the same table of props as the checks. Values that are URLs (an allowlisted `Video.poster` or `captions`) and `Video.src` are not changed, and a reference that is not in the map throws an internal error, because the checks should have caught it. `writeAssets` does not write lesson trees: `build` (#12) calls `compileLesson` and then `rewriteAssetUrls`, and writes `private/lessons/`.
+
+## Building the courses
+
+`npm run build -- <courses folder> <build folder>` (from the repo root: `make build-content`, which builds `courses/` into `build/`) checks every course and writes what the backend reads. Both folders are required (`/` or `\` both work); with fewer or more arguments it prints the usage on stderr and exits 2. The build folder is `build/` at the repo root, which `.gitignore` ignores.
+
+- A course is every sub-folder of the courses folder whose name does not start with `.`. A file there, such as `courses/README.md`, is ignored. A link to a folder is an error.
+- `COURSES` limits the build to some courses: a comma-separated list of course IDs (`COURSES=mcp-server,other`). Unset, empty, or only white space means every course. Each entry is trimmed. An ID with no folder, an ID given twice, and an empty entry (`a,,b`) fail the build and name the problem. `COURSES` does not change which courses `ids:check` looks at: it always covers every course. In PowerShell: `$env:COURSES = 'mcp-server'`.
+- **All or nothing.** Every selected course is checked first with `validateCourse`, which includes the lesson ID and `CodeSteps` checks below. Every problem of every course is printed on stdout, as `<path>[:<line>[:<column>]]: error|warning: <message>`, with the path starting at the courses folder you gave, then `N error(s), M warning(s)`. If any course has an error, nothing in the build folder is created, changed, or removed. Only then does the build remove `<build>/private/`, `<build>/public/`, and `<build>/assets-map/` (and nothing else in the build folder), so the output of a course that was removed or left out does not stay, and write the courses.
+- It refuses, with exit 1 and a message, a build folder that is the courses folder, contains it, or is inside it, and a build folder that is a file.
+- Exit codes are those of `validate`: 0 built (warnings are allowed), 1 the content has errors (also: the courses folder or the build folder cannot be used, or `COURSES` is wrong), 2 bad command line, 3 the build's own setup is wrong (a component schema or `media-config.json` is not valid, see [Setup errors](#setup-errors)).
+- On success the last line is `built <n> course(s) into <build folder>`.
+- With no course in the courses folder (today `courses/` holds only `README.md`), `build` exits 0, prints `no courses found in <folder>` and `built 0 course(s)`, and still creates the empty `private/` and `public/`. A courses folder that does not exist exits 1 and names it. `COURSES` that names a course the folder does not have fails.
+- The output is deterministic. Building the same courses twice, into two different folders, gives byte-identical trees, also when the course files use CRLF and a byte order mark. It has no timestamp, absolute path, or commit SHA. Every JSON file is UTF-8 without a byte order mark, with LF, a 2-space indent, and a final newline.
+
+### The build folder
+
+```
+<build>/
+├── private/                       # read by the backend only; never served as files
+│   ├── courses/<course_id>.json                  # the manifest
+│   ├── lessons/<course_id>/<lesson_id>.json      # one file per lesson
+│   ├── quizzes/<course_id>/<chapter_id>.json     # with the answer keys (see Quizzes)
+│   └── code/<course_id>/<chapter_id>.json        # the steps, and <chapter_id>-<hash>.zip (see Code steps)
+├── public/assets/<course_id>/<stem>-<hash>.<ext> # the hashed assets (see Assets)
+└── assets-map/<course_id>.json                   # original path to hashed name (see Assets)
+```
+
+`private/` and `public/` exist after every successful build. The Docker image of the backend holds this folder at `/app/course-build` (the variable `COURSE_BUILD_DIR`). Nothing that holds an answer key, an explanation, a lesson body, or a code step is under `public/` or `assets-map/`; a test checks it with sentinel strings.
+
+**The manifest** `private/courses/<course_id>.json`:
+
+```json
+{
+  "schema_version": 1,
+  "course_id": "sample-course",
+  "title": "Sample course",
+  "description": "A small course that ...",
+  "chapters": [
+    {
+      "id": "01-first-steps",
+      "free_preview": true,
+      "has_code": true,
+      "lessons": [{ "id": "01-welcome", "title": "Welcome", "order": 1 }]
+    }
+  ]
+}
+```
+
+`chapters` is in the order of `course.yaml`, and only the chapters it lists are here (a chapter in progress is not). `free_preview` says whether the chapter is in `free_preview` of `course.yaml`. `has_code` is true exactly when `private/code/<course_id>/<chapter_id>.json` exists. The lessons are sorted by `order`. A chapter has no `title` yet: `course.yaml` has no field for it. Chapter titles are a follow-up ([#103](https://github.com/davbaster/mcp-lab/issues/103)).
+
+**A lesson file** `private/lessons/<course_id>/<lesson_id>.json` is `{ "course_id", "chapter_id", "lesson_id", "tree" }`. `tree` is the `compileLesson` tree after `rewriteAssetUrls`: asset references are `/api/courses/<course_id>/assets/<hashed name>`. The files are flat per course because lesson IDs are unique in a course.
+
+### Checks added for the build
+
+- **A lesson ID is used once in a course.** The ID is the `id` in the front matter, else the file name without `.mdx`. Two lessons with the same ID are an error that names the second file (and the line of its `id`) and the first file, whether it is two explicit IDs, an explicit ID equal to another lesson's file name, or the same file name in two chapters.
+- **An explicit lesson `id` that is a Windows device name** (`con`, `nul`, `com1`, ...) is an error, because the ID becomes a file name in the build.
+- **A `CodeSteps` tag names a real step and file.** `step` must be a step of the chapter's own `code/` folder, and `file` (when given) a path in that step, exactly as the files are listed, with `/`. A chapter with no `code/` folder, or with steps that have problems, makes every `CodeSteps` in it an error. The message names the lesson file, the line and column of the tag, and the step and file. `compileLesson` returns the tags (`codeSteps`, each with `step`, `file`, `line`, `column`) next to the references.
+
+## Stable IDs
+
+Chapter, lesson, and question IDs are the keys that progress, attempts, and feedback refer to, so a published one must not disappear without a note. `courses/<id>/ids.json` lists them and is checked in:
+
+```json
+{
+  "course_id": "sample-course",
+  "chapters": ["01-first-steps", "02-going-further"],
+  "lessons": ["01-welcome", "setup", "01-next"],
+  "questions": ["first-steps-1", "..."]
+}
+```
+
+Chapters are in the order of `course.yaml`, lessons by chapter and then by `order`, questions by chapter and then by position. Only listed chapters count. The lists are flat per kind, so moving a lesson to another chapter is not a removal. A chapter folder is named `NN-slug`, so inserting or reordering chapters renames chapter IDs and needs notes. The file is written like the build's JSON files.
+
+- `npm run ids:update -- <courses folder>` (`make update-content-ids`) validates every course and, only if none has an error, writes `ids.json` in each. Running it twice changes nothing.
+- `npm run ids:check -- <courses folder>` (`make check-content-ids`, also part of `make check`) exits 1 and says `run npm run ids:update` if a course has no `ids.json`, or if its content, parsed (so line endings and a byte order mark do not matter), differs from the IDs the course has now. A hand-edited `ids.json` that hides a removal fails here.
+- `npm run ids:check -- <courses folder> --base <git ref>` (`make check-content-ids-base BASE=origin/main`) also compares with the courses as of `git merge-base <ref> HEAD`. The lists in the `ids.json` of that commit are the published IDs. Every published chapter, lesson, or question ID that is not in the current `ids.json` needs a line in the course's `MIGRATIONS.md`:
+
+  ```
+  removed <kind> <id>: <reason>
+  ```
+
+  `<kind>` is `chapter`, `lesson`, or `question`, and `<reason>` is not empty. A leading `- ` or `* ` is allowed, and so are CRLF and a byte order mark. Any other line is prose and is ignored, except a line that starts with `removed ` and does not match the format, which is a warning that names the line. A note of the wrong kind does not count. Adding IDs never fails. A course with no `ids.json` at the base (a new course) passes. A course that was published and whose folder is gone fails, because v1 does not remove courses. A failure names the course, the kind, and the ID, and the note line to add.
+- `<ref>` is passed to git without a shell. A ref that starts with `-` is rejected (exit 2), and so is one that is not a commit (exit 1). A shallow clone that lacks the base fails with a message that says to fetch more history; it never passes silently. A base made only of zeros (the first push of `main`) prints a notice and skips the comparison. The merge base means IDs that `main` gained after the branch was made are not reported as removed.
+- With no course in the folder, `ids:update` and `ids:check` exit 0 with `no courses found in <folder>`. With `--base`, a course that was published still fails.
+
+**In CI** the `content-build` job checks out the whole history (`fetch-depth: 0`) and runs `make build-content` and then `make check-content-ids-base`. The base comes from the step's `env`: for a pull request or a push to a branch other than `main`, it is `origin/main`; for a push to `main`, it is the commit before the push (`github.event.before`).
 
 ## Layout
 
@@ -294,14 +383,16 @@ The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is 
 - `src/step-diff.ts` - `diffSteps`; `src/chapter-zip.ts` - `buildChapterZip`; `src/write-code-steps.ts` - `writeCodeSteps`
 - `src/lesson.ts` - `compileLesson`; `src/lesson-tree.ts` - the tree types, the check against its schema, and `serializeTree`; `src/component-schemas.ts` - reads the component schemas and `SetupError`; `src/url.ts` - the URL rule
 - `src/compile-cli.ts` and `src/compile.ts` - the `compile` command and its entry point
+- `src/build-cli.ts` and `src/build.ts` - the `build` command and its entry point; `src/courses-folder.ts` - finding the courses and checking where the build may write; `src/write-course.ts` - the manifest and the lesson files
+- `src/ids.ts` - the IDs of a course and `ids.json`; `src/migrations.ts` - the notes in `MIGRATIONS.md`; `src/git.ts` - the git commands of the ID check (no shell); `src/ids-cli.ts`, `src/ids-update.ts`, and `src/ids-check.ts` - the `ids:update` and `ids:check` commands and their entry points
 - `src/schema.ts` - ajv checks, with messages that name the field instead of the schema keyword
 - `schemas/` - the JSON Schemas for `course.yaml`, the lesson front matter, `quiz.yaml`, and the lesson tree (component props schemas live in `frontend/src/content-components/schemas/`, not here)
 - `src/folder.ts`, `src/yaml-file.ts`, `src/report.ts`, `src/problem.ts` - reading folders and YAML, collecting and printing problems
 - `src/cli.ts` and `src/validate.ts` - the `validate` command and its entry point
 - `fixtures/quizzes/valid/<case>.yaml` and `fixtures/quizzes/invalid/<case>.yaml` - single quiz files; a test puts one into a copy of the valid course as `chapters/01-first-steps/quiz.yaml`
 - `fixtures/lessons/valid/<case>.mdx` with `<case>.json` beside it (the golden tree), `fixtures/lessons/invalid/<case>.mdx` - one lesson per rejection; `fixtures/components/` - the small schema folder that the rule tests use
-- `fixtures/expected/` - the golden output of `writeQuizzes`, `writeCodeSteps`, and `writeAssets` for the valid course, and the golden rewritten tree (`lessons/all-assets.json`); `fixtures/svg/` - one SVG per SVG rule; `fixtures/lessons/assets/` - the lesson that `rewriteAssetUrls` is tested with
+- `fixtures/expected/` - the golden build folder for the valid course (`private/`, `public/`, `assets-map/`: the quizzes, code steps, assets, manifest, and lesson files), and the golden rewritten tree (`lessons/all-assets.json`, which is not part of a build folder); `fixtures/svg/` - one SVG per SVG rule; `fixtures/lessons/assets/` - the lesson that `rewriteAssetUrls` is tested with
 - `fixtures/valid/` - a valid course; `fixtures/invalid/<case>/` - one course per rule it breaks; `fixtures/warnings/<case>/` - courses that are valid but get a warning. Each folder's name is the course `id`, except `invalid/id-mismatch`.
-- `tests/` - the Vitest tests. Cases that depend on line endings or a byte order mark are written to a temporary folder by the test, so git's line-ending settings cannot change them.
+- `tests/` - the Vitest tests. The ID check tests create a temporary git repository (no network, a fixed author and fixed dates). Cases that depend on line endings or a byte order mark are written to a temporary folder by the test, so git's line-ending settings cannot change them.
 
 Names are looked up in folder listings and compared exactly, never opened by a typed name, so the checks give the same result on Windows, macOS, and Linux.

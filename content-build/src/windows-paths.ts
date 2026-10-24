@@ -11,13 +11,18 @@ export type PathProblem = {
 const BAD_CHARACTERS = /[<>:"\\|?*\p{Cc}]/u;
 const DEVICE_NAME = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
 
+/** True when `name` (with or without an extension) is a name that Windows reserves for a device: `con`, `NUL.txt`, `com1`. */
+export function isWindowsDeviceName(name: string): boolean {
+  return DEVICE_NAME.test(name.split(".")[0] ?? "");
+}
+
 function badName(name: string): string | undefined {
   if (BAD_CHARACTERS.test(name)) {
     return 'the name has a character that Windows does not allow in file names (one of < > : " \\ | ? * or a control character)';
   }
   if (name.endsWith(" ") || name.endsWith(".")) return "the name ends with a space or a dot, which Windows removes";
   // A device name is reserved with any extension: `con`, `NUL.txt`, `com1.tar.gz`.
-  if (DEVICE_NAME.test(name.split(".")[0] ?? "")) {
+  if (isWindowsDeviceName(name)) {
     return "the name is a Windows device name (CON, PRN, AUX, NUL, COM1 to COM9, LPT1 to LPT9), alone or with an extension";
   }
   return undefined;

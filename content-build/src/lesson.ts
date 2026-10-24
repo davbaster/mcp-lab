@@ -38,10 +38,13 @@ export type LessonOptions = {
 
 /**
  * Either the tree and the asset and media references the lesson makes (in the order they appear, each with
- * the line and column of the prop or the Markdown image), or the problems, never both. A lesson problem is
- * never thrown. The references are next to the tree, not in it.
+ * the line and column of the prop or the Markdown image), the `CodeSteps` tags (in the order they appear),
+ * or the problems, never both. A lesson problem is never thrown. The references and the tags are next to the tree, not in it.
  */
-export type LessonResult = { tree: LessonTree; references: LessonReference[] } | { problems: Problem[] };
+export type LessonResult = { tree: LessonTree; references: LessonReference[]; codeSteps: CodeStepUse[] } | { problems: Problem[] };
+
+/** A `<CodeSteps>` tag of a lesson, with the line and column of the tag. `step` and `file` are the props as the author wrote them. */
+export type CodeStepUse = { step: string; file?: string; line: number; column: number };
 
 // ---- the parser's tree: only what this file reads ------------------------------------------------------
 
@@ -62,7 +65,14 @@ const processor = unified().use(remarkParse).use(remarkMdx);
 /** How deep Markdown and components may be nested in each other. Real lessons use a handful of levels. */
 export const MAX_DEPTH = 100;
 
-type Context = { file: string; components: ComponentSchemas; problems: Problem[]; references: LessonReference[]; depth: number };
+type Context = {
+  file: string;
+  components: ComponentSchemas;
+  problems: Problem[];
+  references: LessonReference[];
+  codeSteps: CodeStepUse[];
+  depth: number;
+};
 
 /**
  * Compiles the text of one lesson. Reads no file except the component schemas. A bad schema is a setup
@@ -88,17 +98,21 @@ export function compileLesson(source: string, options: LessonOptions): LessonRes
     return { problems: [parseProblem(file, error)] };
   }
 
-  const ctx: Context = { file, components, problems: [], references: [], depth: 0 };
+  const ctx: Context = { file, components, problems: [], references: [], codeSteps: [], depth: 0 };
   const tree: LessonTree = { type: "root", children: convertBlocks(ctx, root.children ?? []) };
   if (ctx.problems.length > 0) return { problems: sortByPosition(ctx.problems) };
 
   const wrong = treeErrors(tree);
   if (wrong.length > 0) throw new Error(`internal error: the compiled tree does not match lesson-tree.schema.json: ${wrong.join("; ")}`);
-  return { tree, references: sortReferences(ctx.references) };
+  return { tree, references: sortReferences(ctx.references), codeSteps: sortCodeSteps(ctx.codeSteps) };
 }
 
 function sortReferences(references: LessonReference[]): LessonReference[] {
   return [...references].sort((a, b) => a.line - b.line || a.column - b.column || compareText(a.prop, b.prop));
+}
+
+function sortCodeSteps(uses: CodeStepUse[]): CodeStepUse[] {
+  return [...uses].sort((a, b) => a.line - b.line || a.column - b.column);
 }
 
 /** Notes a reference to an asset or a media file, at the position of the prop or the Markdown image. */
@@ -420,6 +434,13 @@ function checkProps(ctx: Context, el: MdNode, schema: ComponentSchema, written: 
         add(ctx, error.keyword === "required" || error.keyword === "oneOf" ? el : at, message);
       }
     }
+  }
+
+  const step = given.get("step");
+  if (schema.name === "CodeSteps" && typeof step === "string") {
+    const file = given.get("file");
+    const start = el.position?.start;
+    ctx.codeSteps.push({ step, ...(typeof file === "string" ? { file } : {}), line: start?.line ?? 1, column: start?.column ?? 1 });
   }
 
   for (const [name, value] of given) {

@@ -1,0 +1,110 @@
+{
+  "course_id": "sample-course",
+  "chapter_id": "02-going-further",
+  "lesson_id": "01-next",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "heading",
+        "depth": 1,
+        "children": [
+          {
+            "type": "text",
+            "value": "Next steps"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "What comes next, with each kind of media."
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A Markdown image: "
+          },
+          {
+            "type": "image",
+            "url": "/api/courses/sample-course/assets/photo-7f90f179c62328f7.jpg",
+            "alt": "A photo of a server room"
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Image",
+        "props": {
+          "alt": "A blue square with a diagonal line",
+          "src": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Image",
+        "props": {
+          "alt": "The course logo",
+          "src": "/api/courses/sample-course/assets/logo-0db13e1dc6f176a2.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A request goes from one box to another",
+          "src": "/api/courses/sample-course/assets/flow-889796e748a77dcb.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Model3D",
+        "props": {
+          "alt": "A server rack",
+          "poster": "/api/courses/sample-course/assets/banner-9523775ba3da5de4.webp",
+          "src": "/api/courses/sample-course/assets/server-eda47e6f1c7979c4.glb"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Model3D",
+        "props": {
+          "alt": "A small box",
+          "poster": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png",
+          "src": "/api/courses/sample-course/assets/box-4dc2fb427c16aceb.gltf"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Video",
+        "props": {
+          "captions": "/api/courses/sample-course/assets/intro-a5e4372a760aafa6.vtt",
+          "poster": "/api/courses/sample-course/assets/pic-86b20898ccdf344b.png",
+          "src": "https://media.mcp-lab.example/videos/intro.mp4",
+          "title": "Introduction"
+        },
+        "children": []
+      },
+      {
+        "type": "component",
+        "name": "Video",
+        "props": {
+          "src": "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=30",
+          "title": "An embedded video"
+        },
+        "children": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "course_id": "sample-course",
+  "chapter_id": "01-first-steps",
+  "lesson_id": "01-welcome",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "heading",
+        "depth": 1,
+        "children": [
+          {
+            "type": "text",
+            "value": "Welcome"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "Welcome to the sample course."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -14,6 +14,12 @@ const NOT_LISTED =
   "this chapter folder has lessons/ or quiz.yaml but is not listed in `chapters` in course.yaml, so it would be ignored; list it or remove it";
 const prefixRule = (name: string, position: number) =>
   `chapter \`${name}\` is number ${position} in \`chapters\`, so its folder must be named \`0${position}-<slug>\`: two digits for the position, a hyphen, then lowercase letters, digits, and hyphens`;
+const idRule = (id: string, first: string) =>
+  `the lesson id \`${id}\` is already used by ${first}; lesson ids must be unique in a course (an id is the \`id\` in the front matter, or else the file name without .mdx)`;
+const deviceRule = (id: string) =>
+  `the lesson \`id\` \`${id}\` is a Windows device name, and the id becomes a file name in the build (\`${id}.json\`); choose another id`;
+const fileRule = (file: string, step: number) =>
+  `\`<CodeSteps>\` shows the file \`${file}\` of step ${step}, but that step of chapter \`01-intro\` has no such file; write the path inside the step, with \`/\` and the exact letters, as in \`src/util.py\``;
 const unknownKey = (key: string) => `unknown key \`${key}\``;
 
 const invalid: Record<string, Problem[]> = {
@@ -118,6 +124,42 @@ const invalid: Record<string, Problem[]> = {
       8,
       1,
       "unknown component `Iframe`; the components are `Callout`, `CodeSteps`, `Diagram`, `Image`, `Model3D`, `Tabs`, `Video`",
+    ),
+  ],
+  // lesson ids are unique in a course, and an explicit id becomes a file name in the build (#12)
+  "lesson-id-duplicate": [error(`${LESSONS}/02-again.mdx`, idRule("hello", `${LESSONS}/01-hello.mdx`), 4)],
+  "lesson-id-equals-file-name": [error(`${LESSONS}/02-again.mdx`, idRule("01-hello", `${LESSONS}/01-hello.mdx`), 4)],
+  "lesson-id-same-file-name-in-two-chapters": [
+    error("chapters/02-more/lessons/01-hello.mdx", idRule("01-hello", `${LESSONS}/01-hello.mdx`)),
+  ],
+  "lesson-id-windows-device-name": [
+    error(`${LESSONS}/01-hello.mdx`, deviceRule("con"), 4),
+    error(`${LESSONS}/02-again.mdx`, deviceRule("com1"), 4),
+  ],
+  // CodeSteps tags are checked against the code steps of their chapter (#12)
+  "codesteps-step-missing": [
+    lessonProblem(`${LESSONS}/01-hello.mdx`, 10, 1, "`<CodeSteps>` shows step 3, but chapter `01-intro` has the steps 1 to 2"),
+  ],
+  "codesteps-file-missing": [
+    lessonProblem(`${LESSONS}/01-hello.mdx`, 22, 3, fileRule("Main.py", 1)),
+    lessonProblem(`${LESSONS}/01-hello.mdx`, 14, 1, fileRule("util/missing.py", 2)),
+    lessonProblem(`${LESSONS}/01-hello.mdx`, 10, 1, fileRule("util\\helper.py", 1)),
+  ],
+  "codesteps-no-code-folder": [
+    lessonProblem(
+      `${LESSONS}/01-hello.mdx`,
+      8,
+      1,
+      "`<CodeSteps>` shows step 1, but chapter `01-intro` has no code/ folder; add the steps or remove the tag",
+    ),
+  ],
+  "codesteps-invalid-steps": [
+    error("chapters/01-intro/code", "`step-1` is missing; steps must be numbered 1, 2, 3, and so on with no gaps"),
+    lessonProblem(
+      `${LESSONS}/01-hello.mdx`,
+      8,
+      1,
+      "`<CodeSteps>` shows step 1, but the code steps of chapter `01-intro` have problems; fix them first",
     ),
   ],
   // assets/ and the asset and media references of the lessons (#9)

@@ -1,1 +1,24 @@
-{}
+{
+  "course_id": "sample-course",
+  "chapters": [
+    "01-first-steps",
+    "02-going-further"
+  ],
+  "lessons": [
+    "01-welcome",
+    "setup",
+    "01-next"
+  ],
+  "questions": [
+    "first-steps-1",
+    "first-steps-2",
+    "first-steps-3",
+    "first-steps-4",
+    "first-steps-5",
+    "going-further-1",
+    "going-further-2",
+    "going-further-3",
+    "going-further-4",
+    "going-further-5"
+  ]
+}

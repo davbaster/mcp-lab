@@ -10,6 +10,7 @@ import type { EntrySpec, Report } from "./report.ts";
 import { checkShape, lessonFrontMatterShape } from "./schema.ts";
 import { parseYaml, stripBom } from "./yaml-file.ts";
 import type { ParsedYaml } from "./yaml-file.ts";
+import { isWindowsDeviceName } from "./windows-paths.ts";
 
 const LESSON_FILE = /^(\d{2})-[a-z0-9-]+\.mdx$/;
 const LESSON_ID = /^[a-z0-9-]+$/;
@@ -17,11 +18,18 @@ const LESSON_ID = /^[a-z0-9-]+$/;
 /** Compiles one lesson, given its text and its file inside the course, and returns the problems it has. */
 export type LessonChecker = (text: string, file: string) => Problem[];
 
-type Lesson = {
+/** A lesson file of a chapter, with what its front matter says (when the front matter could be read). */
+export type Lesson = {
   /** The file name, such as `01-intro.mdx`. */
   name: string;
+  /** The file inside the course, such as `chapters/01-intro/lessons/01-intro.mdx`. */
+  file: string;
   /** The lesson's stable ID: see `lessonId`. */
   id: string;
+  /** The line of the explicit `id` in the front matter, when the lesson has a valid one. */
+  idLine?: number;
+  /** The lesson's `title`, when it is a valid one. */
+  title?: string;
   /** The lesson's `order`, when it is a valid one. */
   order?: number;
   orderLine?: number;
@@ -30,7 +38,8 @@ type Lesson = {
 /**
  * `folder` is the chapter on disk, `file` the same folder inside the course, as used in messages. With
  * `quiz`, the chapter's quiz.yaml is checked too (it needs the lesson IDs, so it comes after the lessons).
- * With `checkLesson`, every lesson whose front matter block is found is compiled too.
+ * With `checkLesson`, every lesson whose front matter block is found is compiled too. Returns the lessons
+ * (in file name order), or undefined when the lessons/ folder is missing, unreadable, or has no lesson.
  */
 export function validateChapter(
   folder: string,
@@ -39,17 +48,17 @@ export function validateChapter(
   report: Report,
   quiz?: { collector: QuizCollector; chapterId: string },
   checkLesson?: LessonChecker,
-) {
+): Lesson[] | undefined {
   const found = listFolder(folder);
   if (found === undefined) {
     report.error(file, "the chapter folder cannot be read");
-    return;
+    return undefined;
   }
   checkKnownEntries(report, file, found, spec, "chapter");
 
-  let lessonIds: string[] | undefined;
+  let lessons: Lesson[] | undefined;
   if (found.get("lessons") === "directory") {
-    lessonIds = validateLessons(join(folder, "lessons"), `${file}/lessons`, report, checkLesson);
+    lessons = validateLessons(join(folder, "lessons"), `${file}/lessons`, report, checkLesson);
   } else {
     report.error(`${file}/lessons`, "the lessons/ folder is missing");
   }
@@ -59,12 +68,13 @@ export function validateChapter(
     report.error(quizFile, "quiz.yaml is missing");
     quiz?.collector.problems.push({ severity: "error", file: quizFile, message: "quiz.yaml is missing" });
   } else if (quiz !== undefined) {
-    checkQuizFile(join(folder, "quiz.yaml"), quizFile, quiz.chapterId, lessonIds, quiz.collector, report);
+    checkQuizFile(join(folder, "quiz.yaml"), quizFile, quiz.chapterId, lessons?.map((lesson) => lesson.id), quiz.collector, report);
   }
+  return lessons;
 }
 
-/** The stable IDs of the lessons, or undefined when there are none to link to. */
-function validateLessons(folder: string, file: string, report: Report, checkLesson?: LessonChecker): string[] | undefined {
+/** The lessons, or undefined when there are none to link to. */
+function validateLessons(folder: string, file: string, report: Report, checkLesson?: LessonChecker): Lesson[] | undefined {
   const found = listFolder(folder);
   if (found === undefined) {
     report.error(file, "the lessons/ folder cannot be read");
@@ -84,11 +94,11 @@ function validateLessons(folder: string, file: string, report: Report, checkLess
     return undefined;
   }
   checkOrders(lessons, file, report);
-  return lessons.map((lesson) => lesson.id);
+  return lessons;
 }
 
 function readLesson(path: string, file: string, name: string, report: Report, checkLesson?: LessonChecker): Lesson {
-  const lesson: Lesson = { name, id: lessonId(name, undefined) };
+  const lesson: Lesson = { name, file, id: lessonId(name, undefined) };
   if (!LESSON_FILE.test(name)) {
     report.error(
       file,
@@ -120,7 +130,18 @@ function readLesson(path: string, file: string, name: string, report: Report, ch
   for (const { line, message } of checkShape(lessonFrontMatterShape, value, yaml)) {
     report.error(file, message, line);
   }
-  return withOrder({ ...lesson, id: lessonId(name, value) }, value as Record<string, unknown>, yaml);
+  const data = value as Record<string, unknown>;
+  const id = lessonId(name, value);
+  const explicit = typeof data.id === "string" && LESSON_ID.test(data.id);
+  if (explicit && isWindowsDeviceName(id)) {
+    report.error(
+      file,
+      `the lesson \`id\` \`${id}\` is a Windows device name, and the id becomes a file name in the build (\`${id}.json\`); choose another id`,
+      yaml.lineOf(["id"]),
+    );
+  }
+  const title = typeof data.title === "string" && /\S/.test(data.title) ? { title: data.title } : {};
+  return withOrder({ ...lesson, ...title, id, ...(explicit ? { idLine: yaml.lineOf(["id"]) } : {}) }, data, yaml);
 }
 
 /**

@@ -229,10 +229,37 @@ def test_ci_content_build_job_runs_the_make_targets_with_the_node_version_file()
         "make lint-content-build",
         "make typecheck-content-build",
         "make test-content-build",
+        "make build-content",
+        "make check-content-ids-base",
     ]
     assert "working-directory" not in content_build  # make runs from the repo root
     assert "npm " not in content_build  # only make targets, no direct npm
     assert "frontend" not in content_build
+
+
+def test_ci_content_build_job_checks_out_the_whole_history_for_the_id_check():
+    content_build = _ci_job("content-build")
+
+    # The ID check compares with the merge base, so a shallow clone would make it fail.
+    assert re.search(
+        r"actions/checkout@\S+ # v\S+\n        with:\n(?:          #.*\n)*          fetch-depth: 0\n", content_build
+    )
+    assert content_build.index("fetch-depth: 0") < content_build.index("setup-node")
+    for other in ("backend", "frontend"):
+        assert "fetch-depth" not in _ci_job(other)
+
+
+def test_ci_id_check_gets_its_base_from_the_step_env_and_never_from_a_run_line():
+    content_build = _ci_job("content-build")
+    step = re.search(r"^      - run: make check-content-ids-base\n        env:\n((?:          .*\n)+)", content_build + "\n", re.MULTILINE)
+
+    assert step, "make check-content-ids-base needs an env: block with BASE"
+    values = [line.strip() for line in step.group(1).splitlines() if not line.strip().startswith("#")]
+    # A pull request or a push to another branch compares with main; a push to main with the commit before the push.
+    assert values == [
+        "BASE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.event.before || 'origin/main' }}"
+    ]
+    assert "${{" not in "\n".join(re.findall(r"^\s*(?:-\s+)?run:.*$", content_build, re.MULTILINE))  # nothing expanded in a run: line
 
 
 def test_content_build_uses_the_shared_node_version_and_requires_it():
@@ -242,7 +269,7 @@ def test_content_build_uses_the_shared_node_version_and_requires_it():
     assert package["private"] is True
     assert package["type"] == "module"
     assert package["engines"] == {"node": f">={(ROOT / '.nvmrc').read_text().strip()}"}
-    assert {"validate", "test", "lint", "typecheck"} <= set(package["scripts"])
+    assert {"validate", "test", "lint", "typecheck", "build", "ids:update", "ids:check"} <= set(package["scripts"])
 
 
 # --- The root Makefile ------------------------------------------------------------------
@@ -378,6 +405,25 @@ def test_gitattributes_pins_the_makefile_to_lf():
     assert "Makefile text eol=lf" in (ROOT / ".gitattributes").read_text().splitlines()
 
 
+def test_gitattributes_pins_the_id_files_and_the_golden_build_output_to_lf():
+    lines = (ROOT / ".gitattributes").read_text().splitlines()
+
+    for pattern in (
+        "courses/*/ids.json text eol=lf",
+        "content-build/fixtures/**/ids.json text eol=lf",
+        "content-build/fixtures/expected/**/*.json text eol=lf",
+        "content-build/fixtures/expected/private/** text eol=lf",
+    ):
+        assert pattern in lines, pattern
+
+
+def test_gitignore_ignores_the_build_folder_at_the_repo_root_only():
+    lines = (ROOT / ".gitignore").read_text().splitlines()
+
+    assert "/build/" in lines
+    assert "build/" not in lines
+
+
 def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
     rules = _rules()
 
@@ -404,6 +450,47 @@ def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
     assert "typecheck-backend" not in rules
 
 
+CONTENT_TARGETS = ("build-content", "update-content-ids", "check-content-ids", "check-content-ids-base")
+
+
+def test_content_targets_run_the_content_build_commands_from_its_folder():
+    rules = _rules()
+
+    assert {name: rules[name].recipe for name in CONTENT_TARGETS} == {
+        "build-content": ["cd content-build && npm run build -- ../courses ../build"],
+        "update-content-ids": ["cd content-build && npm run ids:update -- ../courses"],
+        "check-content-ids": ["cd content-build && npm run ids:check -- ../courses"],
+        "check-content-ids-base": ["cd content-build && npm run ids:check -- ../courses --base $(BASE)"],
+    }
+    for name in CONTENT_TARGETS:
+        assert rules[name].prerequisites == [], name
+        assert name in _phony_targets() and _help_description(name), name
+
+
+def test_only_the_read_only_id_check_without_a_base_is_in_an_aggregate():
+    rules = _rules()
+    in_aggregates = {p for name in ("install", "lint", "typecheck", "test", "check") for p in rules[name].prerequisites}
+
+    # build-content and update-content-ids write files, and the base check needs git history, like migrate-backend needs a database.
+    assert in_aggregates & set(CONTENT_TARGETS) == {"check-content-ids"}
+
+
+def test_check_content_ids_base_passes_the_base_variable_to_the_command():
+    result = _make("-n", "check-content-ids-base", "BASE=origin/main")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == ["cd content-build && npm run ids:check -- ../courses --base origin/main"]
+
+
+def test_check_content_ids_base_without_a_base_ends_the_command_at_the_flag_so_the_tool_prints_its_usage():
+    result = _make("-n", "check-content-ids-base")
+
+    assert result.returncode == 0, result.stderr
+    assert [line.rstrip() for line in result.stdout.splitlines()] == [
+        "cd content-build && npm run ids:check -- ../courses --base"
+    ]
+
+
 def test_aggregate_targets_call_only_the_per_part_targets_they_should():
     rules = _rules()
 
@@ -412,7 +499,7 @@ def test_aggregate_targets_call_only_the_per_part_targets_they_should():
         "lint": ["lint-backend", "lint-frontend", "lint-content-build"],
         "typecheck": ["typecheck-frontend", "typecheck-content-build"],
         "test": ["test-backend", "test-frontend", "test-content-build"],
-        "check": ["check-openapi", "check-api-client"],
+        "check": ["check-openapi", "check-api-client", "check-content-ids"],
     }
     for name in ("install", "lint", "typecheck", "test", "check"):
         assert rules[name].recipe == [], name

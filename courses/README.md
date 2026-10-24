@@ -6,8 +6,8 @@ Course content, one folder per course: `courses/<id>/`. The content build (`cont
 courses/<id>/
 ├── course.yaml                  # id, title, description, chapter order, free-preview chapters
 ├── assets/                      # images, .glb models, diagram sources, .vtt captions
-├── ids.json                     # published IDs (generated, checked in #12)
-├── MIGRATIONS.md                # notes for removed IDs (checked in #12)
+├── ids.json                     # published IDs (generated; see Stable IDs below)
+├── MIGRATIONS.md                # notes for removed IDs (see Stable IDs below)
 └── chapters/
     └── 01-slug/                 # NN-slug: NN is the chapter's position in course.yaml
         ├── lessons/
@@ -51,6 +51,7 @@ free_preview:              # chapters visitors can read without an account; may 
   ```
 
   `title` is a non-empty string and `order` an integer of 1 or more. An optional `id` (lowercase letters, digits, hyphens) sets a stable lesson ID. No other key is allowed. The `order` values in a chapter are unique and run 1 to N with no gaps. A file-name prefix that differs from `order` is only a warning.
+- **A lesson ID is unique in the whole course**, not only in its chapter (the lesson endpoint has no chapter in its path). The ID is the `id` in the front matter, else the file name without `.mdx`. Two lessons with the same ID are an error that names both files: two explicit `id`s, an explicit `id` equal to another lesson's file name, and the same file name in two chapters all count. An explicit `id` may not be a Windows device name (`con`, `nul`, `com1`, ...), because the ID becomes the file name `<id>.json` in the build.
 - A chapter folder that is not listed in `chapters` is an error if it has `lessons/` or `quiz.yaml`, so no chapter is silently ignored. A folder with only `code/` is a chapter in progress: the build warns and does not publish it, so code steps can land before their lessons.
 - Anything else (a stray file, a subfolder in `lessons/`, a non-`.mdx` file there) is a warning. `.DS_Store` and `Thumbs.db` are ignored.
 - Names must match exactly, including capitals, on every platform: `01-Tools` is not `01-tools`.
@@ -162,6 +163,8 @@ chapters/03-tools/code/
 - A renamed file shows in the viewer as one deleted file and one new file; the build does not detect renames.
 - A chapter folder that has only `code/` (a chapter in progress) gets the same checks, but nothing is built from it until it is listed in `course.yaml`.
 
+A `<CodeSteps step="2" file="src/util.py" />` tag in a lesson (also inside a `Callout` or a `Tab`) must name a step of its own chapter's `code/` folder, and a `file` that is a path in that step, spelled exactly as in the step with `/` between folders. A chapter with no `code/` folder, or whose steps have problems, cannot use `CodeSteps`. Each wrong tag is an error at the line and column of the tag.
+
 Step data and ZIPs are private build data, served by the backend under the same access rules as the chapter's lessons. See [`content-build/README.md`](../content-build/README.md#code-steps).
 
 ## Quizzes
@@ -246,3 +249,30 @@ questions:
 Quiz answers and explanations are private build data: the build writes them under `private/quizzes/`, which only the backend reads. See [`content-build/README.md`](../content-build/README.md).
 
 Check a course with `cd content-build` then `npm run validate -- ../courses/<id>`.
+
+## Stable IDs
+
+Progress, quiz attempts, and feedback refer to chapter, lesson, and question IDs, so an ID that was published must not disappear. A chapter ID is the chapter's folder name (`01-first-steps`), a lesson ID is described under [Chapters and lessons](#chapters-and-lessons), and a question ID is its `id` in `quiz.yaml`.
+
+`ids.json` is generated: run `make update-content-ids` (or `cd content-build` then `npm run ids:update -- ../courses`) after you add a chapter, a lesson, or a question, and commit the file with the change. It lists the IDs the course has now, in this form:
+
+```json
+{
+  "course_id": "mcp-server",
+  "chapters": ["01-what-is-mcp", "02-first-server"],
+  "lessons": ["01-intro", "02-install"],
+  "questions": ["what-is-mcp-1", "what-is-mcp-2"]
+}
+```
+
+Chapters are in `course.yaml` order, lessons by chapter and then `order`, questions by chapter and then position. Only the chapters listed in `course.yaml` count. A chapter folder is named `NN-slug`, so inserting or reordering a chapter renames its ID: that needs notes too.
+
+CI fails when `ids.json` is missing or stale, and when an ID that was published (it is in the `ids.json` of the commit where your branch left `main`) is not in the current one without a note. A removal that you mean needs a line in `MIGRATIONS.md`, one per ID:
+
+```
+removed lesson 02-install: merged into 01-intro
+removed question what-is-mcp-2: replaced by what-is-mcp-6
+removed chapter 03-old: cut from the course
+```
+
+`removed <kind> <id>: <reason>`, where `<kind>` is `chapter`, `lesson`, or `question` and the reason is not empty. A leading `- ` or `* ` is fine. Other lines are prose and are ignored; a line that starts with `removed ` and does not match is a warning. Renaming an ID is a removal of the old one. Adding IDs needs no note. Do not remove a course: v1 keeps every published course. The details are in [`content-build/README.md`](../content-build/README.md#stable-ids).

@@ -23,3 +23,8 @@ content-build/fixtures/expected/public/** -text
 content-build/fixtures/expected/assets-map/** text eol=lf
 # The SVG fixtures are scanned by line number.
 content-build/fixtures/svg/** text eol=lf
+# The IDs of a course are compared as parsed data, but the file is written with LF; the fixture's ids.json is compared byte for byte.
+courses/*/ids.json text eol=lf
+content-build/fixtures/**/ids.json text eol=lf
+# The golden build output (the manifest and the lesson files are new) is compared byte for byte.
+content-build/fixtures/expected/private/** text eol=lf

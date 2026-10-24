@@ -57,7 +57,7 @@ describe("compileLesson references", () => {
   it("keeps the references out of the tree, whose golden files do not change", () => {
     const result = references('<Image src="images/pic.png" alt="A picture" />\n\n![A](images/photo.jpg)');
 
-    expect(Object.keys(result).sort()).toEqual(["references", "tree"]);
+    expect(Object.keys(result).sort()).toEqual(["codeSteps", "references", "tree"]);
     expect(serializeTree(result.tree)).not.toContain("column");
     expect(serializeTree(result.tree)).not.toContain("references");
     for (const name of ["components", "markdown"]) {

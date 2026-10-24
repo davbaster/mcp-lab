@@ -8,5 +8,8 @@ __pycache__/
 node_modules/
 dist/
 
+# Content build output (make build-content)
+/build/
+
 # Secrets: configuration comes from environment variables
 .env

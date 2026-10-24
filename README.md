@@ -23,9 +23,9 @@ Run `make install` first, after cloning and after pulling a change to a lock fil
 | `make lint` | Lint every part |
 | `make typecheck` | Typecheck every part that has one (the frontend and content-build; the backend has none yet) |
 | `make test` | Run every test suite (the backend needs `DATABASE_URL`, see [Test database](#test-database)) |
-| `make check` | Check that `openapi.yaml` and the generated API client are up to date (needs no database) |
+| `make check` | Check that `openapi.yaml`, the generated API client, and the `ids.json` of every course are up to date (needs no database and no git history) |
 
-Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi` and `check-api-client` are the two steps of `make check`. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
+Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi`, `check-api-client`, and `check-content-ids` are the steps of `make check`. `build-content` (build every course into `build/`), `update-content-ids` (write `courses/<id>/ids.json`), and `check-content-ids-base` (no published ID was removed without a note, used as `make check-content-ids-base BASE=origin/main`, which needs git history) write files or need git, so they are in no aggregate. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
 
 The commands below are what the targets run. Use them directly to run one test file, start the dev servers, or build. Run each on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
 
@@ -312,6 +312,30 @@ npm run validate -- fixtures/valid/sample-course
 
 Every problem is printed on stdout as `<path>[:<line>]: error: <message>` or `<path>[:<line>]: warning: <message>`, followed by `N error(s), M warning(s)`. The command exits non-zero if there is at least one error; warnings alone exit 0. The format is described in [`courses/README.md`](courses/README.md) and the tool in [`content-build/README.md`](content-build/README.md).
 
+Build every course in `courses/` into `build/` (`make build-content`; `COURSES=<id>,<id>` limits the build; the build writes nothing if any course has an error). The folder `build/` is ignored by git; with no course in `courses/` it holds only empty `private/` and `public/`:
+
+```
+cd content-build
+npm run build -- ../courses ../build
+```
+
+Write the `ids.json` of every course (`make update-content-ids`), check that they are up to date (`make check-content-ids`), and check that no published ID was removed without a note in `MIGRATIONS.md` (`make check-content-ids-base BASE=origin/main`; needs git history, so a shallow clone fails and says so):
+
+```
+cd content-build
+npm run ids:update -- ../courses
+```
+
+```
+cd content-build
+npm run ids:check -- ../courses
+```
+
+```
+cd content-build
+npm run ids:check -- ../courses --base origin/main
+```
+
 ## Docker stack
 
 The stack runs the frontend, backend, Postgres, and Caddy together at a single local address, the same way the app runs in production. The native dev servers from the Commands section above remain the fast edit loop; use the Docker stack to check the whole thing end to end.
@@ -401,6 +425,8 @@ Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a comm
 
 CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container.
 
+The `content-build` job checks out the whole history (`fetch-depth: 0`). After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection).
+
 Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
 
 ## Branch protection
@@ -442,5 +468,5 @@ Fix the failure or re-run the job. A test is never skipped or weakened to get a 
 | `backend/` | Python, FastAPI. |
 | `frontend/` | React, TypeScript, Vite, Vitest. |
 | `courses/` | Course content. The folder format is in [`courses/README.md`](courses/README.md); the first course comes with [#26](https://github.com/davbaster/mcp-lab/issues/26) onward. |
-| `content-build/` | Course validator (and later the MDX compiler), Node and TypeScript. |
+| `content-build/` | Course validator, MDX compiler, and build, Node and TypeScript. |
 | `oncall-mcp/` | The on-call MCP server (filled by [#40](https://github.com/davbaster/mcp-lab/issues/40)). |
