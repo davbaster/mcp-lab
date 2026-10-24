@@ -1,0 +1,87 @@
+# Local stack: Caddy -> frontend (nginx) and backend (FastAPI), plus Postgres.
+# Start it with `docker compose up --build`. Variables come from `.env` (copy
+# `.env.example`); every variable also has a default here, so `.env` is optional.
+name: mcp-lab
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mcp_lab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcp_lab_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-mcp_lab}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - db
+    healthcheck:
+      # -h 127.0.0.1 skips the init-time server, which only listens on a socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: mcp-lab-backend:local
+    build:
+      context: ./backend
+    networks:
+      - db
+      - web
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  frontend:
+    image: mcp-lab-frontend:local
+    build:
+      context: ./frontend
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - web
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      # The admin API listens on loopback inside the container only.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  # Only the backend can reach Postgres. internal: no route out of the network.
+  db:
+    internal: true
+  web:
+
+volumes:
+  postgres-data:
