@@ -7,12 +7,14 @@ exactly one day from creation: the expiry is fixed, never extended by use.
 import hashlib
 import re
 import secrets
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import Depends, Response
+from fastapi import Depends, Request, Response
 from fastapi.security import APIKeyCookie
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -111,3 +113,31 @@ def current_learner(
     if learner is None:
         raise ApiError(401, "not_authenticated", NOT_AUTHENTICATED_MESSAGE)
     return learner
+
+
+@dataclass(frozen=True)
+class SignedIn:
+    """A learner and the open database session that found them."""
+
+    learner: Learner
+    db: Session
+
+
+def optional_learner(
+    request: Request,
+    now: Annotated[datetime, Depends(current_time)],
+) -> Iterator[SignedIn | None]:
+    """The signed-in learner if there is a valid session, else None (never a 401).
+
+    For public routes that show more to a learner. Lazy on purpose: a request without a
+    well-formed token never creates a database session, so a visitor costs no connection.
+    """
+    # Read from the request, not through `cookie_scheme`, which would mark the cookie as required
+    # in the spec. A route that uses this declares its own optional `security`.
+    cookie_value = request.cookies.get(COOKIE_NAME)
+    if token_hash_from_cookie(cookie_value) is None:
+        yield None
+        return
+    with contextmanager(get_db_session)() as db:
+        learner = find_learner(db, cookie_value, now)
+        yield None if learner is None else SignedIn(learner=learner, db=db)

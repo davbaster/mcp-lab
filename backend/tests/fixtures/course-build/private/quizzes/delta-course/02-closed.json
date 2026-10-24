@@ -1,0 +1,103 @@
+{
+  "course_id": "delta-course",
+  "chapter_id": "02-closed",
+  "questions": [
+    {
+      "id": "02-closed-1",
+      "text": "QUESTION-SENTINEL-delta-1",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-delta-1"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-delta-1-b"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-delta-1",
+      "lesson": "quiz-link-7f3a"
+    },
+    {
+      "id": "02-closed-2",
+      "text": "QUESTION-SENTINEL-delta-2",
+      "options": [
+        {
+          "id": "a",
+          "text": "WRONG-SENTINEL-delta-2-a"
+        },
+        {
+          "id": "b",
+          "text": "CORRECT-SENTINEL-delta-2"
+        },
+        {
+          "id": "c",
+          "text": "WRONG-SENTINEL-delta-2-c"
+        }
+      ],
+      "correct": "b",
+      "explanation": "EXPLANATION-SENTINEL-delta-2",
+      "lesson": "quiz-link-7f3a"
+    },
+    {
+      "id": "02-closed-3",
+      "text": "QUESTION-SENTINEL-delta-3",
+      "snippet": {
+        "language": "python",
+        "code": "print('SNIPPET-SENTINEL-delta-3')\n"
+      },
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-delta-3"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-delta-3-b"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-delta-3",
+      "lesson": "quiz-link-7f3a"
+    },
+    {
+      "id": "02-closed-4",
+      "text": "QUESTION-SENTINEL-delta-4",
+      "options": [
+        {
+          "id": "a",
+          "text": "WRONG-SENTINEL-delta-4-a"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-delta-4-b"
+        },
+        {
+          "id": "c",
+          "text": "CORRECT-SENTINEL-delta-4"
+        }
+      ],
+      "correct": "c",
+      "explanation": "EXPLANATION-SENTINEL-delta-4",
+      "lesson": "quiz-link-7f3a"
+    },
+    {
+      "id": "02-closed-5",
+      "text": "QUESTION-SENTINEL-delta-5",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-delta-5"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-delta-5-b"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-delta-5",
+      "lesson": "quiz-link-7f3a"
+    }
+  ]
+}

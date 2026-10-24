@@ -10,6 +10,38 @@ components:
       - username
       title: AccountResponse
       type: object
+    ChapterProgressSummary:
+      additionalProperties: false
+      properties:
+        best_score:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Best Score
+        id:
+          title: Id
+          type: string
+        last_lesson_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Last Lesson Id
+        status:
+          $ref: '#/components/schemas/ChapterStatus'
+      required:
+      - id
+      - status
+      - best_score
+      - last_lesson_id
+      title: ChapterProgressSummary
+      type: object
+    ChapterStatus:
+      enum:
+      - locked
+      - in_progress
+      - passed
+      title: ChapterStatus
+      type: string
     ChapterSummary:
       additionalProperties: false
       properties:
@@ -24,6 +56,10 @@ components:
             $ref: '#/components/schemas/LessonSummary'
           title: Lessons
           type: array
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/ChapterStatus'
+          - type: 'null'
         title:
           title: Title
           type: string
@@ -32,6 +68,7 @@ components:
       - title
       - free_preview
       - lessons
+      - status
       title: ChapterSummary
       type: object
     CourseChaptersResponse:
@@ -49,6 +86,26 @@ components:
       - course_id
       - chapters
       title: CourseChaptersResponse
+      type: object
+    CourseProgressResponse:
+      additionalProperties: false
+      properties:
+        chapters:
+          items:
+            $ref: '#/components/schemas/ChapterProgressSummary'
+          title: Chapters
+          type: array
+        course_complete:
+          title: Course Complete
+          type: boolean
+        course_id:
+          title: Course Id
+          type: string
+      required:
+      - course_id
+      - course_complete
+      - chapters
+      title: CourseProgressResponse
       type: object
     CourseSummary:
       additionalProperties: false
@@ -117,6 +174,57 @@ components:
       - status
       title: HealthResponse
       type: object
+    LastLessonRequest:
+      additionalProperties: false
+      properties:
+        lesson_id:
+          maxLength: 100
+          minLength: 1
+          title: Lesson Id
+          type: string
+      required:
+      - lesson_id
+      title: LastLessonRequest
+      type: object
+    LessonResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        lesson_id:
+          title: Lesson Id
+          type: string
+        next_lesson_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Lesson Id
+        prev_lesson_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Prev Lesson Id
+        title:
+          title: Title
+          type: string
+        tree:
+          additionalProperties: true
+          title: Tree
+          type: object
+      required:
+      - course_id
+      - chapter_id
+      - lesson_id
+      - title
+      - prev_lesson_id
+      - next_lesson_id
+      - tree
+      title: LessonResponse
+      type: object
     LessonSummary:
       additionalProperties: false
       properties:
@@ -147,6 +255,79 @@ components:
       - username
       - password
       title: LoginRequest
+      type: object
+    QuizOption:
+      additionalProperties: false
+      properties:
+        id:
+          title: Id
+          type: string
+        text:
+          title: Text
+          type: string
+      required:
+      - id
+      - text
+      title: QuizOption
+      type: object
+    QuizQuestion:
+      additionalProperties: false
+      properties:
+        id:
+          title: Id
+          type: string
+        options:
+          items:
+            $ref: '#/components/schemas/QuizOption'
+          title: Options
+          type: array
+        snippet:
+          anyOf:
+          - $ref: '#/components/schemas/QuizSnippet'
+          - type: 'null'
+        text:
+          title: Text
+          type: string
+      required:
+      - id
+      - text
+      - snippet
+      - options
+      title: QuizQuestion
+      type: object
+    QuizResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        questions:
+          items:
+            $ref: '#/components/schemas/QuizQuestion'
+          title: Questions
+          type: array
+      required:
+      - course_id
+      - chapter_id
+      - questions
+      title: QuizResponse
+      type: object
+    QuizSnippet:
+      additionalProperties: false
+      properties:
+        code:
+          title: Code
+          type: string
+        language:
+          title: Language
+          type: string
+      required:
+      - language
+      - code
+      title: QuizSnippet
       type: object
     RegisterRequest:
       properties:
@@ -362,6 +543,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/CourseChaptersResponse'
           description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
         '404':
           content:
             application/json:
@@ -380,7 +567,252 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Internal server error
-      summary: List the chapters of a course, with their lessons
+      security:
+      - SessionCookie: []
+      - {}
+      summary: List the chapters of a course, with their lessons and (when signed in) status
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/quiz:
+    get:
+      operationId: getQuiz
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: A chapter's quiz questions, without answers, for a learner whose chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/lessons/{lesson_id}:
+    get:
+      operationId: getLesson
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: lesson_id
+        required: true
+        schema:
+          title: Lesson Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LessonResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      - {}
+      summary: A lesson's compiled tree, for anyone in a free preview chapter and else for a learner whose
+        chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/progress:
+    get:
+      operationId: getProgress
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseProgressResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: The signed-in learner's status and best score in each chapter of a course
+      tags:
+      - courses
+  /api/courses/{course_id}/progress/last-lesson:
+    put:
+      operationId: saveLastLesson
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LastLessonRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: Save the last lesson the signed-in learner visited, in the lesson's chapter
       tags:
       - courses
   /api/health:

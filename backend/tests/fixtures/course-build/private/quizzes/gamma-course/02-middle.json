@@ -1,0 +1,23 @@
+{
+  "course_id": "gamma-course",
+  "chapter_id": "02-middle",
+  "questions": [
+    {
+      "id": "02-middle-1",
+      "text": "QUESTION-SENTINEL-gamma-2",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-gamma-2"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-gamma-2"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-gamma-2",
+      "lesson": "middle-lesson"
+    }
+  ]
+}
