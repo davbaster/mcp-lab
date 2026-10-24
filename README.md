@@ -4,7 +4,7 @@ A web app for guided courses. The first course is "Build an MCP Server" (Python)
 
 ## Required tools
 
-- [uv](https://docs.astral.sh/uv/) for the backend (it installs the Python version from `backend/pyproject.toml`).
+- [uv](https://docs.astral.sh/uv/) for the backend. uv reads the Python version from `backend/.python-version` and downloads it if it is missing, so Python does not need to be installed separately.
 - Node, at the version in [`.nvmrc`](.nvmrc), with npm.
   - `nvm-windows` ignores `.nvmrc`. Read the version in the file and run `nvm use <that version>` (for example `nvm use 24`).
   - With the original `nvm` on macOS or Linux, run `nvm use` in the repo folder.
@@ -298,6 +298,29 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 ```
 
 A variable set in the PowerShell session (for example `$env:HTTP_PORT = "8081"`) overrides `.env` until you close the session or remove it with `Remove-Item Env:HTTP_PORT`.
+
+## Lock files and versions
+
+`backend/uv.lock` and `frontend/package-lock.json` are committed. They pin every package, so every machine and every CI run installs the same ones.
+
+- Commit a lock file in the same change as the `pyproject.toml` or `package.json` change.
+- `uv add` / `uv remove` and `npm install <pkg>` update the lock file themselves. They add or remove a dependency, so they need approval (see [`AGENTS.md`](AGENTS.md)).
+- After you edit a version range by hand, run `uv lock` (backend) or `npm install` (frontend) and commit the result.
+- If you forget, CI fails: `uv sync --locked` stops with a "lockfile needs to be updated" error, and `npm ci` stops because `package.json` and `package-lock.json` are out of sync.
+
+To move the backend to another Python minor version, change these together:
+
+- `backend/.python-version`
+- `requires-python` in `backend/pyproject.toml`
+- both `FROM python:` lines in `backend/Dockerfile`
+
+Every GitHub Action in `.github/workflows/` is pinned to a full commit SHA, followed by a comment with its version (for example `actions/checkout@<sha> # v7.0.1`), because a tag can be moved and a commit cannot. To bump one, find the commit of the new tag, then update the SHA and the version comment together:
+
+```
+git ls-remote --tags https://github.com/actions/checkout
+```
+
+For an annotated tag, use the line that ends in `^{}`. The uv version CI installs (`version:` of the `setup-uv` step in `ci.yml`) must equal the `uv==` version in `backend/Dockerfile`; change both together.
 
 ## CI
 

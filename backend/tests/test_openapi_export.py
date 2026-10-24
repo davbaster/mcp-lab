@@ -241,7 +241,8 @@ def test_ci_checks_openapi_after_ruff_and_before_alembic_without_a_database_url(
 
     assert step in backend  # no `env:` follows it, so no DATABASE_URL and no secrets
     assert (
-        backend.index("- run: uv run ruff check .")
+        backend.index("- run: uv sync --locked")
+        < backend.index("- run: uv run ruff check .")
         < backend.index(step)
         < backend.index("- run: uv run alembic upgrade head")
     )

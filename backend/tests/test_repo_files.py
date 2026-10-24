@@ -78,10 +78,104 @@ def test_ci_backend_job_has_postgres_service_and_ordered_steps():
     steps = re.findall(r"^      - run: (.+)$", backend, re.MULTILINE)
     # Every step that talks to the database gets DATABASE_URL (job-level env cannot use `job`).
     assert backend.count("DATABASE_URL:") == 3
+    assert re.findall(r"^      - uses: (.+)$", backend, re.MULTILINE) == [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+        "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0",
+    ]
     assert steps == [
-        "uv sync",
+        "uv sync --locked",
         "uv run ruff check .",
         "uv run alembic upgrade head",
         "uv run alembic check",
         "uv run pytest",
     ]
+
+
+WORKFLOWS = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
+SHA_PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$")
+
+
+def _workflow_lines(path):
+    """The workflow's lines without full-line comments."""
+    return [line for line in path.read_text().splitlines() if not line.lstrip().startswith("#")]
+
+
+def _minor(version):
+    major, minor = version.split(".")[:2]
+    return int(major), int(minor)
+
+
+def test_python_version_file_is_a_minor_version_not_below_requires_python():
+    text = (BACKEND_DIR / ".python-version").read_text()
+    assert re.fullmatch(r"\d+\.\d+\n", text), "expected the minor version and one newline, e.g. 3.12"
+
+    pyproject = (BACKEND_DIR / "pyproject.toml").read_text()
+    minimum = re.search(r'^requires-python = ">=(\d+\.\d+)(?:\.\d+)?"$', pyproject, re.MULTILINE)
+    assert minimum, "requires-python must be a plain >= lower bound"
+    assert _minor(text.strip()) >= _minor(minimum.group(1))
+
+
+def test_python_version_file_matches_the_dockerfile_base_images():
+    version = (BACKEND_DIR / ".python-version").read_text().strip()
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    assert re.findall(r"^FROM python:(\S+?)(?:-slim)?(?: AS \w+)?$", dockerfile, re.MULTILINE) == [
+        version,
+        version,
+    ]
+
+
+def test_workflows_do_not_install_python_by_other_means():
+    assert WORKFLOWS
+    for path in WORKFLOWS:
+        text = "\n".join(_workflow_lines(path))
+        assert "setup-python" not in text, path.name
+        assert "python-version" not in text, path.name
+
+
+def test_every_workflow_action_is_pinned_to_a_commit_sha_with_a_version_comment():
+    uses = [
+        (path.name, match.group(1).strip())
+        for path in WORKFLOWS
+        for line in _workflow_lines(path)
+        if (match := re.match(r"^\s*(?:-\s+)?uses:\s*(.+)$", line))
+    ]
+    assert uses
+    for name, value in uses:
+        if value.startswith("./"):  # a local action lives in this repo
+            continue
+        assert SHA_PINNED_USES.match(value), f"{name}: {value!r} is not owner/repo@<40-char sha> # vX.Y.Z"
+
+
+def test_every_uv_sync_in_the_workflows_is_locked():
+    commands = [
+        (path.name, line.strip())
+        for path in WORKFLOWS
+        for line in _workflow_lines(path)
+        if "uv sync" in line
+    ]
+    assert commands, "the backend job installs with uv sync"
+    for name, line in commands:
+        assert re.search(r"\buv sync\b.*\s--locked(\s|$)", line), f"{name}: {line!r} lacks --locked"
+
+
+def test_ci_installs_the_uv_version_the_dockerfile_installs():
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    step = re.search(r"uses: astral-sh/setup-uv@\S+.*\n\s+with:\n((?:\s+.+\n)+)", ci)
+    assert step, "the setup-uv step must have a with: block"
+    ci_version = re.search(r"^\s+version: (\S+)$", step.group(1), re.MULTILINE)
+    assert ci_version, "setup-uv must be given an explicit version"
+    assert "enable-cache" not in step.group(1)
+
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    docker_version = re.search(r"\buv==(\S+)", dockerfile)
+    assert docker_version
+    assert ci_version.group(1) == docker_version.group(1)
+
+
+def test_ci_frontend_job_installs_with_npm_ci_and_reads_the_node_version_file():
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    frontend = ci.split("\n  frontend:\n", 1)[1]
+    assert "node-version-file: .nvmrc" in frontend
+    steps = re.findall(r"^      - run: (.+)$", frontend, re.MULTILINE)
+    assert steps[0] == "npm ci"
+    assert not any(step.startswith("npm install") for step in steps)
