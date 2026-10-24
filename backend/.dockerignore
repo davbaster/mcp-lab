@@ -1,11 +1,12 @@
-.venv
-__pycache__
-*.pyc
-.pytest_cache
-.ruff_cache
-.mypy_cache
-.git
-.env*
+# Patterns start with **/ so they match in subfolders too (a bare name only matches at the context root).
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/.git
+**/.env*
 tests
 Dockerfile
 .dockerignore

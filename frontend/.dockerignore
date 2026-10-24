@@ -1,10 +1,11 @@
-node_modules
-dist
-coverage
-*.tsbuildinfo
-.eslintcache
-.vite
-.git
-.env*
+# Patterns start with **/ so they match in subfolders too (a bare name only matches at the context root).
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.eslintcache
+**/.vite
+**/.git
+**/.env*
 Dockerfile
 .dockerignore
