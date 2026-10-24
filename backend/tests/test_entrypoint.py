@@ -7,6 +7,7 @@ with the script, the fake `alembic` and the log folder mounted in. Docker Deskto
 
 import os
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -31,7 +32,16 @@ NO_RUNNER_MESSAGE = (
 _CONTAINER_SCRIPT = "/app/docker-entrypoint.sh"
 _CONTAINER_BIN = "/fake-bin"
 _CONTAINER_LOGS = "/logs"
-_CONTAINER_PATH = f"{_CONTAINER_BIN}:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+_CONTAINER_PATH = "/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+# A bind mount from Windows may not carry the executable bit, so the container copies the fake
+# `alembic` folder, makes it executable, puts the copy first on PATH and then runs the script.
+_CONTAINER_WORK = "/tmp/fb"
+
+
+def launch_script(bin_dir: str = _CONTAINER_BIN, work_dir: str = _CONTAINER_WORK) -> str:
+    """The `sh -c` text that makes the fake `alembic` executable on PATH, then runs "$@"."""
+    bin_dir, work_dir = shlex.quote(bin_dir), shlex.quote(work_dir)
+    return f'cp -r {bin_dir} {work_dir} && chmod +x {work_dir}/* && PATH={work_dir}:$PATH exec sh "$@"'
 # `docker run` itself failed (daemon unreachable, image not pullable, bad flag), not the script.
 _DOCKER_RUN_FAILED = 125
 
@@ -72,7 +82,7 @@ def docker_command(
     command += ["-e", f"PATH={_CONTAINER_PATH}"]
     for key, value in env.items():
         command += ["-e", f"{key}={value}"]
-    return [*command, backend_image(), "sh", _CONTAINER_SCRIPT, *script_args]
+    return [*command, backend_image(), "sh", "-c", launch_script(), "sh", _CONTAINER_SCRIPT, *script_args]
 
 
 def run_script(
@@ -210,7 +220,8 @@ def test_the_container_uses_the_backend_dockerfiles_pinned_base_image(tmp_path):
     from_lines = [ln for ln in DOCKERFILE.read_text().splitlines() if ln.startswith("FROM ")]
     final_image = from_lines[-1].split()[1]
 
-    assert command[command.index("sh") - 1] == final_image
+    assert command.count(final_image) == 1
+    assert command[command.index(final_image) + 1 :][:2] == ["sh", "-c"]
     assert re.fullmatch(r"[^:@\s]+:(?!latest$)[^:\s]+", final_image), final_image
 
 
@@ -240,3 +251,26 @@ def test_the_container_gets_the_script_the_fake_alembic_and_the_log_folder(tmp_p
 
 def test_the_fake_alembic_has_lf_line_endings(fake_bin):
     assert b"\r" not in (fake_bin / "alembic").read_bytes()
+
+
+def test_the_fake_alembic_runs_even_when_the_mount_does_not_make_it_executable(
+    fake_bin, tmp_path
+):
+    """With a Windows (NTFS) bind mount the file may arrive as 0644. With `sh` this runs the
+    container's launch step on the host; without `sh` it is the real container."""
+    (fake_bin / "alembic").chmod(0o644)
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log = log_dir / "calls.log"
+    env = {"RUN_MIGRATIONS_ON_START": "true"}
+
+    if choose_runner() == "sh":
+        launch = launch_script(str(fake_bin), str(tmp_path / "fb"))
+        host_env = {**os.environ, "FAKE_LOG": str(log), **env}
+        result = run(["sh", "-c", launch, "sh", str(SCRIPT), "echo", "command-ran"], host_env)
+    else:
+        result = run_script("docker", fake_bin, log, ["echo", "command-ran"], env)
+
+    assert result.returncode == 0, result.output
+    assert log.read_text() == "alembic upgrade head\n"
+    assert "command-ran" in result.output
