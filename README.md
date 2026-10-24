@@ -110,7 +110,7 @@ Then set `DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5433/mcp
 docker stop mcp-lab-test-db
 ```
 
-**b) Windows without Docker.** Install PostgreSQL 16 natively. Use a role with the `CREATEDB` permission (the `postgres` role has it) and set `DATABASE_URL` to `postgresql+psycopg://<role>:<password>@127.0.0.1:5432/mcp_lab_test`, using your own port if it is not 5432.
+**b) Windows without Docker.** Install PostgreSQL 16 natively. Use a role with the `CREATEDB` and `CREATEROLE` permissions (the `postgres` role has both; a few tests create temporary roles) and set `DATABASE_URL` to `postgresql+psycopg://<role>:<password>@127.0.0.1:5432/mcp_lab_test`, using your own port if it is not 5432.
 
 Run the tests:
 
