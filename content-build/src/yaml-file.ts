@@ -1,6 +1,6 @@
 // Parsing YAML text so that every problem found later can point at a line.
 
-import { LineCounter, isMap, isNode, isScalar, isSeq, parseDocument } from "yaml";
+import { LineCounter, isMap, isNode, isScalar, isSeq, parseDocument, visit } from "yaml";
 import type { Document } from "yaml";
 
 export type PathSegment = string | number;
@@ -34,12 +34,49 @@ export function parseYaml(text: string, firstLine = 1): ParsedYaml {
   const errors = doc.errors
     .map((error) => ({ line: lineAt(error.pos[0]), message: error.message }))
     .filter((error, index, all) => all.findIndex((other) => other.line === error.line) === index);
+  if (errors.length === 0) {
+    const failure = toJSFailure(doc, lineAt);
+    if (failure !== undefined) errors.push(failure);
+  }
   return {
     value: errors.length > 0 ? undefined : doc.toJS(),
     errors,
     lineOf: (path) => lineOfPath(doc, path, lineAt),
     lineOfKey: (path, name) => lineOfKey(doc, path, name, lineAt),
   };
+}
+
+/**
+ * The parser reports an alias without an anchor, and an alias bomb, only when the value is built, by
+ * throwing. This turns that into a problem with fixed text, so the name in the file is never repeated.
+ */
+function toJSFailure(doc: Document, lineAt: (offset: number) => number): { line: number; message: string } | undefined {
+  try {
+    doc.toJS();
+    return undefined;
+  } catch (error) {
+    const bomb = error instanceof Error && error.message.startsWith("Excessive alias count");
+    // The line of the first alias that has no anchor (for a bomb, of the first alias).
+    let line = 1;
+    visit(doc, {
+      Alias(_key, alias) {
+        const start = alias.range?.[0];
+        if (start === undefined || (!bomb && alias.resolve(doc) !== undefined)) return;
+        line = lineAt(start);
+        return visit.BREAK;
+      },
+    });
+    const message = bomb
+      ? "Excessive alias count indicates a resource exhaustion attack"
+      : isUnresolved(error)
+        ? "Unresolved alias (the anchor must be set before the alias)"
+        : "The YAML cannot be read";
+    return { line, message };
+  }
+}
+
+function isUnresolved(error: unknown): boolean {
+  return error instanceof Error && error.message.startsWith("Unresolved alias");
 }
 
 function lineOfKey(

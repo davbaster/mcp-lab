@@ -58,7 +58,7 @@ describe("compileQuiz", () => {
     });
   });
 
-  it.each(["", "   ", "\u0000", "[", "{{", "- - -", ":", "questions", "questions: [", "!!binary x", "&a [*a]", "\uFEFF", "null", "42", "# comment"])(
+  it.each(["", "   ", "\u0000", "[", "{{", "- - -", ":", "questions", "questions: [", "!!binary x", "&a [*a]", "a: *nope", "\uFEFF", "null", "42", "# comment"])(
     "does not throw for the content %j",
     (text) => {
       const result = compileQuiz(text, { courseId: "sample-course", chapterId: "01-first-steps", lessonIds: ["a"] });
