@@ -2,8 +2,16 @@ import logging
 import os
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.db import DatabaseUrlError, get_database_url, get_engine
+from tests.contract import (
+    MarkerError,
+    SpecFileError,
+    committed_openapi,
+    contract_for,
+    exempt_statuses,
+)
 from tests.dbtools import (
     README_HINT,
     DatabaseSetupError,
@@ -20,8 +28,13 @@ PASSWORD_SENTINEL = "PW-SENTINEL-9c1e"
 def pytest_configure(config):
     """Validate DATABASE_URL, then create, reset, and migrate the test database.
 
-    Runs before any test is collected. A bad URL stops here, before any connection.
+    Runs before any test is collected. A bad URL stops here, before any connection. Also reads
+    openapi.yaml, so a missing or broken file stops the run with an error that names it.
     """
+    try:
+        committed_openapi()
+    except SpecFileError as exc:
+        raise pytest.UsageError(str(exc)) from None
     try:
         url = get_database_url()
     except DatabaseUrlError as exc:
@@ -77,3 +90,28 @@ def clean_env():
     env = dict(os.environ)
     env.pop("DATABASE_URL", None)
     return env
+
+
+@pytest.fixture(autouse=True)
+def contract_check(request, monkeypatch):
+    """Check every response a `TestClient` gets against the OpenAPI document (see contract.py).
+
+    Wraps the client's per-hop send, so redirects it follows and `follow_redirects=False`
+    responses are checked too, and so is a client a test builds inside its own body.
+    """
+    try:
+        exempt = exempt_statuses(request.node.get_closest_marker("undocumented_status"))
+    except MarkerError as exc:
+        pytest.fail(str(exc), pytrace=False)
+    send = TestClient._send_single_request
+
+    def checked_send(self, http_request):
+        response = send(self, http_request)
+        try:
+            contract_for(self.app).check(http_request, response, exempt)
+        except BaseException:
+            response.close()
+            raise
+        return response
+
+    monkeypatch.setattr(TestClient, "_send_single_request", checked_send)

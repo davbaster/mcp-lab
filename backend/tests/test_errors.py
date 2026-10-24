@@ -72,7 +72,7 @@ def make_app() -> FastAPI:
     def api_error() -> dict[str, str]:
         raise ApiError(409, "username_taken", "That username is taken.")
 
-    @throwaway.get("/http/{status}")
+    @throwaway.get("/http/{status}", responses={204: {"description": "No content"}})
     def http(status: int) -> dict[str, str]:
         raise StarletteHTTPException(status, "Custom detail", headers={"X-Extra": "kept"})
 
@@ -143,6 +143,9 @@ def test_unknown_query_parameters_are_ignored(real):
     assert response.json() == {"status": "ok"}
 
 
+@pytest.mark.undocumented_status(
+    307, reason="the trailing-slash redirect is Starlette's, not an API operation"
+)
 def test_trailing_slash_redirects_to_the_route(real):
     response = real.get("/api/health/", follow_redirects=False)
 
@@ -153,6 +156,7 @@ def test_trailing_slash_redirects_to_the_route(real):
 # --- other HTTPException ---
 
 
+@pytest.mark.undocumented_status(418, reason="the throwaway route raises an arbitrary status")
 def test_http_exception_becomes_http_error_with_its_status_and_headers(client):
     response = client.get("/http/418")
 
@@ -160,6 +164,7 @@ def test_http_exception_becomes_http_error_with_its_status_and_headers(client):
     assert response.headers["x-extra"] == "kept"
 
 
+@pytest.mark.undocumented_status(401, reason="the throwaway route raises 401 on purpose")
 def test_fastapi_http_exception_with_non_string_detail_uses_the_reason_phrase(client):
     response = client.get("/fastapi-http")
 
@@ -167,6 +172,7 @@ def test_fastapi_http_exception_with_non_string_detail_uses_the_reason_phrase(cl
     assert response.headers["www-authenticate"] == "Bearer"
 
 
+@pytest.mark.undocumented_status(403, reason="the throwaway guard raises 403 on purpose")
 def test_http_exception_raised_in_a_dependency_keeps_its_headers(client):
     response = client.get("/guarded")
 
@@ -184,6 +190,7 @@ def test_http_exception_with_no_body_status_sends_no_body(client):
 # --- ApiError ---
 
 
+@pytest.mark.undocumented_status(409, reason="the throwaway route raises ApiError(409) on purpose")
 def test_api_error_returns_its_status_code_and_message(client):
     response = client.get("/api-error")
 

@@ -29,6 +29,8 @@ cd backend
 uv run pytest
 ```
 
+Every response the tests' `TestClient` receives is checked automatically against `openapi.yaml` (see [OpenAPI contract](#openapi-contract)); a mismatch raises `ContractViolation` at the request, naming the route, method, status, or field. If a test fails this check, fix the code or re-export the spec; to accept a status on purpose, mark that test with `@pytest.mark.undocumented_status(<3xx/4xx/5xx statuses>, reason="...")`, and routes the app serves that are not API operations go in `SKIPPED_ROUTES` in `backend/tests/contract.py`. Never silence the check.
+
 Lint:
 
 ```
