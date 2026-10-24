@@ -21,6 +21,9 @@ from tests.dbtools import (
     truncate_app_tables,
 )
 
+# Fixtures for the account and session tests (#6): client, clock, cheap_hasher.
+pytest_plugins = ["tests.auth_support"]
+
 # A fake password used in URLs by tests that prove secrets never leak.
 PASSWORD_SENTINEL = "PW-SENTINEL-9c1e"
 

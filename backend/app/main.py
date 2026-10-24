@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.auth import install_auth_routes
 from app.errors import install_error_handling
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
@@ -18,6 +19,7 @@ app = FastAPI(
     swagger_ui_oauth2_redirect_url=None,
 )
 install_error_handling(app)
+install_auth_routes(app)
 
 
 class HealthResponse(BaseModel):

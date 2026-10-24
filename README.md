@@ -141,6 +141,33 @@ The running app serves the same document at <http://localhost:8000/api/openapi.j
 
 Re-export in the same change as any API change (see "API contract" in [`AGENTS.md`](AGENTS.md)). Upgrading FastAPI, Pydantic, or PyYAML can change the output too, so re-export after such an upgrade and commit the new file.
 
+#### Accounts and sessions
+
+A visitor can create an account, and a learner can sign in, ask who they are, and sign out. All routes are JSON under `/api/auth/` and read credentials only from the JSON body (never the URL):
+
+| Route | Success | Errors |
+|---|---|---|
+| `POST /api/auth/register` | 201 `{"username"}` and a session cookie | 409 `username_taken`, 422 `validation_error` |
+| `POST /api/auth/login` | 200 `{"username"}` and a session cookie | 401 `invalid_credentials`, 422 `validation_error` |
+| `POST /api/auth/logout` | 204, cookie cleared | none |
+| `GET /api/auth/me` | 200 `{"username"}` | 401 `not_authenticated` |
+
+Usernames are 4 to 8 characters from `A-Z`, `a-z`, `0-9`, and `_`, unique ignoring case, and never trimmed. Passwords are 8 to 12 characters, counted after Unicode NFKC normalization. Passwords are stored only as argon2id hashes and session tokens only as SHA-256 hashes.
+
+The session cookie is named `session` with `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, `Max-Age=86400`, and no `Domain`. `Secure` is always set; no setting turns it off. A session lasts a fixed one day from when it was created: using it does not extend it. Expired rows stay in the table until a cleanup job (#57) removes them.
+
+`Secure` cookies are stored on `http://localhost` by Chrome, Edge, and Firefox. Safari does not store them there, and no browser stores them on a LAN IP address over plain HTTP, so use Chrome, Edge, or Firefox on `http://localhost:8080` for the Docker stack.
+
+The tests get a cookie by building the client with an `https` base URL, `TestClient(app, base_url="https://testserver")`: the client's cookie jar sends a `Secure` cookie only over `https`, so a plain `http://testserver` client would silently drop the session. Time comes from the `current_time` dependency in `backend/app/clock.py`, which tests replace with a fake clock.
+
+To check the cookie by hand, start the Docker stack, open <http://localhost:8080> in Chrome, Edge, or Firefox, and run these in the developer console:
+
+```js
+await fetch('/api/auth/register', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({username: 'tester1', password: 'secret123'})})
+```
+
+The cookie list (Application or Storage tab) then shows `session` with HttpOnly, Secure, and SameSite Lax, and `document.cookie` does not show it. `await fetch('/api/auth/me')` returns 200. `await fetch('/api/auth/logout', {method: 'POST'})` removes the cookie, and `/api/auth/me` then returns 401.
+
 ### Frontend (`frontend/`)
 
 Install:

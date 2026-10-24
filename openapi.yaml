@@ -1,5 +1,15 @@
 components:
   schemas:
+    AccountResponse:
+      additionalProperties: false
+      properties:
+        username:
+          title: Username
+          type: string
+      required:
+      - username
+      title: AccountResponse
+      type: object
     ErrorDetail:
       additionalProperties: false
       properties:
@@ -33,11 +43,201 @@ components:
       - status
       title: HealthResponse
       type: object
+    LoginRequest:
+      properties:
+        password:
+          maxLength: 128
+          minLength: 1
+          title: Password
+          type: string
+        username:
+          maxLength: 64
+          minLength: 1
+          title: Username
+          type: string
+      required:
+      - username
+      - password
+      title: LoginRequest
+      type: object
+    RegisterRequest:
+      properties:
+        password:
+          description: 8 to 12 characters, counted after NFKC normalization. Spaces are kept.
+          title: Password
+          type: string
+        username:
+          description: '4 to 8 characters: A-Z, a-z, 0-9, and _. Never trimmed.'
+          maxLength: 8
+          minLength: 4
+          pattern: ^[A-Za-z0-9_]{4,8}$
+          title: Username
+          type: string
+      required:
+      - username
+      - password
+      title: RegisterRequest
+      type: object
+  securitySchemes:
+    SessionCookie:
+      in: cookie
+      name: session
+      type: apiKey
 info:
   title: mcp-lab API
   version: 0.1.0
 openapi: 3.1.0
 paths:
+  /api/auth/login:
+    post:
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: Always `no-store`, so a shared cache never serves one learner's response to
+                another.
+              schema:
+                type: string
+            Set-Cookie:
+              description: 'The new session cookie: `session=<token>; Max-Age=86400; Path=/; HttpOnly;
+                Secure; SameSite=Lax`, with no Domain.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Sign in
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      operationId: logout
+      responses:
+        '204':
+          description: Successful Response
+          headers:
+            Set-Cookie:
+              description: 'Clears the cookie: `session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`.
+                Sent even when the request had no valid session.'
+              schema:
+                type: string
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Sign out
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      operationId: me
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: Always `no-store`, so a shared cache never serves one learner's response to
+                another.
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: Who is signed in
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: Always `no-store`, so a shared cache never serves one learner's response to
+                another.
+              schema:
+                type: string
+            Set-Cookie:
+              description: 'The new session cookie: `session=<token>; Max-Age=86400; Path=/; HttpOnly;
+                Secure; SameSite=Lax`, with no Domain.'
+              schema:
+                type: string
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Conflict
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: Create an account and sign in
+      tags:
+      - auth
   /api/health:
     get:
       operationId: health

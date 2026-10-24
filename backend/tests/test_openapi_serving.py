@@ -52,7 +52,13 @@ def test_other_docs_paths_return_404_with_the_shared_shape(path):
 
 
 def test_docs_and_spec_routes_are_not_listed_in_the_spec(spec):
-    assert list(spec["paths"]) == ["/api/health"]
+    assert sorted(spec["paths"]) == [
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/auth/me",
+        "/api/auth/register",
+        "/api/health",
+    ]
 
 
 def test_info_and_servers(spec):
@@ -161,4 +167,5 @@ def test_real_app_spec_is_not_changed_by_throwaway_apps():
     make_app().openapi()
 
     assert app.openapi() == before
-    assert list(app.openapi()["paths"]) == ["/api/health"]
+    assert "/api/health" in app.openapi()["paths"]
+    assert "/q" not in app.openapi()["paths"]
