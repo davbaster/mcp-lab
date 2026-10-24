@@ -682,6 +682,129 @@ paths:
       summary: List the courses
       tags:
       - courses
+  /api/courses/{course_id}/assets/{file_name}:
+    get:
+      operationId: getAsset
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: file_name
+        required: true
+        schema:
+          title: File Name
+          type: string
+      responses:
+        '200':
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+            image/png:
+              schema:
+                format: binary
+                type: string
+            image/svg+xml:
+              schema:
+                format: binary
+                type: string
+            image/webp:
+              schema:
+                format: binary
+                type: string
+            model/gltf+json:
+              schema:
+                format: binary
+                type: string
+            model/gltf-binary:
+              schema:
+                format: binary
+                type: string
+            text/vtt:
+              schema:
+                format: binary
+                type: string
+          description: The file, exactly as the content build wrote it.
+          headers:
+            Accept-Ranges:
+              description: 'Always `none`: a `Range` header is ignored.'
+              schema:
+                type: string
+            Cache-Control:
+              description: 'Always `public, max-age=31536000, immutable`: the opposite of the `private,
+                no-store` header of the other routes. The name holds the hash of the bytes, so the file
+                under a name never changes and any cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `inline`, with no file name.
+              schema:
+                type: string
+            Content-Security-Policy:
+              description: 'Sent on an SVG only (not on other types): `script-src ''none''; default-src
+                ''none''; style-src ''unsafe-inline''; sandbox`.'
+              schema:
+                type: string
+            ETag:
+              description: The SHA-256 of the file in double quotes, the same for every request.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`, on every type.
+              schema:
+                type: string
+        '304':
+          description: The `If-None-Match` header names this file's ETag. No body.
+          headers:
+            Cache-Control:
+              description: 'Always `public, max-age=31536000, immutable`: the opposite of the `private,
+                no-store` header of the other routes. The name holds the hash of the bytes, so the file
+                under a name never changes and any cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `inline`, with no file name.
+              schema:
+                type: string
+            Content-Security-Policy:
+              description: 'Sent on an SVG only (not on other types): `script-src ''none''; default-src
+                ''none''; style-src ''unsafe-inline''; sandbox`.'
+              schema:
+                type: string
+            ETag:
+              description: The SHA-256 of the file in double quotes, the same for every request.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`, on every type.
+              schema:
+                type: string
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: A built asset of a course (image, diagram, 3D model, or caption file), public
+      tags:
+      - courses
   /api/courses/{course_id}/chapters:
     get:
       operationId: listChapters

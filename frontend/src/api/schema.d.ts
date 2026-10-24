@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses/{course_id}/assets/{file_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A built asset of a course (image, diagram, 3D model, or caption file), public */
+        get: operations["getAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/courses/{course_id}/chapters": {
         parameters: {
             query?: never;
@@ -660,6 +677,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoursesResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                file_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, exactly as the content build wrote it. */
+            200: {
+                headers: {
+                    /** @description Always `none`: a `Range` header is ignored. */
+                    "Accept-Ranges"?: string;
+                    /** @description Always `public, max-age=31536000, immutable`: the opposite of the `private, no-store` header of the other routes. The name holds the hash of the bytes, so the file under a name never changes and any cache may keep it. */
+                    "Cache-Control"?: string;
+                    /** @description Always `inline`, with no file name. */
+                    "Content-Disposition"?: string;
+                    /** @description Sent on an SVG only (not on other types): `script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox`. */
+                    "Content-Security-Policy"?: string;
+                    /** @description The SHA-256 of the file in double quotes, the same for every request. */
+                    ETag?: string;
+                    /** @description Always `nosniff`, on every type. */
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/svg+xml": string;
+                    "image/webp": string;
+                    "model/gltf+json": string;
+                    "model/gltf-binary": string;
+                    "text/vtt": string;
+                };
+            };
+            /** @description The `If-None-Match` header names this file's ETag. No body. */
+            304: {
+                headers: {
+                    /** @description Always `public, max-age=31536000, immutable`: the opposite of the `private, no-store` header of the other routes. The name holds the hash of the bytes, so the file under a name never changes and any cache may keep it. */
+                    "Cache-Control"?: string;
+                    /** @description Always `inline`, with no file name. */
+                    "Content-Disposition"?: string;
+                    /** @description Sent on an SVG only (not on other types): `script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox`. */
+                    "Content-Security-Policy"?: string;
+                    /** @description The SHA-256 of the file in double quotes, the same for every request. */
+                    ETag?: string;
+                    /** @description Always `nosniff`, on every type. */
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Internal server error */

@@ -65,7 +65,7 @@ uv run uvicorn app.main:app --port 8000
 
 #### Courses
 
-At startup the backend loads the built data of every course named in `COURSES` from the build folder `COURSE_BUILD_DIR` (the output of `make build-content`, see the content build below), keeps it in memory, and does not start if anything is missing or broken. The first problem stops it, and the message names the variable, course, file (path inside the build folder), or field. It opens no database connection for this. The load prints one INFO line per course, for example `loaded course alpha-course: 2 chapters, 3 lessons`. It then serves `GET /api/courses` (the courses in the order of `COURSES`) and `GET /api/courses/{course_id}/chapters` (chapters and lessons in order), both public.
+At startup the backend loads the built data of every course named in `COURSES` from the build folder `COURSE_BUILD_DIR` (the output of `make build-content`, see the content build below), keeps it in memory, and does not start if anything is missing or broken. The first problem stops it, and the message names the variable, course, file (path inside the build folder), or field. It opens no database connection for this. The load prints one INFO line per course, for example `loaded course alpha-course: 2 chapters, 3 lessons`. It then serves `GET /api/courses` (the courses in the order of `COURSES`) and `GET /api/courses/{course_id}/chapters` (chapters and lessons in order), both public. It also loads the asset map `assets-map/<course_id>.json` of each course and checks the files it lists, and `GET /api/courses/{course_id}/assets/{file_name}` serves only the file names in that map (public, cached for a year).
 
 | Variable | Meaning |
 |---|---|

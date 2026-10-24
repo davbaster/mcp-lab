@@ -3,9 +3,10 @@
 `load_catalog_from_environment` reads `COURSES` (the course IDs to serve, in order) and
 `COURSE_BUILD_DIR` (the output of the content build), loads the manifest
 `private/courses/<course_id>.json` of each course, and checks that the lesson, quiz, and code
-files the manifest names exist. It reads no lesson, quiz, or code content, so no answer key passes
-through this module (`app.content` reads the lesson and quiz files, one request at a time). Any problem raises `CourseLoadError` at the first one; the app then does not
-start. Messages hold course IDs, field names, counts, and paths inside the build folder only.
+files the manifest names exist. It also loads the asset map `assets-map/<course_id>.json` of each
+course (`app.assets`). It reads no lesson, quiz, or code content, so no answer key passes through
+this module (`app.content` reads the lesson and quiz files, one request at a time). Any problem
+raises `CourseLoadError` at the first one; the app then does not start. Messages hold course IDs, field names, counts, and paths inside the build folder only.
 
 The result is a `Catalog` of frozen data. `app.main` builds it in the lifespan and keeps it on
 `app.state.catalog`; routes get it with the `get_catalog` dependency.
@@ -15,13 +16,16 @@ import json
 import logging
 import os
 import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import Annotated, Any
 
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr, ValidationError
+
+from app.assets import Asset, AssetMapError, read_assets
 
 # The version of the manifest the content build writes (content-build/README.md, "The manifest").
 # A test compares it, and the manifest's keys, with the golden manifest of the content build.
@@ -72,6 +76,9 @@ class Course:
     title: str
     description: str
     chapters: tuple[Chapter, ...]
+    # Hashed file name -> Asset, from the course's asset map. A read-only dictionary (it cannot be
+    # hashed, so it stays out of the hash of the course).
+    assets: Mapping[str, Asset] = field(hash=False)
 
     @property
     def lesson_count(self) -> int:
@@ -80,6 +87,13 @@ class Course:
     def get_chapter(self, chapter_id: str) -> Chapter | None:
         """The chapter with this ID, else None. Reads nothing from disk."""
         return next((chapter for chapter in self.chapters if chapter.id == chapter_id), None)
+
+    def get_asset(self, file_name: str) -> Asset | None:
+        """The asset whose hashed file name is exactly `file_name`, else None.
+
+        A dictionary lookup: the string is a key, never a path, and nothing is read from disk.
+        """
+        return self.assets.get(file_name)
 
     def find_lesson(self, lesson_id: str) -> tuple[Chapter, Lesson] | None:
         """The chapter and lesson with this lesson ID, else None. Reads nothing from disk."""
@@ -279,7 +293,7 @@ def _check_files(build_dir: Path, manifest: _Manifest) -> None:
                 )
 
 
-def _course_from(manifest: _Manifest) -> Course:
+def _course_from(manifest: _Manifest, assets: Mapping[str, Asset]) -> Course:
     return Course(
         id=manifest.course_id,
         title=manifest.title,
@@ -297,6 +311,7 @@ def _course_from(manifest: _Manifest) -> Course:
             )
             for chapter in manifest.chapters
         ),
+        assets=assets,
     )
 
 
@@ -309,7 +324,11 @@ def load_catalog(courses: str | None, build_dir: str | None) -> Catalog:
         manifest = _read_manifest(root, course_id)
         _check_manifest(manifest, course_id)
         _check_files(root, manifest)
-        course = _course_from(manifest)
+        try:
+            assets = read_assets(root, course_id)
+        except AssetMapError as error:
+            raise CourseLoadError(str(error)) from None
+        course = _course_from(manifest, assets)
         logger.info(
             "loaded course %s: %d chapters, %d lessons",
             course.id,

@@ -5,6 +5,7 @@ from typing import Literal
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.asset_routes import install_asset_routes
 from app.auth import install_auth_routes
 from app.content_routes import install_content_routes
 from app.course_routes import install_course_routes
@@ -44,6 +45,7 @@ app = FastAPI(
 install_error_handling(app)
 install_auth_routes(app)
 install_course_routes(app)
+install_asset_routes(app)
 install_content_routes(app)
 install_quiz_routes(app)
 
