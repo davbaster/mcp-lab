@@ -92,13 +92,16 @@ def _location(loc: tuple[Any, ...]) -> str:
 def validation_message(errors: list[Any]) -> str:
     """`<location>: <message>` per error, joined by `; `, from Pydantic's `loc` and `msg` only.
 
-    Never reads `input` or `ctx`, because those hold what the client submitted.
+    Never reads `input` or `ctx`, because those hold what the client submitted. For the same
+    reason an unknown key is reported against the object that holds it, not by name.
     """
     parts = []
     for err in errors[:MAX_VALIDATION_ERRORS]:
         loc = tuple(err.get("loc", ()))
         if err.get("type") == "json_invalid":
             loc = loc[:1]  # the second item is a character offset in the raw body
+        elif err.get("type") == "extra_forbidden":
+            loc = loc[:-1]  # the last item is a key the client invented
         parts.append(f"{_location(loc)}: {err.get('msg', 'Invalid value')}")
     extra = len(errors) - MAX_VALIDATION_ERRORS
     if extra > 0:

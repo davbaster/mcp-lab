@@ -319,6 +319,114 @@ components:
       - wrong
       title: FailedAttemptResponse
       type: object
+    FeedbackContext:
+      additionalProperties: false
+      description: What the browser reports about the page. All of it is stored as sent.
+      properties:
+        app_version:
+          maxLength: 100
+          minLength: 1
+          title: App Version
+          type: string
+        chapter_id:
+          anyOf:
+          - maxLength: 100
+            minLength: 1
+            pattern: ^[a-z0-9-]+$
+            type: string
+          - type: 'null'
+          description: Needs a course_id
+          title: Chapter Id
+        client_time:
+          description: The browser's clock, with a time zone. Stored as sent, never trusted.
+          format: date-time
+          title: Client Time
+          type: string
+        console_errors:
+          items:
+            maxLength: 500
+            type: string
+          maxItems: 10
+          title: Console Errors
+          type: array
+        course_id:
+          anyOf:
+          - maxLength: 100
+            minLength: 1
+            pattern: ^[a-z0-9-]+$
+            type: string
+          - type: 'null'
+          description: null outside a course; else a configured course
+          title: Course Id
+        lesson_id:
+          anyOf:
+          - maxLength: 100
+            minLength: 1
+            pattern: ^[a-z0-9-]+$
+            type: string
+          - type: 'null'
+          description: Needs a course_id
+          title: Lesson Id
+        page_path:
+          description: 'The path only: starts with one /, no query string, no fragment.'
+          maxLength: 2000
+          minLength: 1
+          title: Page Path
+          type: string
+        question_id:
+          anyOf:
+          - maxLength: 100
+            minLength: 1
+            pattern: ^[a-z0-9-]+$
+            type: string
+          - type: 'null'
+          description: Needs a course_id
+          title: Question Id
+        user_agent:
+          maxLength: 1000
+          title: User Agent
+          type: string
+        viewport:
+          $ref: '#/components/schemas/Viewport'
+      required:
+      - page_path
+      - course_id
+      - app_version
+      - user_agent
+      - viewport
+      - client_time
+      - console_errors
+      title: FeedbackContext
+      type: object
+    FeedbackRequest:
+      additionalProperties: false
+      properties:
+        about_quiz_question:
+          default: false
+          title: About Quiz Question
+          type: boolean
+        category:
+          enum:
+          - bug
+          - content_error
+          - confusing_explanation
+          - suggestion
+          title: Category
+          type: string
+        context:
+          $ref: '#/components/schemas/FeedbackContext'
+        message:
+          description: Trimmed of leading and trailing whitespace first, then 10 to 2000 characters.
+          maxLength: 2000
+          minLength: 10
+          title: Message
+          type: string
+      required:
+      - category
+      - message
+      - context
+      title: FeedbackRequest
+      type: object
     HealthResponse:
       properties:
         status:
@@ -576,6 +684,24 @@ components:
       - username
       - password
       title: RegisterRequest
+      type: object
+    Viewport:
+      additionalProperties: false
+      properties:
+        height:
+          maximum: 20000.0
+          minimum: 1.0
+          title: Height
+          type: integer
+        width:
+          maximum: 20000.0
+          minimum: 1.0
+          title: Width
+          type: integer
+      required:
+      - width
+      - height
+      title: Viewport
       type: object
     WrongQuestion:
       additionalProperties: false
@@ -1397,6 +1523,54 @@ paths:
       summary: Save the last lesson the signed-in learner visited, in the lesson's chapter
       tags:
       - courses
+  /api/feedback:
+    post:
+      operationId: submitFeedback
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedbackRequest'
+        required: true
+      responses:
+        '202':
+          description: Accepted. No body, and nothing about the item.
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: Send feedback as the signed-in learner (10 per 24 hours; the same message within a minute
+        is ignored)
+      tags:
+      - feedback
   /api/health:
     get:
       operationId: health

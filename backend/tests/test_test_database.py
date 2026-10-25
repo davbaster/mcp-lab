@@ -121,5 +121,11 @@ def test_reset_removes_stale_state_and_migrates_to_head(database_url, db_engine,
             conn.execute(text("SELECT version_num FROM public.alembic_version")).scalars().all()
         )
     # stale_leftover is gone
-    assert sorted(tables) == ["accounts", "chapter_progress", "quiz_attempts", "sessions"]
-    assert versions == ["0004"]
+    assert sorted(tables) == [
+        "accounts",
+        "chapter_progress",
+        "feedback",
+        "quiz_attempts",
+        "sessions",
+    ]
+    assert versions == ["0005"]

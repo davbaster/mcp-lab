@@ -12,6 +12,7 @@ from app.content_routes import install_content_routes
 from app.course_routes import install_course_routes
 from app.courses import load_catalog_from_environment
 from app.errors import install_error_handling
+from app.feedback_routes import install_feedback_routes
 from app.quiz_routes import install_quiz_routes
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
@@ -50,6 +51,7 @@ install_asset_routes(app)
 install_content_routes(app)
 install_code_routes(app)
 install_quiz_routes(app)
+install_feedback_routes(app)
 
 
 class HealthResponse(BaseModel):

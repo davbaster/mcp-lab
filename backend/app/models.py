@@ -1,9 +1,11 @@
 """Tables: accounts and sessions (shared across courses, so no `course_id`), chapter progress,
-and quiz attempts.
+quiz attempts, and learner feedback.
 
 `chapter_progress` is course-scoped: `course_id` is part of its key. A chapter's status is never
 stored; it is computed from these rows and the course's chapter order (`app.progress`).
 `quiz_attempts` is the append-only record of every graded attempt, with its `course_id`.
+`feedback` is the append-only record of what learners send, with a `course_id` when the page was
+in a course.
 """
 
 import uuid
@@ -14,10 +16,13 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
+    Integer,
     LargeBinary,
     SmallInteger,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -113,4 +118,68 @@ class QuizAttempt(Base):
     score: Mapped[int] = mapped_column(SmallInteger)
     passed: Mapped[bool] = mapped_column(Boolean)
     answers: Mapped[dict[str, str]] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+_FEEDBACK_CATEGORIES = "'bug', 'content_error', 'confusing_explanation', 'suggestion'"
+
+
+class Feedback(Base):
+    """One item of learner feedback. Rows are only ever inserted, and are never returned by the API.
+
+    `account_id` is the only column that identifies the learner, so a read-only role can be
+    granted every other column (#39). Everything the learner typed or the browser reported is
+    untrusted text: `message` is trimmed and the rest is stored as sent, console errors included.
+    `course_id` is NULL for a page outside a course, and then so are the other three IDs. The
+    catalog is in memory, so nothing refers to it by foreign key. `status` stays `new`: triage
+    decisions live in `ops.feedback_triage` (#49). `created_at` is the app clock, which the daily
+    limit and the duplicate check count from.
+    """
+
+    __tablename__ = "feedback"
+    __table_args__ = (
+        CheckConstraint(f"category IN ({_FEEDBACK_CATEGORIES})", name="category_values"),
+        CheckConstraint("status = 'new'", name="status_is_new"),
+        CheckConstraint(f"course_id IS NULL OR course_id {_ID_FORMAT}", name="course_id_format"),
+        CheckConstraint(f"chapter_id IS NULL OR chapter_id {_ID_FORMAT}", name="chapter_id_format"),
+        CheckConstraint(f"lesson_id IS NULL OR lesson_id {_ID_FORMAT}", name="lesson_id_format"),
+        CheckConstraint(
+            f"question_id IS NULL OR question_id {_ID_FORMAT}", name="question_id_format"
+        ),
+        CheckConstraint(
+            "course_id IS NOT NULL OR (chapter_id IS NULL AND lesson_id IS NULL"
+            " AND question_id IS NULL)",
+            name="ids_need_course",
+        ),
+        CheckConstraint("char_length(message) BETWEEN 10 AND 2000", name="message_length"),
+        CheckConstraint("jsonb_typeof(console_errors) = 'array'", name="console_errors_is_array"),
+        CheckConstraint(
+            "CASE WHEN jsonb_typeof(console_errors) = 'array'"
+            " THEN jsonb_array_length(console_errors) <= 10 ELSE false END",
+            name="console_errors_max_items",
+        ),
+        CheckConstraint(
+            "NOT about_quiz_question OR question_id IS NOT NULL",
+            name="quiz_flag_needs_question_id",
+        ),
+        Index("ix_feedback_account_id_created_at", "account_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    account_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"))
+    course_id: Mapped[str | None] = mapped_column(Text)
+    chapter_id: Mapped[str | None] = mapped_column(Text)
+    lesson_id: Mapped[str | None] = mapped_column(Text)
+    question_id: Mapped[str | None] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(Text)
+    message: Mapped[str] = mapped_column(Text)
+    about_quiz_question: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    page_path: Mapped[str] = mapped_column(Text)
+    app_version: Mapped[str] = mapped_column(Text)
+    user_agent: Mapped[str] = mapped_column(Text)
+    viewport_width: Mapped[int] = mapped_column(Integer)
+    viewport_height: Mapped[int] = mapped_column(Integer)
+    client_time: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    console_errors: Mapped[list[str]] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'new'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -242,6 +242,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send feedback as the signed-in learner (10 per 24 hours; the same message within a minute is ignored) */
+        post: operations["submitFeedback"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -412,6 +429,69 @@ export interface components {
             /** Wrong */
             wrong: components["schemas"]["WrongQuestion"][];
         };
+        /**
+         * FeedbackContext
+         * @description What the browser reports about the page. All of it is stored as sent.
+         */
+        FeedbackContext: {
+            /** App Version */
+            app_version: string;
+            /**
+             * Chapter Id
+             * @description Needs a course_id
+             */
+            chapter_id?: string | null;
+            /**
+             * Client Time
+             * Format: date-time
+             * @description The browser's clock, with a time zone. Stored as sent, never trusted.
+             */
+            client_time: string;
+            /** Console Errors */
+            console_errors: string[];
+            /**
+             * Course Id
+             * @description null outside a course; else a configured course
+             */
+            course_id: string | null;
+            /**
+             * Lesson Id
+             * @description Needs a course_id
+             */
+            lesson_id?: string | null;
+            /**
+             * Page Path
+             * @description The path only: starts with one /, no query string, no fragment.
+             */
+            page_path: string;
+            /**
+             * Question Id
+             * @description Needs a course_id
+             */
+            question_id?: string | null;
+            /** User Agent */
+            user_agent: string;
+            viewport: components["schemas"]["Viewport"];
+        };
+        /** FeedbackRequest */
+        FeedbackRequest: {
+            /**
+             * About Quiz Question
+             * @default false
+             */
+            about_quiz_question: boolean;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "bug" | "content_error" | "confusing_explanation" | "suggestion";
+            context: components["schemas"]["FeedbackContext"];
+            /**
+             * Message
+             * @description Trimmed of leading and trailing whitespace first, then 10 to 2000 characters.
+             */
+            message: string;
+        };
         /** HealthResponse */
         HealthResponse: {
             /**
@@ -540,6 +620,13 @@ export interface components {
              * @description 4 to 8 characters: A-Z, a-z, 0-9, and _. Never trimmed.
              */
             username: string;
+        };
+        /** Viewport */
+        Viewport: {
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
         };
         /** WrongQuestion */
         WrongQuestion: {
@@ -1372,6 +1459,66 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted. No body, and nothing about the item. */
+            202: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
