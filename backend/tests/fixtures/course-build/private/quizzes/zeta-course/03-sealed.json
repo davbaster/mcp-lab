@@ -1,0 +1,23 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "03-sealed",
+  "questions": [
+    {
+      "id": "03-sealed-1",
+      "text": "QUESTION-SENTINEL-zeta-03-sealed",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-zeta-03-sealed"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-zeta-03-sealed"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-zeta-03-sealed",
+      "lesson": "sealed-lesson"
+    }
+  ]
+}

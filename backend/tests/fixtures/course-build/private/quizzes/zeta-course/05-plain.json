@@ -1,0 +1,23 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "05-plain",
+  "questions": [
+    {
+      "id": "05-plain-1",
+      "text": "QUESTION-SENTINEL-zeta-05-plain",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-zeta-05-plain"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-zeta-05-plain"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-zeta-05-plain",
+      "lesson": "plain-lesson"
+    }
+  ]
+}

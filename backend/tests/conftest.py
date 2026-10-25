@@ -24,7 +24,13 @@ from tests.dbtools import (
 # Fixtures for the account and session tests (#6): client, clock, cheap_hasher.
 # Fixtures for the course tests (#13): build_copy, serve.
 # Fixtures for the lesson, last-lesson, and quiz tests (#15): content_api, learner.
-pytest_plugins = ["tests.auth_support", "tests.course_support", "tests.content_support"]
+# Fixtures for the quiz attempt tests (#16): attempt_api, ana, server_errors.
+pytest_plugins = [
+    "tests.auth_support",
+    "tests.course_support",
+    "tests.content_support",
+    "tests.quiz_support",
+]
 
 # A fake password used in URLs by tests that prove secrets never leak.
 PASSWORD_SENTINEL = "PW-SENTINEL-9c1e"

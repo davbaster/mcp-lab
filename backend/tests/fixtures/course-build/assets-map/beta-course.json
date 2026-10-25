@@ -1,0 +1,15 @@
+{
+  "course_id": "beta-course",
+  "files": {
+    "files/only-beta.png": {
+      "file": "only-beta-0ed023b7ab5101de.png",
+      "sha256": "0ed023b7ab5101de2f268610042feadcdb3d2619a55614f299fbdaf870c71667",
+      "size": 24
+    },
+    "files/png-file.png": {
+      "file": "asset-a8520c30dc8ccbb2.png",
+      "sha256": "566b4e5a2e672a05a723bd84611f28dbba1d9a1df1e0556adf09315383f1d2c7",
+      "size": 23
+    }
+  }
+}

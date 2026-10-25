@@ -10,6 +10,60 @@ components:
       - username
       title: AccountResponse
       type: object
+    AnswerItem:
+      additionalProperties: false
+      properties:
+        option_id:
+          maxLength: 100
+          minLength: 1
+          title: Option Id
+          type: string
+        question_id:
+          maxLength: 100
+          minLength: 1
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - option_id
+      title: AnswerItem
+      type: object
+    AttemptRequest:
+      additionalProperties: false
+      properties:
+        answers:
+          items:
+            $ref: '#/components/schemas/AnswerItem'
+          maxItems: 50
+          title: Answers
+          type: array
+      required:
+      - answers
+      title: AttemptRequest
+      type: object
+    ChapterCodeResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        steps:
+          items:
+            $ref: '#/components/schemas/CodeStep'
+          title: Steps
+          type: array
+        zip:
+          $ref: '#/components/schemas/CodeZip'
+      required:
+      - course_id
+      - chapter_id
+      - zip
+      - steps
+      title: ChapterCodeResponse
+      type: object
     ChapterProgressSummary:
       additionalProperties: false
       properties:
@@ -70,6 +124,71 @@ components:
       - lessons
       - status
       title: ChapterSummary
+      type: object
+    CodeFile:
+      additionalProperties: false
+      properties:
+        changed_lines:
+          items:
+            type: integer
+          title: Changed Lines
+          type: array
+        content:
+          title: Content
+          type: string
+        path:
+          title: Path
+          type: string
+        status:
+          $ref: '#/components/schemas/CodeFileStatus'
+      required:
+      - path
+      - status
+      - content
+      - changed_lines
+      title: CodeFile
+      type: object
+    CodeFileStatus:
+      enum:
+      - added
+      - modified
+      - deleted
+      - unchanged
+      title: CodeFileStatus
+      type: string
+    CodeStep:
+      additionalProperties: false
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/CodeFile'
+          title: Files
+          type: array
+        step:
+          title: Step
+          type: integer
+      required:
+      - step
+      - files
+      title: CodeStep
+      type: object
+    CodeZip:
+      additionalProperties: false
+      properties:
+        file_name:
+          title: File Name
+          type: string
+        size:
+          title: Size
+          type: integer
+        url:
+          title: Url
+          type: string
+      required:
+      - url
+      - file_name
+      - size
+      title: CodeZip
       type: object
     CourseChaptersResponse:
       additionalProperties: false
@@ -164,6 +283,42 @@ components:
       - error
       title: ErrorResponse
       type: object
+    FailedAttemptResponse:
+      additionalProperties: false
+      description: A failed attempt. Nothing here points at a right option.
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        passed:
+          const: false
+          title: Passed
+          type: boolean
+        score:
+          maximum: 5.0
+          minimum: 0.0
+          title: Score
+          type: integer
+        total:
+          title: Total
+          type: integer
+        wrong:
+          items:
+            $ref: '#/components/schemas/WrongQuestion'
+          title: Wrong
+          type: array
+      required:
+      - course_id
+      - chapter_id
+      - score
+      - total
+      - passed
+      - wrong
+      title: FailedAttemptResponse
+      type: object
     HealthResponse:
       properties:
         status:
@@ -256,6 +411,81 @@ components:
       - password
       title: LoginRequest
       type: object
+    PassedAttemptResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_complete:
+          title: Course Complete
+          type: boolean
+        course_id:
+          title: Course Id
+          type: string
+        next_chapter_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Chapter Id
+        passed:
+          const: true
+          title: Passed
+          type: boolean
+        results:
+          items:
+            $ref: '#/components/schemas/QuestionResult'
+          title: Results
+          type: array
+        score:
+          maximum: 5.0
+          minimum: 0.0
+          title: Score
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - course_id
+      - chapter_id
+      - score
+      - total
+      - passed
+      - results
+      - next_chapter_id
+      - course_complete
+      title: PassedAttemptResponse
+      type: object
+    QuestionResult:
+      additionalProperties: false
+      properties:
+        correct_option_id:
+          title: Correct Option Id
+          type: string
+        explanation:
+          title: Explanation
+          type: string
+        is_correct:
+          title: Is Correct
+          type: boolean
+        lesson_id:
+          title: Lesson Id
+          type: string
+        option_id:
+          title: Option Id
+          type: string
+        question_id:
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - option_id
+      - correct_option_id
+      - is_correct
+      - explanation
+      - lesson_id
+      title: QuestionResult
+      type: object
     QuizOption:
       additionalProperties: false
       properties:
@@ -346,6 +576,20 @@ components:
       - username
       - password
       title: RegisterRequest
+      type: object
+    WrongQuestion:
+      additionalProperties: false
+      properties:
+        lesson_id:
+          title: Lesson Id
+          type: string
+        question_id:
+          title: Question Id
+          type: string
+      required:
+      - question_id
+      - lesson_id
+      title: WrongQuestion
       type: object
   securitySchemes:
     SessionCookie:
@@ -526,6 +770,129 @@ paths:
       summary: List the courses
       tags:
       - courses
+  /api/courses/{course_id}/assets/{file_name}:
+    get:
+      operationId: getAsset
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: file_name
+        required: true
+        schema:
+          title: File Name
+          type: string
+      responses:
+        '200':
+          content:
+            image/jpeg:
+              schema:
+                format: binary
+                type: string
+            image/png:
+              schema:
+                format: binary
+                type: string
+            image/svg+xml:
+              schema:
+                format: binary
+                type: string
+            image/webp:
+              schema:
+                format: binary
+                type: string
+            model/gltf+json:
+              schema:
+                format: binary
+                type: string
+            model/gltf-binary:
+              schema:
+                format: binary
+                type: string
+            text/vtt:
+              schema:
+                format: binary
+                type: string
+          description: The file, exactly as the content build wrote it.
+          headers:
+            Accept-Ranges:
+              description: 'Always `none`: a `Range` header is ignored.'
+              schema:
+                type: string
+            Cache-Control:
+              description: 'Always `public, max-age=31536000, immutable`: the opposite of the `private,
+                no-store` header of the other routes. The name holds the hash of the bytes, so the file
+                under a name never changes and any cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `inline`, with no file name.
+              schema:
+                type: string
+            Content-Security-Policy:
+              description: 'Sent on an SVG only (not on other types): `script-src ''none''; default-src
+                ''none''; style-src ''unsafe-inline''; sandbox`.'
+              schema:
+                type: string
+            ETag:
+              description: The SHA-256 of the file in double quotes, the same for every request.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`, on every type.
+              schema:
+                type: string
+        '304':
+          description: The `If-None-Match` header names this file's ETag. No body.
+          headers:
+            Cache-Control:
+              description: 'Always `public, max-age=31536000, immutable`: the opposite of the `private,
+                no-store` header of the other routes. The name holds the hash of the bytes, so the file
+                under a name never changes and any cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `inline`, with no file name.
+              schema:
+                type: string
+            Content-Security-Policy:
+              description: 'Sent on an SVG only (not on other types): `script-src ''none''; default-src
+                ''none''; style-src ''unsafe-inline''; sandbox`.'
+              schema:
+                type: string
+            ETag:
+              description: The SHA-256 of the file in double quotes, the same for every request.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`, on every type.
+              schema:
+                type: string
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      summary: A built asset of a course (image, diagram, 3D model, or caption file), public
+      tags:
+      - courses
   /api/courses/{course_id}/chapters:
     get:
       operationId: listChapters
@@ -571,6 +938,147 @@ paths:
       - SessionCookie: []
       - {}
       summary: List the chapters of a course, with their lessons and (when signed in) status
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/code:
+    get:
+      operationId: getChapterCode
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChapterCodeResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      - {}
+      summary: A chapter's code steps (every file of every step), for anyone in a free preview chapter
+        and else for a learner whose chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/code.zip:
+    get:
+      operationId: getChapterCodeZip
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/zip:
+              schema:
+                format: binary
+                type: string
+          description: The final project of the chapter, exactly as the content build wrote it.
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `attachment; filename="<chapter_id>.zip"`. The name is the chapter ID
+                from the catalog, which is also the ZIP's top-level folder.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      - {}
+      summary: A chapter's final project as a ZIP, with the same access rule as the code steps
       tags:
       - courses
   /api/courses/{course_id}/chapters/{chapter_id}/quiz:
@@ -635,6 +1143,80 @@ paths:
       security:
       - SessionCookie: []
       summary: A chapter's quiz questions, without answers, for a learner whose chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/quiz/attempts:
+    post:
+      operationId: submitQuizAttempt
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttemptRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '#/components/schemas/FailedAttemptResponse'
+                - $ref: '#/components/schemas/PassedAttemptResponse'
+                title: Response Submitquizattempt
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      summary: Grade a quiz attempt of the signed-in learner and save it; the correct answers come back
+        only when the attempt passes
       tags:
       - courses
   /api/courses/{course_id}/lessons/{lesson_id}:

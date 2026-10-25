@@ -1,0 +1,65 @@
+{
+  "course_id": "alpha-course",
+  "files": {
+    "captions/empty.vtt": {
+      "file": "empty-e3b0c44298fc1c14.vtt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    "copies/png-file.png": {
+      "file": "asset-a8520c30dc8ccbb2.png",
+      "sha256": "a8520c30dc8ccbb29da07c9ff10168a69f203045c12dfa02bd505f54e2fd70ba",
+      "size": 24
+    },
+    "files/glb-file.glb": {
+      "file": "asset-c81a99bbdafa8cca.glb",
+      "sha256": "c81a99bbdafa8cca6d0613d88efc55f4d5170a89f2f11d0701d2362571e50713",
+      "size": 24
+    },
+    "files/gltf-file.gltf": {
+      "file": "asset-6a7093b8ce35bbeb.gltf",
+      "sha256": "6a7093b8ce35bbebbc6b0b4f21df02002d7414602b6b63405b49eee8a16af463",
+      "size": 25
+    },
+    "files/jpeg-file.jpeg": {
+      "file": "asset-b07a5dc697914ea0.jpeg",
+      "sha256": "b07a5dc697914ea0dd6d596b7ee4663599934ef38474cd624310703c5d4f57a1",
+      "size": 25
+    },
+    "files/jpg-file.jpg": {
+      "file": "asset-72be49cfe5aac953.jpg",
+      "sha256": "72be49cfe5aac953f441de326f86f3ddd2fe9ea5d845b5bf90f88f786783c255",
+      "size": 24
+    },
+    "files/png-file.png": {
+      "file": "asset-a8520c30dc8ccbb2.png",
+      "sha256": "a8520c30dc8ccbb29da07c9ff10168a69f203045c12dfa02bd505f54e2fd70ba",
+      "size": 24
+    },
+    "files/vtt-file.vtt": {
+      "file": "asset-874f2e07dd50ab6f.vtt",
+      "sha256": "874f2e07dd50ab6fdcf3ecc5994722752965c63f1aea8d55240c7d3be33a26b3",
+      "size": 24
+    },
+    "files/webp-file.webp": {
+      "file": "asset-68cc6c09e814987f.webp",
+      "sha256": "68cc6c09e814987f273947bd0ae1096db78d5fcd821517edde6f229671b4ffcf",
+      "size": 25
+    },
+    "images/My.Photo.png": {
+      "file": "My.Photo-d7d61f9c51b2c969.png",
+      "sha256": "d7d61f9c51b2c9698e07a1efca045d9fc23a6d8dfdd490c1a3825a5c8ce3f1a9",
+      "size": 27
+    },
+    "images/diagram.svg": {
+      "file": "asset-fb4dad124333c90d.svg",
+      "sha256": "fb4dad124333c90d44d96cd74af0163807e8cef347a59fa8f92031f971ae90ce",
+      "size": 106
+    },
+    "images/trick.png": {
+      "file": "trick-a1c534d96b208930.png",
+      "sha256": "a1c534d96b2089309481fee1e88706b8719a5eb229e49d6d14658901a0ee3868",
+      "size": 51
+    }
+  }
+}

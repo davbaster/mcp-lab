@@ -234,11 +234,8 @@ def test_downgrade_to_0002_drops_the_table_and_upgrade_brings_it_back(
         )
 
 
-def test_0003_is_the_only_head(database_url):
-    heads = alembic("heads", env=env_with_url(database_url))
+def test_0003_follows_0002_in_the_migration_history(database_url):
+    history = alembic("history", env=env_with_url(database_url))
 
-    assert heads.returncode == 0, heads.output
-    assert [line for line in heads.output.splitlines() if "(head)" in line] == [
-        line for line in heads.output.splitlines() if line.startswith("0003")
-    ]
-    assert len([line for line in heads.output.splitlines() if "(head)" in line]) == 1
+    assert history.returncode == 0, history.output
+    assert any(line.startswith("0002 -> 0003") for line in history.output.splitlines())

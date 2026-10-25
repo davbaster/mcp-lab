@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "course_id": "zeta-course",
+  "title": "Zeta course",
+  "description": "The sixth fixture course, for the code step and chapter ZIP tests (#59): six chapters of one lesson each, three of them free preview, four with code.",
+  "chapters": [
+    {
+      "id": "01-open",
+      "title": "Open",
+      "free_preview": true,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "open-lesson",
+          "title": "Open lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "02-gated",
+      "title": "Gated",
+      "free_preview": false,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "gated-lesson",
+          "title": "Gated lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "03-sealed",
+      "title": "Sealed",
+      "free_preview": false,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "sealed-lesson",
+          "title": "Sealed lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "04-late-open",
+      "title": "Late open",
+      "free_preview": true,
+      "has_code": true,
+      "lessons": [
+        {
+          "id": "late-open-lesson",
+          "title": "Late open lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "05-plain",
+      "title": "Plain",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "plain-lesson",
+          "title": "Plain lesson",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "06-open-plain",
+      "title": "Open plain",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "open-plain-lesson",
+          "title": "Open plain lesson",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

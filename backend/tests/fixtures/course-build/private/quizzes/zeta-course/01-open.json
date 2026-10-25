@@ -1,0 +1,23 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "01-open",
+  "questions": [
+    {
+      "id": "01-open-1",
+      "text": "QUESTION-SENTINEL-zeta-01-open",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-zeta-01-open"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-zeta-01-open"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-zeta-01-open",
+      "lesson": "open-lesson"
+    }
+  ]
+}

@@ -175,10 +175,10 @@ def test_a_bad_build_dir_fails_naming_course_build_dir(kind, tmp_path):
 
 
 def test_a_course_without_a_manifest_fails_naming_the_course_and_the_file():
-    message = load_error("alpha-course,zeta-course")
+    message = load_error("alpha-course,omega-course")
 
-    assert "zeta-course" in message
-    assert "private/courses/zeta-course.json" in message
+    assert "omega-course" in message
+    assert "private/courses/omega-course.json" in message
 
 
 def test_a_manifest_that_is_a_folder_fails_like_a_missing_one(build_copy):

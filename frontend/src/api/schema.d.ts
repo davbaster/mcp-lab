@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/courses/{course_id}/assets/{file_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A built asset of a course (image, diagram, 3D model, or caption file), public */
+        get: operations["getAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/courses/{course_id}/chapters": {
         parameters: {
             query?: never;
@@ -98,6 +115,40 @@ export interface paths {
         };
         /** List the chapters of a course, with their lessons and (when signed in) status */
         get: operations["listChapters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/chapters/{chapter_id}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A chapter's code steps (every file of every step), for anyone in a free preview chapter and else for a learner whose chapter is unlocked */
+        get: operations["getChapterCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/chapters/{chapter_id}/code.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A chapter's final project as a ZIP, with the same access rule as the code steps */
+        get: operations["getChapterCodeZip"];
         put?: never;
         post?: never;
         delete?: never;
@@ -117,6 +168,23 @@ export interface paths {
         get: operations["getQuiz"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/courses/{course_id}/chapters/{chapter_id}/quiz/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Grade a quiz attempt of the signed-in learner and save it; the correct answers come back only when the attempt passes */
+        post: operations["submitQuizAttempt"];
         delete?: never;
         options?: never;
         head?: never;
@@ -200,6 +268,28 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** AnswerItem */
+        AnswerItem: {
+            /** Option Id */
+            option_id: string;
+            /** Question Id */
+            question_id: string;
+        };
+        /** AttemptRequest */
+        AttemptRequest: {
+            /** Answers */
+            answers: components["schemas"]["AnswerItem"][];
+        };
+        /** ChapterCodeResponse */
+        ChapterCodeResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Id */
+            course_id: string;
+            /** Steps */
+            steps: components["schemas"]["CodeStep"][];
+            zip: components["schemas"]["CodeZip"];
+        };
         /** ChapterProgressSummary */
         ChapterProgressSummary: {
             /** Best Score */
@@ -226,6 +316,37 @@ export interface components {
             status: components["schemas"]["ChapterStatus"] | null;
             /** Title */
             title: string;
+        };
+        /** CodeFile */
+        CodeFile: {
+            /** Changed Lines */
+            changed_lines: number[];
+            /** Content */
+            content: string;
+            /** Path */
+            path: string;
+            status: components["schemas"]["CodeFileStatus"];
+        };
+        /**
+         * CodeFileStatus
+         * @enum {string}
+         */
+        CodeFileStatus: "added" | "modified" | "deleted" | "unchanged";
+        /** CodeStep */
+        CodeStep: {
+            /** Files */
+            files: components["schemas"]["CodeFile"][];
+            /** Step */
+            step: number;
+        };
+        /** CodeZip */
+        CodeZip: {
+            /** File Name */
+            file_name: string;
+            /** Size */
+            size: number;
+            /** Url */
+            url: string;
         };
         /** CourseChaptersResponse */
         CourseChaptersResponse: {
@@ -269,6 +390,27 @@ export interface components {
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
+        };
+        /**
+         * FailedAttemptResponse
+         * @description A failed attempt. Nothing here points at a right option.
+         */
+        FailedAttemptResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Id */
+            course_id: string;
+            /**
+             * Passed
+             * @constant
+             */
+            passed: false;
+            /** Score */
+            score: number;
+            /** Total */
+            total: number;
+            /** Wrong */
+            wrong: components["schemas"]["WrongQuestion"][];
         };
         /** HealthResponse */
         HealthResponse: {
@@ -316,6 +458,43 @@ export interface components {
             /** Username */
             username: string;
         };
+        /** PassedAttemptResponse */
+        PassedAttemptResponse: {
+            /** Chapter Id */
+            chapter_id: string;
+            /** Course Complete */
+            course_complete: boolean;
+            /** Course Id */
+            course_id: string;
+            /** Next Chapter Id */
+            next_chapter_id: string | null;
+            /**
+             * Passed
+             * @constant
+             */
+            passed: true;
+            /** Results */
+            results: components["schemas"]["QuestionResult"][];
+            /** Score */
+            score: number;
+            /** Total */
+            total: number;
+        };
+        /** QuestionResult */
+        QuestionResult: {
+            /** Correct Option Id */
+            correct_option_id: string;
+            /** Explanation */
+            explanation: string;
+            /** Is Correct */
+            is_correct: boolean;
+            /** Lesson Id */
+            lesson_id: string;
+            /** Option Id */
+            option_id: string;
+            /** Question Id */
+            question_id: string;
+        };
         /** QuizOption */
         QuizOption: {
             /** Id */
@@ -361,6 +540,13 @@ export interface components {
              * @description 4 to 8 characters: A-Z, a-z, 0-9, and _. Never trimmed.
              */
             username: string;
+        };
+        /** WrongQuestion */
+        WrongQuestion: {
+            /** Lesson Id */
+            lesson_id: string;
+            /** Question Id */
+            question_id: string;
         };
     };
     responses: never;
@@ -579,6 +765,91 @@ export interface operations {
             };
         };
     };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                file_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file, exactly as the content build wrote it. */
+            200: {
+                headers: {
+                    /** @description Always `none`: a `Range` header is ignored. */
+                    "Accept-Ranges"?: string;
+                    /** @description Always `public, max-age=31536000, immutable`: the opposite of the `private, no-store` header of the other routes. The name holds the hash of the bytes, so the file under a name never changes and any cache may keep it. */
+                    "Cache-Control"?: string;
+                    /** @description Always `inline`, with no file name. */
+                    "Content-Disposition"?: string;
+                    /** @description Sent on an SVG only (not on other types): `script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox`. */
+                    "Content-Security-Policy"?: string;
+                    /** @description The SHA-256 of the file in double quotes, the same for every request. */
+                    ETag?: string;
+                    /** @description Always `nosniff`, on every type. */
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": string;
+                    "image/png": string;
+                    "image/svg+xml": string;
+                    "image/webp": string;
+                    "model/gltf+json": string;
+                    "model/gltf-binary": string;
+                    "text/vtt": string;
+                };
+            };
+            /** @description The `If-None-Match` header names this file's ETag. No body. */
+            304: {
+                headers: {
+                    /** @description Always `public, max-age=31536000, immutable`: the opposite of the `private, no-store` header of the other routes. The name holds the hash of the bytes, so the file under a name never changes and any cache may keep it. */
+                    "Cache-Control"?: string;
+                    /** @description Always `inline`, with no file name. */
+                    "Content-Disposition"?: string;
+                    /** @description Sent on an SVG only (not on other types): `script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox`. */
+                    "Content-Security-Policy"?: string;
+                    /** @description The SHA-256 of the file in double quotes, the same for every request. */
+                    ETag?: string;
+                    /** @description Always `nosniff`, on every type. */
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listChapters: {
         parameters: {
             query?: never;
@@ -599,6 +870,150 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CourseChaptersResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getChapterCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChapterCodeResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getChapterCodeZip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The final project of the chapter, exactly as the content build wrote it. */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    /** @description Always `attachment; filename="<chapter_id>.zip"`. The name is the chapter ID from the catalog, which is also the ZIP's top-level folder. */
+                    "Content-Disposition"?: string;
+                    /** @description Always `nosniff`. */
+                    "X-Content-Type-Options"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not Found */
@@ -651,6 +1066,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuizResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitQuizAttempt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                course_id: string;
+                chapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Always `private, no-store`: the response can depend on who is signed in, so no shared cache may keep it. */
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailedAttemptResponse"] | components["schemas"]["PassedAttemptResponse"];
                 };
             };
             /** @description Unauthorized */
