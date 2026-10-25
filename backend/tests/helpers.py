@@ -9,6 +9,11 @@ from sqlalchemy.engine import URL
 from tests.dbtools import BACKEND_DIR
 
 
+def without_request_id(response) -> dict[str, str]:
+    """The response headers except `X-Request-ID`, which is different on every response (#36)."""
+    return {name: value for name, value in response.headers.items() if name != "x-request-id"}
+
+
 @dataclass
 class Result:
     returncode: int

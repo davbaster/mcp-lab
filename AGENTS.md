@@ -54,7 +54,7 @@ The per-folder commands are what the targets run. Use them directly to run one t
 - `cd backend` then `uv run pytest tests/test_home.py` - one test file
 - `cd backend` then `uv run ruff check .` - lint
 - `cd backend` then `uv run python scripts/export_openapi.py` - re-export `openapi.yaml` (add `--check` to only compare)
-- `cd backend` then `uv run uvicorn app.main:app --port 8000` - dev server
+- `cd backend` then `uv run uvicorn app.main:app --port 8000 --no-access-log --log-config app/log_config.json` - dev server (needs `DEPLOYMENT` set, for example `local`)
 
 `frontend/`:
 

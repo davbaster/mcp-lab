@@ -231,7 +231,8 @@ def login(
     if account_id is None or not verified:
         if reservation.reached:
             # One line, only the kind of limit: no username, address, or count.
-            logger.info("Login limit reached: scope=%s", _SCOPE_NAMES[reservation.reached[0].scope])
+            scope = _SCOPE_NAMES[reservation.reached[0].scope]
+            logger.info("Login limit reached: scope=%s", scope, extra={"scope": scope})
         raise ApiError(401, "invalid_credentials", INVALID_CREDENTIALS_MESSAGE)
     with hide_database_details():
         # A success is not a failure for either limit. It also clears the username's count, but

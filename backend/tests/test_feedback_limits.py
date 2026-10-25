@@ -12,6 +12,7 @@ from tests.feedback_support import (
     send,
     sign_in_again,
 )
+from tests.helpers import without_request_id
 
 LIMIT_CODE = "feedback_limit_reached"
 
@@ -152,9 +153,9 @@ def test_the_same_message_within_a_minute_gets_202_and_is_not_stored_again(ana_f
 
     second = send(ana_fb)
 
-    assert (second.status_code, dict(second.headers), second.content) == (
+    assert (second.status_code, without_request_id(second), second.content) == (
         first.status_code,
-        dict(first.headers),
+        without_request_id(first),
         first.content,
     )
     assert second.content == b""

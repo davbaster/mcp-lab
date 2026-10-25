@@ -37,6 +37,7 @@ from tests.asset_support import (
 from tests.auth_support import assert_error, new_client, register, with_cookie
 from tests.content_support import VISITOR_KINDS, visitor_headers
 from tests.course_support import FIXTURE_BUILD
+from tests.helpers import without_request_id
 
 COURSE_NOT_FOUND = "course_not_found"
 ASSET_NOT_FOUND = "asset_not_found"
@@ -175,7 +176,7 @@ def test_a_query_string_changes_nothing(api):
 
     assert response.status_code == 200
     assert response.content == plain.content
-    assert dict(response.headers) == dict(plain.headers)
+    assert without_request_id(response) == without_request_id(plain)
 
 
 def test_only_get_is_allowed(api):
@@ -331,7 +332,7 @@ def test_every_kind_of_caller_gets_the_same_response(content_api, clock, name):
     for response in [learner, *others]:
         assert response.status_code == anonymous.status_code
         assert response.content == anonymous.content
-        assert dict(response.headers) == dict(anonymous.headers)
+        assert without_request_id(response) == without_request_id(anonymous)
         assert "set-cookie" not in response.headers
 
 
@@ -342,7 +343,7 @@ def test_a_signed_in_client_sees_nothing_different(content_api):
     response = content_api.get(url(ALPHA, PNG))
 
     assert response.content == anonymous.content
-    assert dict(response.headers) == dict(anonymous.headers)
+    assert without_request_id(response) == without_request_id(anonymous)
     assert "set-cookie" not in response.headers
 
 
@@ -424,7 +425,7 @@ def test_the_map_is_read_once_deleting_it_after_the_start_changes_nothing(serve,
     after = client.get(url(ALPHA, PNG))
     assert after.status_code == 200
     assert after.content == before.content
-    assert dict(after.headers) == dict(before.headers)
+    assert without_request_id(after) == without_request_id(before)
 
 
 def test_a_file_added_to_the_build_after_the_start_is_not_served(serve, build_copy):

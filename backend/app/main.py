@@ -14,6 +14,7 @@ from app.course_routes import install_course_routes
 from app.courses import load_catalog_from_environment
 from app.errors import install_error_handling
 from app.feedback_routes import install_feedback_routes
+from app.observability import check_settings, install_observability, observability
 from app.quiz_routes import install_quiz_routes
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
@@ -23,17 +24,23 @@ API_VERSION = "0.1.0"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Load the courses named in COURSES once, before the first request.
+    """Read the settings and load the courses named in COURSES once, before the first request.
 
     Not done at import: `scripts/export_openapi.py` and most tests import this module with no
     course settings. A problem raises `CourseLoadError` and the app does not start. The
     catalog is read-only memory; it opens no database connection. A bad `TRUSTED_PROXIES` also
-    stops the app here (`TrustedProxiesError`, naming the variable).
+    stops the app here (`TrustedProxiesError`, naming the variable), and so do a missing or
+    invalid `DEPLOYMENT` and a bad or busy `METRICS_PORT` (the error names the variable). The
+    metrics server runs for as long as the app does, and its port is free again afterwards.
     """
+    deployment, metrics_port = check_settings()
     trusted_proxies()
     app.state.catalog = load_catalog_from_environment()
     try:
-        yield
+        with observability(
+            [course.id for course in app.state.catalog.courses], deployment, metrics_port
+        ):
+            yield
     finally:
         del app.state.catalog
 
@@ -48,6 +55,7 @@ app = FastAPI(
     swagger_ui_oauth2_redirect_url=None,
 )
 install_error_handling(app)
+install_observability(app)
 install_auth_routes(app)
 install_course_routes(app)
 install_asset_routes(app)

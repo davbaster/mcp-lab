@@ -11,6 +11,8 @@ from sqlalchemy.engine import URL, Engine, make_url
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import DeclarativeBase
 
+from app.db_pool import InstrumentedQueuePool
+
 SCHEMA = "app"
 EXPECTED_FORM = "postgresql+psycopg://user:password@host:port/dbname"
 CONNECT_TIMEOUT_SECONDS = 5
@@ -60,6 +62,9 @@ def get_database_url() -> URL:
 
 def create_db_engine(url: URL, **kwargs: object) -> Engine:
     # hide_parameters keeps bound values (a password hash, a username) out of error messages.
+    # The pool is SQLAlchemy's default one with its default sizes, plus the numbers the metrics
+    # read (app.db_pool). A caller may pass its own `poolclass`.
+    kwargs.setdefault("poolclass", InstrumentedQueuePool)
     return create_engine(
         url,
         connect_args={"connect_timeout": CONNECT_TIMEOUT_SECONDS},
@@ -72,3 +77,8 @@ def create_db_engine(url: URL, **kwargs: object) -> Engine:
 def get_engine() -> Engine:
     """The shared engine, created on first use. Tests clear the cache with get_engine.cache_clear()."""
     return create_db_engine(get_database_url())
+
+
+def peek_engine() -> Engine | None:
+    """The shared engine if it has been created, else None. Never creates it or connects."""
+    return get_engine() if get_engine.cache_info().currsize else None

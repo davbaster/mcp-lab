@@ -334,6 +334,7 @@ def load_catalog(courses: str | None, build_dir: str | None) -> Catalog:
             course.id,
             len(course.chapters),
             course.lesson_count,
+            extra={"course_id": course.id},
         )
         loaded.append(course)
     return Catalog(tuple(loaded), root)

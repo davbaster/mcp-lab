@@ -7,6 +7,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 
+import yaml
+
 from tests.dbtools import BACKEND_DIR
 
 ROOT = BACKEND_DIR.parent
@@ -31,8 +33,8 @@ def test_dockerfile_starts_through_the_entrypoint_and_does_not_enable_migrations
 
     assert 'ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]' in dockerfile
     assert (
-        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]'
-        in dockerfile
+        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers",'
+        ' "--no-access-log", "--log-config", "app/log_config.json"]' in dockerfile
     )
     copies = re.findall(r"^COPY (?!--from)(.+)$", dockerfile, re.MULTILINE)
     for path in ("alembic.ini", "migrations", "docker-entrypoint.sh"):  # the build context is the repo root
@@ -193,6 +195,59 @@ def test_compose_trusts_only_private_ranges_as_proxies_and_the_backend_publishes
     assert f"\nTRUSTED_PROXIES={default}\n" in example
     assert "| `TRUSTED_PROXIES` |" in readme
     assert "TRUSTED_PROXIES" not in compose.split("  frontend:\n", 1)[1]
+
+
+def test_compose_sets_the_deployment_and_the_metrics_port_and_publishes_no_backend_port():
+    compose = (ROOT / "compose.yaml").read_text()
+    backend = compose.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
+    example = (ROOT / ".env.example").read_text()
+    services = yaml.safe_load(compose)["services"]
+
+    assert "      DEPLOYMENT: ${DEPLOYMENT:-local}\n" in backend
+    assert "      METRICS_PORT: ${METRICS_PORT:-9000}\n" in backend
+    assert "ports" not in services["backend"]
+    assert "expose" not in services["backend"]
+    # Only Caddy publishes a port, and it is not 9000: the metrics port is reached inside the stack.
+    published = {name: s["ports"] for name, s in services.items() if "ports" in s}
+    assert list(published) == ["caddy"]
+    assert not [p for p in published["caddy"] if "9000" in p]
+    assert "\nDEPLOYMENT=local\n" in example
+    assert "\nMETRICS_PORT=9000\n" in example
+
+
+def test_the_backend_runs_one_process_per_container():
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    compose = (ROOT / "compose.yaml").read_text()
+    readme = (ROOT / "README.md").read_text()
+
+    assert "--workers" not in dockerfile
+    assert "WEB_CONCURRENCY" not in dockerfile + compose
+    assert "UVICORN_WORKERS" not in dockerfile + compose
+    assert "one process per container" in readme.lower()
+
+
+def test_the_image_starts_uvicorn_with_the_json_log_config_that_it_copies():
+    dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
+    config = BACKEND_DIR / "app" / "log_config.json"
+
+    assert '"--log-config", "app/log_config.json"' in dockerfile
+    assert '"--no-access-log"' in dockerfile
+    assert "COPY backend/app ./app" in dockerfile  # the config is inside the folder the image copies
+    assert json.loads(config.read_text())["version"] == 1
+
+
+def test_the_local_proxy_answers_404_for_metrics_before_it_reaches_the_frontend():
+    caddyfile = (ROOT / "caddy" / "Caddyfile").read_text()
+    site = caddyfile.split(":8080 {", 1)[1]
+
+    assert "@metrics path /metrics /metrics/*" in site
+    block = site.split("handle @metrics {", 1)[1].split("}", 1)[0]
+    assert block.strip() == "respond 404"
+    # before the catch-all, which would answer with the frontend's index.html and status 200
+    assert site.index("handle @metrics") < site.index("handle /api/*") < site.index("\n\thandle {")
+    assert "9000" not in caddyfile  # no route to the metrics port
+    assert "reverse_proxy" in site and site.count("reverse_proxy") == 2  # backend:8000 and frontend
+    assert "backend:8000" in site and "backend:9000" not in site
 
 
 def test_env_example_and_readme_document_the_course_settings():

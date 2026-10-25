@@ -138,4 +138,5 @@ def log_feedback(*, course_id: str | None, category: str) -> None:
         "Feedback stored: course_id=%s category=%s",
         "none" if course_id is None else course_id,
         category,
+        extra={"course_id": course_id, "category": category},
     )

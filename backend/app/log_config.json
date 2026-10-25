@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "filters": {
+    "redact": {"()": "app.log_redaction.RedactionFilter"},
+    "once": {"()": "app.log_format.ExceptionLoggedOnceFilter"}
+  },
+  "formatters": {
+    "json": {"()": "app.log_format.JsonFormatter"}
+  },
+  "handlers": {
+    "json": {
+      "class": "logging.StreamHandler",
+      "formatter": "json",
+      "filters": ["once", "redact"],
+      "stream": "ext://sys.stderr"
+    }
+  },
+  "loggers": {
+    "uvicorn": {"handlers": [], "level": "INFO", "propagate": true},
+    "uvicorn.error": {"handlers": [], "level": "INFO", "propagate": true},
+    "uvicorn.access": {"handlers": [], "level": "INFO", "propagate": false},
+    "mcp_lab": {"handlers": [], "level": "INFO", "propagate": true}
+  },
+  "root": {"handlers": ["json"], "level": "WARNING"}
+}
