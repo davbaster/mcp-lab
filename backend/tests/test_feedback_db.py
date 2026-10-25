@@ -345,14 +345,14 @@ def test_the_migration_file_has_no_database_dialect_name_and_defines_its_own_jso
     assert "class _Jsonb" in source
 
 
-def test_0005_follows_0004_and_is_the_only_head(database_url):
+def test_0005_follows_0004_in_a_chain_with_one_head(database_url):
     env = env_with_url(database_url)
     heads = alembic("heads", env=env)
     history = alembic("history", env=env)
 
     assert heads.returncode == 0 and history.returncode == 0, heads.output + history.output
     head_lines = [line for line in heads.output.splitlines() if "(head)" in line]
-    assert len(head_lines) == 1 and head_lines[0].startswith("0005")
+    assert len(head_lines) == 1  # which revision it is: see HEAD in test_migrations.py
     assert any(line.startswith("0004 -> 0005") for line in history.output.splitlines())
 
 

@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import text
 
 from tests.auth_support import assert_error, new_client
 from tests.content_support import VISITOR_KINDS, visitor_headers
@@ -808,3 +809,23 @@ def test_the_spec_describes_the_route_and_forbids_extra_fields():
     }
     assert sorted(schemas["FeedbackRequest"]["required"]) == ["category", "context", "message"]
     assert "account_id" not in json.dumps(schemas["FeedbackRequest"])
+
+
+def test_an_account_deleted_after_the_login_check_gets_401_and_nothing_is_stored(
+    ana_fb, db, monkeypatch
+):
+    import app.feedback_routes as routes
+
+    real = routes.store_feedback
+
+    def delete_the_account_first(db_session, *, account_id, **kwargs):
+        with db.begin() as conn:  # committed on another connection, after the login check
+            conn.execute(text("DELETE FROM app.accounts WHERE id = :id"), {"id": account_id})
+        return real(db_session, account_id=account_id, **kwargs)
+
+    monkeypatch.setattr(routes, "store_feedback", delete_the_account_first)
+
+    response = send(ana_fb)
+
+    assert_error(response, 401, "not_authenticated")
+    assert feedback_count(db) == 0
