@@ -39,13 +39,19 @@ class ErrorResponse(BaseModel):
 
 
 class ApiError(Exception):
-    """Raise from a route to send `status_code` with exactly this `code` and `message`."""
+    """Raise from a route to send `status_code` with exactly this `code` and `message`.
 
-    def __init__(self, status_code: int, code: str, message: str) -> None:
+    `headers`, when given, are added to the error response (for example `Retry-After`).
+    """
+
+    def __init__(
+        self, status_code: int, code: str, message: str, headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(f"{status_code} {code}: {message}")
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.headers = headers
 
 
 def error_response(
@@ -64,7 +70,7 @@ def _reason_phrase(status_code: int) -> str:
 
 async def _api_error_handler(request: Request, exc: Exception) -> Response:
     assert isinstance(exc, ApiError)
-    return error_response(exc.status_code, exc.code, exc.message)
+    return error_response(exc.status_code, exc.code, exc.message, exc.headers)
 
 
 async def _http_exception_handler(request: Request, exc: Exception) -> Response:

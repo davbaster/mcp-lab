@@ -30,7 +30,10 @@ def test_dockerfile_starts_through_the_entrypoint_and_does_not_enable_migrations
     dockerfile = (BACKEND_DIR / "Dockerfile").read_text()
 
     assert 'ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]' in dockerfile
-    assert 'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]' in dockerfile
+    assert (
+        'CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]'
+        in dockerfile
+    )
     copies = re.findall(r"^COPY (?!--from)(.+)$", dockerfile, re.MULTILINE)
     for path in ("alembic.ini", "migrations", "docker-entrypoint.sh"):  # the build context is the repo root
         assert any(f"backend/{path}" in c.split() for c in copies), path
@@ -173,6 +176,23 @@ def test_compose_gives_the_backend_the_courses_to_serve_and_the_folder_to_build_
     assert re.search(r"^      args:\n(?:        #.*\n)*        COURSES_DIR: \${COURSES_DIR:-courses}$", backend, re.MULTILINE)
     # COURSE_BUILD_DIR comes from the image, not from compose.
     assert "COURSE_BUILD_DIR" not in compose
+
+
+def test_compose_trusts_only_private_ranges_as_proxies_and_the_backend_publishes_no_port():
+    from app.client_address import parse_trusted_proxies
+
+    compose = (ROOT / "compose.yaml").read_text()
+    backend = compose.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
+    example = (ROOT / ".env.example").read_text()
+    readme = (ROOT / "README.md").read_text()
+    default = "172.16.0.0/12,192.168.0.0/16,10.0.0.0/8"
+
+    assert f"      TRUSTED_PROXIES: ${{TRUSTED_PROXIES:-{default}}}\n" in backend
+    assert "ports:" not in backend
+    assert [str(n) for n in parse_trusted_proxies(default)] == default.split(",")
+    assert f"\nTRUSTED_PROXIES={default}\n" in example
+    assert "| `TRUSTED_PROXIES` |" in readme
+    assert "TRUSTED_PROXIES" not in compose.split("  frontend:\n", 1)[1]
 
 
 def test_env_example_and_readme_document_the_course_settings():

@@ -37,6 +37,10 @@ services:
       RUN_MIGRATIONS_ON_START: "true"
       # The course IDs to serve, separated by commas. The backend does not start without it.
       COURSES: ${COURSES:-mcp-server}
+      # The proxies whose X-Forwarded-For the backend believes (for the failed-login limits): Caddy,
+      # which is on the web network. The backend publishes no port, so only containers on its two
+      # networks can reach it, and Docker gives those private addresses. See .env.example.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,192.168.0.0/16,10.0.0.0/8}
     networks:
       - db
       - web

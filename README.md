@@ -206,7 +206,7 @@ A visitor can create an account, and a learner can sign in, ask who they are, an
 | Route | Success | Errors |
 |---|---|---|
 | `POST /api/auth/register` | 201 `{"username"}` and a session cookie | 409 `username_taken`, 422 `validation_error` |
-| `POST /api/auth/login` | 200 `{"username"}` and a session cookie | 401 `invalid_credentials`, 422 `validation_error` |
+| `POST /api/auth/login` | 200 `{"username"}` and a session cookie | 401 `invalid_credentials`, 422 `validation_error`, 429 `too_many_attempts` |
 | `POST /api/auth/logout` | 204, cookie cleared | none |
 | `GET /api/auth/me` | 200 `{"username"}` | 401 `not_authenticated` |
 
@@ -225,6 +225,18 @@ await fetch('/api/auth/register', {method: 'POST', headers: {'Content-Type': 'ap
 ```
 
 The cookie list (Application or Storage tab) then shows `session` with HttpOnly, Secure, and SameSite Lax, and `document.cookie` does not show it. `await fetch('/api/auth/me')` returns 200. `await fetch('/api/auth/logout', {method: 'POST'})` removes the cookie, and `/api/auth/me` then returns 401.
+
+#### Failed-login limits
+
+Repeated failed logins are blocked: 5 failed logins per username and 20 per client address, each in a rolling 15 minutes (`backend/app/rate_limit.py`; the address limit is higher because several learners can share one address). A failure is any login that gets the `invalid_credentials` 401, for an unknown or unregistrable username as well as for a wrong password, and `Ana1`, `ANA1`, and `ana1` share one count. Requests refused with 422 are not login attempts. Once a key is at its limit, every login for it is a 429 with the fixed message `Too many failed sign-in attempts. Try again later.` and `code` `too_many_attempts` (even with the right password, and the same for a username that exists and one that does not), plus `Retry-After` (whole seconds until the block ends) and `Cache-Control: no-store`. A blocked request is not counted, so waiting is the only way out. A successful login clears the count of its username, not the count of its address. The limits are decided before the account is looked up and before any password is checked, so a blocked request costs no password hash.
+
+The counts are rows of `app.rate_limit_failures`, holding only SHA-256 digests (no username and no address), so the limits do not depend on the worker count: they hold across restarts, several uvicorn workers, and several backend containers. Expired rows are deleted by the requests that record new failures. A login that cannot read or write the table fails with the shared 500 `internal_error` instead of skipping the limit. The only log line is `Login limit reached: scope=username` (or `ip`), when a failure first reaches a limit.
+
+The client address is the connection's peer address, unless the peer is a trusted proxy. `TRUSTED_PROXIES` lists those proxies, as comma-separated IP addresses or CIDR ranges (spaces are ignored). Unset or empty trusts no one; a bad entry stops the backend at startup. From a trusted proxy, `X-Forwarded-For` is read from the right, skipping other trusted proxies; the first other entry is the client (the entries on the left are what the sender claimed, so they are never used while a valid entry stands to their right). Without a usable header the peer address is used. From any other peer, `X-Forwarded-For`, `Forwarded`, and `X-Real-IP` are ignored. An IPv4-mapped IPv6 address counts as its IPv4 address and any other IPv6 address per `/64`. The Docker image starts uvicorn with `--no-proxy-headers`, so only this code decides (a native `uvicorn` run still rewrites the address for a peer on `127.0.0.1`; add `--no-proxy-headers` when you test with forged headers).
+
+| Variable | Meaning |
+|---|---|
+| `TRUSTED_PROXIES` | The proxies whose `X-Forwarded-For` is believed. Unset: everyone behind the proxy shares one count (the proxy's address), so a few learners' typos can block everyone. Too wide: any sender who can reach the backend within the range can forge the header and get fresh counts. `compose.yaml` sets Docker's private ranges (`172.16.0.0/12,192.168.0.0/16,10.0.0.0/8`), which is safe there because the backend publishes no port; in that stack every browser reaches Caddy through Docker's gateway address, so all local sign-ins share one address count. Production and staging set their own value ([#114](https://github.com/davbaster/mcp-lab/issues/114)). |
 
 ### Frontend (`frontend/`)
 

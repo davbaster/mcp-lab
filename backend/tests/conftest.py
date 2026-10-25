@@ -26,12 +26,14 @@ from tests.dbtools import (
 # Fixtures for the lesson, last-lesson, and quiz tests (#15): content_api, learner.
 # Fixtures for the quiz attempt tests (#16): attempt_api, ana, server_errors.
 # Fixtures for the feedback tests (#24): fb_api, ana_fb, fb_errors.
+# Fixtures for the failed-login limit tests (#54): accounts, verifications.
 pytest_plugins = [
     "tests.auth_support",
     "tests.course_support",
     "tests.content_support",
     "tests.quiz_support",
     "tests.feedback_support",
+    "tests.limit_support",
 ]
 
 # A fake password used in URLs by tests that prove secrets never leak.

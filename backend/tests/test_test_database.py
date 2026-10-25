@@ -126,6 +126,7 @@ def test_reset_removes_stale_state_and_migrates_to_head(database_url, db_engine,
         "chapter_progress",
         "feedback",
         "quiz_attempts",
+        "rate_limit_failures",
         "sessions",
     ]
-    assert versions == ["0005"]
+    assert versions == ["0006"]

@@ -688,6 +688,19 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Too many failed sign-in attempts for this username or from this address, in the last 15 minutes. Even the right password is refused until the block ends. The answer is the same whether or not the username exists. */
+            429: {
+                headers: {
+                    /** @description Always `no-store`, so a shared cache never serves one learner's response to another. */
+                    "Cache-Control"?: string;
+                    /** @description Whole seconds until the block ends, rounded up and at least 1. */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Internal server error */
             500: {
                 headers: {

@@ -88,6 +88,12 @@ def make_app() -> FastAPI:
     def api_error() -> dict[str, str]:
         raise ApiError(409, "username_taken", "That username is taken.")
 
+    @throwaway.get("/api-error-headers")
+    def api_error_headers() -> dict[str, str]:
+        raise ApiError(
+            429, "too_many_attempts", "Slow down.", headers={"Retry-After": "7", "X-Extra": "kept"}
+        )
+
     @throwaway.get("/http/{status}", responses={204: {"description": "No content"}})
     def http(status: int) -> dict[str, str]:
         raise StarletteHTTPException(status, "Custom detail", headers={"X-Extra": "kept"})
@@ -211,6 +217,23 @@ def test_api_error_returns_its_status_code_and_message(client):
     response = client.get("/api-error")
 
     assert_error(response, 409, "username_taken", "That username is taken.")
+
+
+@pytest.mark.undocumented_status(429, reason="the throwaway route raises ApiError(429) on purpose")
+def test_api_error_sends_its_headers_with_the_shared_shape(client):
+    response = client.get("/api-error-headers")
+
+    assert_error(response, 429, "too_many_attempts", "Slow down.")
+    assert response.headers["retry-after"] == "7"
+    assert response.headers["x-extra"] == "kept"
+
+
+@pytest.mark.undocumented_status(409, reason="the throwaway route raises ApiError(409) on purpose")
+def test_api_error_without_headers_adds_none(client):
+    response = client.get("/api-error")
+
+    assert "retry-after" not in response.headers
+    assert ApiError(409, "c", "m").headers is None
 
 
 # --- validation ---

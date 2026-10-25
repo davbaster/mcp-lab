@@ -766,6 +766,25 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
           description: Validation error
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Too many failed sign-in attempts for this username or from this address, in the
+            last 15 minutes. Even the right password is refused until the block ends. The answer is the
+            same whether or not the username exists.
+          headers:
+            Cache-Control:
+              description: Always `no-store`, so a shared cache never serves one learner's response to
+                another.
+              schema:
+                type: string
+            Retry-After:
+              description: Whole seconds until the block ends, rounded up and at least 1.
+              schema:
+                minimum: 1.0
+                type: integer
         '500':
           content:
             application/json:

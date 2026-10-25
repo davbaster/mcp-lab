@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.asset_routes import install_asset_routes
 from app.auth import install_auth_routes
+from app.client_address import trusted_proxies
 from app.code_routes import install_code_routes
 from app.content_routes import install_content_routes
 from app.course_routes import install_course_routes
@@ -26,8 +27,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     Not done at import: `scripts/export_openapi.py` and most tests import this module with no
     course settings. A problem raises `CourseLoadError` and the app does not start. The
-    catalog is read-only memory; it opens no database connection.
+    catalog is read-only memory; it opens no database connection. A bad `TRUSTED_PROXIES` also
+    stops the app here (`TrustedProxiesError`, naming the variable).
     """
+    trusted_proxies()
     app.state.catalog = load_catalog_from_environment()
     try:
         yield

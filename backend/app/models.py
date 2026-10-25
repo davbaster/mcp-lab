@@ -1,11 +1,13 @@
 """Tables: accounts and sessions (shared across courses, so no `course_id`), chapter progress,
-quiz attempts, and learner feedback.
+quiz attempts, learner feedback, and the counters behind the rate limits.
 
 `chapter_progress` is course-scoped: `course_id` is part of its key. A chapter's status is never
 stored; it is computed from these rows and the course's chapter order (`app.progress`).
 `quiz_attempts` is the append-only record of every graded attempt, with its `course_id`.
 `feedback` is the append-only record of what learners send, with a `course_id` when the page was
 in a course.
+`rate_limit_failures` holds one row per counted failure, keyed by a digest, never by the username
+or address itself. Like `accounts` and `sessions` it is not course data, so it has no `course_id`.
 """
 
 import uuid
@@ -183,3 +185,30 @@ class Feedback(Base):
     console_errors: Mapped[list[str]] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(Text, server_default=text("'new'"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+RATE_LIMIT_SCOPES = "'login_username', 'login_ip'"
+
+
+class RateLimitFailure(Base):
+    """One counted failure for one rate-limited key (`app.rate_limit`). Rows are inserted when an
+    attempt is reserved and deleted when they expire or the attempt succeeds.
+
+    `key_hash` is the SHA-256 digest of the key (the lower-cased username, or the client key from
+    `app.client_address`), so the table holds no username and no address. `scope` says what the
+    key is; #97 adds its own scope to the check. `failed_at` is the app clock: a row counts while
+    `failed_at > now - window`.
+    """
+
+    __tablename__ = "rate_limit_failures"
+    __table_args__ = (
+        CheckConstraint(f"scope IN ({RATE_LIMIT_SCOPES})", name="scope_values"),
+        CheckConstraint("octet_length(key_hash) = 32", name="key_hash_length"),
+        Index("ix_rate_limit_failures_scope_key_hash_failed_at", "scope", "key_hash", "failed_at"),
+        Index("ix_rate_limit_failures_failed_at", "failed_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    scope: Mapped[str] = mapped_column(Text)
+    key_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    failed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

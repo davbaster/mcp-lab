@@ -44,4 +44,6 @@ USER app
 EXPOSE 8000
 # Runs `alembic upgrade head` first if compose.yaml (or the caller) asks for it, then the CMD.
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# --no-proxy-headers: uvicorn must not rewrite the client address from X-Forwarded-For. The app decides
+# itself, from TRUSTED_PROXIES (app/client_address.py).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
