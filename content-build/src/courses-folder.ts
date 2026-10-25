@@ -7,6 +7,7 @@ import type { Inspection } from "./course.ts";
 import { listFolder, pathKind, resolveCoursePath } from "./folder.ts";
 import { countErrors, formatProblem, formatSummary, toPosix } from "./problem.ts";
 import type { Problem } from "./problem.ts";
+import { compareText } from "./text.ts";
 
 export type CoursesFolder = {
   /** The absolute path. */
@@ -54,12 +55,25 @@ export function checkCourses(folder: CoursesFolder, ids: readonly string[], opti
   });
 }
 
-/** The problems of every course, course by course. `extra` are more problems of a course (by id), such as those of its diagrams, which come after the others. */
+/**
+ * The problems of every course, course by course. `extra` are more problems of a course (by id), such as those of its diagrams.
+ * A course that has some is listed in lesson order and then line order (the file, then the line, then the column, then the
+ * message), so a problem found before drawing in a later lesson does not come before a problem found by drawing in an earlier one.
+ * A course with none keeps the order of `validate`: the file, then the message.
+ */
 export function allProblems(
   checked: readonly CheckedCourse[],
   extra: ReadonlyMap<string, readonly Problem[]> = new Map(),
 ): { course: CheckedCourse; problem: Problem }[] {
-  return checked.flatMap((course) => [...course.inspection.problems, ...(extra.get(course.id) ?? [])].map((problem) => ({ course, problem })));
+  return checked.flatMap((course) => {
+    const more = extra.get(course.id) ?? [];
+    const problems = more.length === 0 ? course.inspection.problems : [...course.inspection.problems, ...more].sort(byPlace);
+    return problems.map((problem) => ({ course, problem }));
+  });
+}
+
+function byPlace(a: Problem, b: Problem): number {
+  return compareText(a.file, b.file) || (a.line ?? 0) - (b.line ?? 0) || (a.column ?? 0) - (b.column ?? 0) || compareText(a.message, b.message);
 }
 
 /** One line per problem, then the summary line. */

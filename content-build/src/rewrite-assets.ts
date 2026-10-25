@@ -79,3 +79,12 @@ export function rewriteAssetUrls(
   if (wrong.length > 0) throw new Error(`internal error: the rewritten tree does not match lesson-tree.schema.json: ${wrong.join("; ")}`);
   return result;
 }
+
+/** True when a `Diagram` with Mermaid `source` is still anywhere in `tree`. A lesson file must never be written with one. */
+export function hasMermaidSource(tree: unknown): boolean {
+  if (Array.isArray(tree)) return tree.some(hasMermaidSource);
+  if (typeof tree !== "object" || tree === null) return false;
+  const node = tree as { type?: unknown; name?: unknown; props?: unknown; children?: unknown };
+  if (node.type === "component" && node.name === "Diagram" && typeof node.props === "object" && node.props !== null && "source" in node.props) return true;
+  return hasMermaidSource(node.children);
+}

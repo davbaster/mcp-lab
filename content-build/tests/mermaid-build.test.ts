@@ -4,12 +4,15 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { inspectCourse } from "../src/course.ts";
 import { DiagramRenderError } from "../src/mermaid-render.ts";
+import { hasMermaidSource } from "../src/rewrite-assets.ts";
+import { writeCourse } from "../src/write-course.ts";
 import { treeErrors } from "../src/lesson-tree.ts";
 import type { LessonTree } from "../src/lesson-tree.ts";
 import { FIXTURES, PART_DIR, SLOW_PROCESS_TIMEOUT_MS, temporaryFolder } from "./helpers.ts";
 import { VALID_COURSES, filesOf, newBuildFolder, runBuild, snapshotOf } from "./build-support.ts";
-import { fakeRenderer, fakeSvg, forbiddenRenderer, lesson, mermaidCourses } from "./mermaid-helpers.ts";
+import { MERMAID_COURSE, fakeRenderer, fakeSvg, forbiddenRenderer, lesson, mermaidCourses } from "./mermaid-helpers.ts";
 import type { FakeRenderer } from "./mermaid-helpers.ts";
 
 /** The names the backend accepts at startup for a file of the build (backend/app, #58). */
@@ -248,6 +251,23 @@ describe("when the browser is needed", () => {
     expect(snapshotOf(second.build)).toEqual(snapshotOf(first.build));
   });
 
+  it("ignores a cache entry that is a good SVG but not what finishSvg writes (a root width of 100%), and draws that diagram again", async () => {
+    const first = await buildWith();
+    const [name] = readdirSync(first.cache).filter((entry) => entry.endsWith(".svg")).sort();
+    const file = join(first.cache, name as string);
+    const original = readFileSync(file, "utf8");
+    const edited = original.replace(/^(<svg\b[^>]*?) width="[^"]*"/, '$1 width="100%"');
+    expect(edited).not.toBe(original);
+    writeFileSync(file, edited);
+
+    const second = await buildWith({ cache: first.cache });
+
+    expect(second.code).toBe(0);
+    expect(second.renderer.drawn).toHaveLength(1);
+    expect(snapshotOf(second.build)).toEqual(snapshotOf(first.build));
+    expect(readFileSync(file, "utf8")).toBe(original);
+  });
+
   it("keeps the cache outside the build folder, and a build never deletes it", async () => {
     const first = await buildWith();
     const before = readdirSync(first.cache).sort();
@@ -343,6 +363,31 @@ describe("the errors of diagrams", () => {
     expect(errors.map((line) => (line.includes("01-diagram-types") ? 1 : 2))).toEqual([1, 2]);
   });
 
+  it("lists an error found before drawing in a later lesson after an error found by drawing in an earlier lesson (lesson order, not the kind of error)", async () => {
+    const courses = mermaidCourses({
+      [TYPES]: lesson('<Diagram alt="A" source="graph TD\n bad one" />'),
+      [REPEATS]: lesson('<Diagram alt="B" source="graph TD\n A --> B\n click A href &quot;https://example.com&quot;" />'),
+    });
+
+    const { code, stdout } = await buildWith({ courses, renderer: fakeRenderer((source) => (source.includes("bad") ? syntax(2) : fakeSvg(source))) });
+
+    expect(code).toBe(1);
+    const errors = stdout.split("\n").filter((line) => line.includes(": error:"));
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toContain(`${TYPES}:7:1: error: Mermaid could not parse this diagram`);
+    expect(errors[1]).toContain(`${REPEATS}:8:1: error: the diagram source has a \`click\` statement`);
+  });
+
+  it("lists the errors of one lesson in line order, whether Mermaid or the checks before drawing found them", async () => {
+    const body = ['<Diagram alt="A" source="graph TD', ' bad one" />', "", "Text.", "", '<Diagram alt="B" source="graph TD', ' click A href &quot;x&quot;" />'].join("\n");
+    const courses = mermaidCourses({ [TYPES]: lesson(body), [REPEATS]: lesson("No diagram here.") });
+
+    const { stdout } = await buildWith({ courses, renderer: fakeRenderer((source) => (source.includes("bad") ? syntax(2) : fakeSvg(source))) });
+
+    const errors = stdout.split("\n").filter((line) => line.includes(": error:"));
+    expect(errors.map((line) => /:(\d+):\d+: error:/.exec(line)?.[1])).toEqual(["7", "12"]);
+  });
+
   it("reports a failing source at each place it is used", async () => {
     const courses = mermaidCourses({
       [TYPES]: lesson('<Diagram alt="A" source="graph TD\n bad" />'),
@@ -423,6 +468,27 @@ describe("the errors of diagrams", () => {
     await buildWith({ courses, build, renderer: fakeRenderer((source) => fakeSvg(source, "<script>alert(1)</script>")) });
 
     expect(existsSync(build)).toBe(false);
+  });
+});
+
+describe("the Mermaid text is never written (fail closed)", () => {
+  it("makes writeCourse stop with an internal error when a Diagram would keep its source, because no rendered diagrams were given, and writes no lesson file", () => {
+    const inspection = inspectCourse(MERMAID_COURSE, { compileLessons: true });
+    const build = newBuildFolder();
+
+    expect(() => writeCourse("mermaid-course", inspection, build)).toThrow(/^internal error: the lesson `01-types` still has a Diagram with Mermaid source/);
+
+    expect([...filesOf(build).keys()].filter((path) => path.startsWith("private/lessons/"))).toEqual([]);
+  });
+
+  it("finds a Diagram with source anywhere in a tree (also inside a Callout or a list), and not one with src", () => {
+    const diagram = (props: Record<string, string>) => ({ type: "component", name: "Diagram", props, children: [] });
+    const callout = (children: unknown[]) => ({ type: "component", name: "Callout", props: { type: "tip" }, children });
+
+    expect(hasMermaidSource({ type: "root", children: [diagram({ alt: "A", src: "/x.svg" })] })).toBe(false);
+    expect(hasMermaidSource({ type: "root", children: [diagram({ alt: "A", source: "graph TD" })] })).toBe(true);
+    expect(hasMermaidSource({ type: "root", children: [callout([callout([diagram({ alt: "A", source: "graph TD" })])])] })).toBe(true);
+    expect(hasMermaidSource({ type: "root", children: [{ type: "list", ordered: false, children: [{ type: "listItem", children: [diagram({ alt: "A", source: "x" })] }] }] })).toBe(true);
   });
 });
 
