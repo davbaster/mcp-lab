@@ -67,6 +67,7 @@ def test_docs_and_spec_routes_are_not_listed_in_the_spec(spec):
         "/api/courses/{course_id}/lessons/{lesson_id}",
         "/api/courses/{course_id}/progress",
         "/api/courses/{course_id}/progress/last-lesson",
+        "/api/feedback",
         "/api/health",
     ]
 

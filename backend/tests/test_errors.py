@@ -5,7 +5,7 @@ import logging
 import pytest
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.errors import ApiError, install_error_handling
@@ -40,6 +40,18 @@ class Secret(BaseModel):
     count: int
 
 
+class Inner(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    size: int = 1
+
+
+class Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    inner: Inner = Inner()
+
+
 def make_app() -> FastAPI:
     throwaway = FastAPI()
     install_error_handling(throwaway)
@@ -50,6 +62,10 @@ def make_app() -> FastAPI:
 
     @throwaway.post("/secret")
     def secret(body: Secret) -> dict[str, str]:
+        return {}
+
+    @throwaway.post("/strict")
+    def strict(body: Strict) -> dict[str, str]:
         return {}
 
     @throwaway.get("/query")
@@ -71,6 +87,12 @@ def make_app() -> FastAPI:
     @throwaway.get("/api-error")
     def api_error() -> dict[str, str]:
         raise ApiError(409, "username_taken", "That username is taken.")
+
+    @throwaway.get("/api-error-headers")
+    def api_error_headers() -> dict[str, str]:
+        raise ApiError(
+            429, "too_many_attempts", "Slow down.", headers={"Retry-After": "7", "X-Extra": "kept"}
+        )
 
     @throwaway.get("/http/{status}", responses={204: {"description": "No content"}})
     def http(status: int) -> dict[str, str]:
@@ -197,6 +219,23 @@ def test_api_error_returns_its_status_code_and_message(client):
     assert_error(response, 409, "username_taken", "That username is taken.")
 
 
+@pytest.mark.undocumented_status(429, reason="the throwaway route raises ApiError(429) on purpose")
+def test_api_error_sends_its_headers_with_the_shared_shape(client):
+    response = client.get("/api-error-headers")
+
+    assert_error(response, 429, "too_many_attempts", "Slow down.")
+    assert response.headers["retry-after"] == "7"
+    assert response.headers["x-extra"] == "kept"
+
+
+@pytest.mark.undocumented_status(409, reason="the throwaway route raises ApiError(409) on purpose")
+def test_api_error_without_headers_adds_none(client):
+    response = client.get("/api-error")
+
+    assert "retry-after" not in response.headers
+    assert ApiError(409, "c", "m").headers is None
+
+
 # --- validation ---
 
 
@@ -321,3 +360,40 @@ def test_unexpected_exception_log_does_not_hold_the_request_body(client, caplog)
     client.post("/boom", json={"secret": "BODY-SENTINEL-77"})
 
     assert "BODY-SENTINEL-77" not in "\n".join(r.getMessage() for r in caplog.records)
+
+
+# --- unknown keys are not named (extra_forbidden) ---
+
+
+@pytest.mark.parametrize(
+    "payload,where",
+    [
+        ({SENTINEL: 1}, "body"),
+        ({"inner": {SENTINEL: 1}}, "body.inner"),
+    ],
+)
+def test_an_unknown_key_is_reported_against_its_object_not_by_name(client, payload, where):
+    response = client.post("/strict", json=payload)
+
+    message = assert_error(response, 422, "validation_error")
+    assert message == f"{where}: Extra inputs are not permitted"
+    assert SENTINEL not in response.text
+
+
+@pytest.mark.parametrize("raw", [b'{"\\ud800": 1}', b'{"inner": {"a\\udfffb": 1}}'])
+def test_an_unknown_key_with_a_lone_surrogate_is_a_422_not_a_500(client, raw):
+    # Pydantic itself already reports such a key without its name, so this holds with or without
+    # the extra_forbidden rule; it is here because a 500 (an unencodable response) is the failure.
+    response = client.post("/strict", content=raw, headers={"content-type": "application/json"})
+
+    message = assert_error(response, 422, "validation_error")
+    assert message.startswith("body")
+    assert not any(0xD800 <= ord(char) <= 0xDFFF for char in message)
+
+
+def test_a_known_field_with_a_wrong_type_is_still_named(client):
+    message = assert_error(
+        client.post("/strict", json={"inner": {"size": "x"}}), 422, "validation_error"
+    )
+
+    assert message.startswith("body.inner.size: ")

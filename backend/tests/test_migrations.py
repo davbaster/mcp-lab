@@ -15,7 +15,7 @@ from tests.conftest import PASSWORD_SENTINEL
 from tests.dbtools import BACKEND_DIR, alembic_config, drop_database, ensure_database, with_database
 from tests.helpers import alembic, env_with_url, run, url_text
 
-HEAD = "0004"
+HEAD = "0006"
 
 
 @pytest.fixture
@@ -61,7 +61,7 @@ def test_history_is_a_linear_chain_with_a_single_head(env):
         line for line in heads.output.splitlines() if line.startswith(HEAD)
     ]
     assert len([line for line in heads.output.splitlines() if line.startswith(HEAD)]) == 1
-    assert len([line for line in history.output.splitlines() if "->" in line]) == 4
+    assert len([line for line in history.output.splitlines() if "->" in line]) == 6
 
 
 def test_upgrade_works_when_an_empty_app_schema_already_exists(empty_database, env):
@@ -196,9 +196,9 @@ def test_failing_migration_leaves_no_table_and_no_revision(tmp_path, db_engine, 
         ignore=shutil.ignore_patterns("__pycache__"),
     )
     shutil.copy(BACKEND_DIR / "alembic.ini", folder / "alembic.ini")
-    (folder / "migrations" / "versions" / "0005_broken.py").write_text(
+    (folder / "migrations" / "versions" / "0007_broken.py").write_text(
         "from alembic import op\n\n"
-        'revision = "0005"\ndown_revision = "0004"\nbranch_labels = None\ndepends_on = None\n\n\n'
+        'revision = "0007"\ndown_revision = "0006"\nbranch_labels = None\ndepends_on = None\n\n\n'
         "def upgrade():\n"
         '    op.execute("CREATE TABLE app.half_made (id int)")\n'
         '    raise RuntimeError("deliberate failure")\n\n\n'

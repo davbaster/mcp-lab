@@ -39,13 +39,19 @@ class ErrorResponse(BaseModel):
 
 
 class ApiError(Exception):
-    """Raise from a route to send `status_code` with exactly this `code` and `message`."""
+    """Raise from a route to send `status_code` with exactly this `code` and `message`.
 
-    def __init__(self, status_code: int, code: str, message: str) -> None:
+    `headers`, when given, are added to the error response (for example `Retry-After`).
+    """
+
+    def __init__(
+        self, status_code: int, code: str, message: str, headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(f"{status_code} {code}: {message}")
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.headers = headers
 
 
 def error_response(
@@ -64,7 +70,7 @@ def _reason_phrase(status_code: int) -> str:
 
 async def _api_error_handler(request: Request, exc: Exception) -> Response:
     assert isinstance(exc, ApiError)
-    return error_response(exc.status_code, exc.code, exc.message)
+    return error_response(exc.status_code, exc.code, exc.message, exc.headers)
 
 
 async def _http_exception_handler(request: Request, exc: Exception) -> Response:
@@ -92,13 +98,16 @@ def _location(loc: tuple[Any, ...]) -> str:
 def validation_message(errors: list[Any]) -> str:
     """`<location>: <message>` per error, joined by `; `, from Pydantic's `loc` and `msg` only.
 
-    Never reads `input` or `ctx`, because those hold what the client submitted.
+    Never reads `input` or `ctx`, because those hold what the client submitted. For the same
+    reason an unknown key is reported against the object that holds it, not by name.
     """
     parts = []
     for err in errors[:MAX_VALIDATION_ERRORS]:
         loc = tuple(err.get("loc", ()))
         if err.get("type") == "json_invalid":
             loc = loc[:1]  # the second item is a character offset in the raw body
+        elif err.get("type") == "extra_forbidden":
+            loc = loc[:-1]  # the last item is a key the client invented
         parts.append(f"{_location(loc)}: {err.get('msg', 'Invalid value')}")
     extra = len(errors) - MAX_VALIDATION_ERRORS
     if extra > 0:
