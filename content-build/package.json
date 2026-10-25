@@ -15,7 +15,7 @@
     "build": "node src/build.ts",
     "ids:update": "node src/ids-update.ts",
     "ids:check": "node src/ids-check.ts",
-    "install:browser": "puppeteer browsers install chrome-headless-shell",
+    "install:browser": "node src/install-browser.ts",
     "test": "vitest run",
     "lint": "eslint --max-warnings 0 .",
     "typecheck": "tsc --noEmit"

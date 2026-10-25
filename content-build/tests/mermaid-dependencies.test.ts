@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { INSTALL_ARGS } from "../src/browser-install.ts";
 import { PART_DIR } from "./helpers.ts";
 
 const ROOT = join(PART_DIR, "..");
@@ -62,8 +63,9 @@ describe("the browser is a separate install", () => {
     expect(json<PackageJson>("content-build", "package.json").puppeteer).toEqual({ skipDownload: true });
   });
 
-  it("has an install:browser script that downloads only chrome-headless-shell (not full Chrome)", () => {
-    expect(json<PackageJson>("content-build", "package.json").scripts["install:browser"]).toBe("puppeteer browsers install chrome-headless-shell");
+  it("has an install:browser script that runs src/install-browser.ts, which downloads only chrome-headless-shell (not full Chrome)", () => {
+    expect(json<PackageJson>("content-build", "package.json").scripts["install:browser"]).toBe("node src/install-browser.ts");
+    expect(INSTALL_ARGS).toEqual(["browsers", "install", "chrome-headless-shell"]);
   });
 
   it("has make install-content-build run npm ci and then npm run install:browser, as two lines", () => {
