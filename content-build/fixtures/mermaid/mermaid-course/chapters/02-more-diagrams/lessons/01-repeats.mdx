@@ -1,0 +1,24 @@
+---
+title: Repeated diagrams
+order: 1
+---
+
+# Repeated diagrams
+
+The graph of the first lesson again, with the same alt text: it gives the same file.
+
+<Diagram alt="A request goes to the server, which asks the database" source="graph TD
+  Browser --> Server
+  Server --> Database" />
+
+The same graph with other alt text: the drawing is the same, but the title of the SVG is not, so it is another file.
+
+<Diagram alt="Three boxes in a row: browser, server, database" source="graph TD
+  Browser --> Server
+  Server --> Database" />
+
+A drawing that is not used anywhere else.
+
+<Diagram alt="Reading is half of the time and practice is the other half" source="pie title Time
+  &quot;Reading&quot; : 50
+  &quot;Practice&quot; : 50" />

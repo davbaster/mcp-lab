@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "course_id": "mermaid-course",
+  "title": "Mermaid course",
+  "description": "A small course whose lessons draw every supported kind of Mermaid diagram, for the diagram tests of the content build.",
+  "chapters": [
+    {
+      "id": "01-diagram-types",
+      "title": "Diagram types",
+      "free_preview": true,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "01-types",
+          "title": "Every diagram type",
+          "order": 1
+        }
+      ]
+    },
+    {
+      "id": "02-more-diagrams",
+      "title": "More diagrams",
+      "free_preview": false,
+      "has_code": false,
+      "lessons": [
+        {
+          "id": "01-repeats",
+          "title": "Repeated diagrams",
+          "order": 1
+        }
+      ]
+    }
+  ]
+}

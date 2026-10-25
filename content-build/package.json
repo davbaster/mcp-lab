@@ -6,20 +6,26 @@
   "engines": {
     "node": ">=24"
   },
+  "puppeteer": {
+    "skipDownload": true
+  },
   "scripts": {
     "validate": "node src/validate.ts",
     "compile": "node src/compile.ts",
     "build": "node src/build.ts",
     "ids:update": "node src/ids-update.ts",
     "ids:check": "node src/ids-check.ts",
+    "install:browser": "puppeteer browsers install chrome-headless-shell",
     "test": "vitest run",
     "lint": "eslint --max-warnings 0 .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mermaid-js/mermaid-cli": "12.0.0",
     "ajv": "^8.20.0",
     "diff": "9.0.0",
     "jszip": "3.10.2",
+    "puppeteer": "25.16.0",
     "remark-mdx": "3.1.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",

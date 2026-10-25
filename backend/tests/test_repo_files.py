@@ -660,7 +660,8 @@ def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
         "check-openapi": ["cd backend && uv run python scripts/export_openapi.py --check"],
         "check-migrations": ["cd backend && uv run alembic check"],
         "check-api-client": ["cd frontend && npm run check:api"],
-        "install-content-build": ["cd content-build && npm ci"],
+        # npm ci downloads no browser; the second line downloads chrome-headless-shell for the Mermaid diagrams (#55).
+        "install-content-build": ["cd content-build && npm ci", "cd content-build && npm run install:browser"],
         "lint-content-build": ["cd content-build && npm run lint"],
         "typecheck-content-build": ["cd content-build && npm run typecheck"],
         "test-content-build": ["cd content-build && npm test"],

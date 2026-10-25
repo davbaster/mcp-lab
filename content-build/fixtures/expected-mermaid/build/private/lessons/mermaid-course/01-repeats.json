@@ -1,0 +1,74 @@
+{
+  "course_id": "mermaid-course",
+  "chapter_id": "02-more-diagrams",
+  "lesson_id": "01-repeats",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "heading",
+        "depth": 1,
+        "children": [
+          {
+            "type": "text",
+            "value": "Repeated diagrams"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "The graph of the first lesson again, with the same alt text: it gives the same file."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A request goes to the server, which asks the database",
+          "src": "/api/courses/mermaid-course/assets/diagram-8edf4e5795cf2003.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "The same graph with other alt text: the drawing is the same, but the title of the SVG is not, so it is another file."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "Three boxes in a row: browser, server, database",
+          "src": "/api/courses/mermaid-course/assets/diagram-8824f53934961d9d.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A drawing that is not used anywhere else."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "Reading is half of the time and practice is the other half",
+          "src": "/api/courses/mermaid-course/assets/diagram-7b70fd92a999468c.svg"
+        },
+        "children": []
+      }
+    ]
+  }
+}

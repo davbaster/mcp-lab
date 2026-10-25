@@ -71,7 +71,7 @@ function limitFor(type: AssetType, limits: AssetLimits): number {
   return MODEL_TYPES.includes(type) ? limits.modelBytes : limits.captionBytes;
 }
 
-function describeBytes(bytes: number): string {
+export function describeBytes(bytes: number): string {
   return bytes % 1048576 === 0 ? `${bytes} bytes (${bytes / 1048576} MiB)` : `${bytes} bytes`;
 }
 

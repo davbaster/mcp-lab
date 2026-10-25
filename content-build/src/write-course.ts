@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { buildAssetMap } from "./write-assets.ts";
 import type { Inspection } from "./course.ts";
+import type { CourseDiagrams } from "./diagrams.ts";
 import type { LessonTree } from "./lesson-tree.ts";
 import { rewriteAssetUrls } from "./rewrite-assets.ts";
 
@@ -59,15 +60,15 @@ export function buildManifest(courseId: string, inspection: Inspection): CourseM
 /**
  * Writes `private/courses/<course_id>.json` and `private/lessons/<course_id>/<lesson_id>.json` for a course
  * that has no error. Each lesson tree has its asset references pointed at the hashed files (see
- * `rewriteAssetUrls`). The caller has removed the old output; this only adds files. Returns false, and
- * writes nothing, when the inspection lacks what the files need.
+ * `rewriteAssetUrls`), and each `Diagram` that had Mermaid `source` points at its rendered file (`diagrams`). The caller has
+ * removed the old output; this only adds files. Returns false, and writes nothing, when the inspection lacks what the files need.
  */
-export function writeCourse(courseId: string, inspection: Inspection, buildDir: string): boolean {
+export function writeCourse(courseId: string, inspection: Inspection, buildDir: string, diagrams?: CourseDiagrams): boolean {
   const manifest = buildManifest(courseId, inspection);
   const { lessons, assets } = inspection;
   if (manifest === undefined || lessons === undefined || assets === undefined) return false;
 
-  const assetMap = buildAssetMap(courseId, assets.files).files;
+  const assetMap = buildAssetMap(courseId, assets.files, diagrams?.svgs).files;
   const root = resolve(buildDir);
   const lessonFolder = join(root, "private", "lessons", courseId);
   mkdirSync(lessonFolder, { recursive: true });
@@ -77,7 +78,7 @@ export function writeCourse(courseId: string, inspection: Inspection, buildDir: 
       course_id: courseId,
       chapter_id: lesson.chapter_id,
       lesson_id: lesson.id,
-      tree: rewriteAssetUrls(lesson.tree, courseId, assetMap),
+      tree: rewriteAssetUrls(lesson.tree, courseId, assetMap, diagrams?.fileFor),
     };
     writeFileSync(join(lessonFolder, `${lesson.id}.json`), jsonText(json), "utf8");
   }

@@ -39,9 +39,21 @@ export type LessonOptions = {
 /**
  * Either the tree and the asset and media references the lesson makes (in the order they appear, each with
  * the line and column of the prop or the Markdown image), the `CodeSteps` tags (in the order they appear),
- * or the problems, never both. A lesson problem is never thrown. The references and the tags are next to the tree, not in it.
+ * the `Diagram` tags that have Mermaid `source` (in the order they appear), or the problems, never both. A lesson
+ * problem is never thrown. The references, the tags, and the diagrams are next to the tree, not in it: the tree
+ * keeps `source` as the author wrote it.
  */
-export type LessonResult = { tree: LessonTree; references: LessonReference[]; codeSteps: CodeStepUse[] } | { problems: Problem[] };
+export type LessonResult =
+  | { tree: LessonTree; references: LessonReference[]; codeSteps: CodeStepUse[]; diagrams: DiagramUse[] }
+  | { problems: Problem[] };
+
+/**
+ * A `<Diagram>` tag of a lesson that has a `source` prop. `source` and `alt` are the props as the author wrote them (the text
+ * of the Mermaid source is what MDX made of the prop: character references such as `&quot;` are decoded, and the spaces at
+ * the start of every line are gone). `line` and `column` are the position of the `source` prop; `tagLine` and `tagColumn`
+ * are the position of the tag.
+ */
+export type DiagramUse = { source: string; alt: string; line: number; column: number; tagLine: number; tagColumn: number };
 
 /** A `<CodeSteps>` tag of a lesson, with the line and column of the tag. `step` and `file` are the props as the author wrote them. */
 export type CodeStepUse = { step: string; file?: string; line: number; column: number };
@@ -71,6 +83,7 @@ type Context = {
   problems: Problem[];
   references: LessonReference[];
   codeSteps: CodeStepUse[];
+  diagrams: DiagramUse[];
   depth: number;
 };
 
@@ -98,13 +111,13 @@ export function compileLesson(source: string, options: LessonOptions): LessonRes
     return { problems: [parseProblem(file, error)] };
   }
 
-  const ctx: Context = { file, components, problems: [], references: [], codeSteps: [], depth: 0 };
+  const ctx: Context = { file, components, problems: [], references: [], codeSteps: [], diagrams: [], depth: 0 };
   const tree: LessonTree = { type: "root", children: convertBlocks(ctx, root.children ?? []) };
   if (ctx.problems.length > 0) return { problems: sortByPosition(ctx.problems) };
 
   const wrong = treeErrors(tree);
   if (wrong.length > 0) throw new Error(`internal error: the compiled tree does not match lesson-tree.schema.json: ${wrong.join("; ")}`);
-  return { tree, references: sortReferences(ctx.references), codeSteps: sortCodeSteps(ctx.codeSteps) };
+  return { tree, references: sortReferences(ctx.references), codeSteps: sortCodeSteps(ctx.codeSteps), diagrams: sortDiagrams(ctx.diagrams) };
 }
 
 function sortReferences(references: LessonReference[]): LessonReference[] {
@@ -113,6 +126,10 @@ function sortReferences(references: LessonReference[]): LessonReference[] {
 
 function sortCodeSteps(uses: CodeStepUse[]): CodeStepUse[] {
   return [...uses].sort((a, b) => a.line - b.line || a.column - b.column);
+}
+
+function sortDiagrams(uses: DiagramUse[]): DiagramUse[] {
+  return [...uses].sort((a, b) => a.tagLine - b.tagLine || a.tagColumn - b.tagColumn);
 }
 
 /** Notes a reference to an asset or a media file, at the position of the prop or the Markdown image. */
@@ -441,6 +458,21 @@ function checkProps(ctx: Context, el: MdNode, schema: ComponentSchema, written: 
     const file = given.get("file");
     const start = el.position?.start;
     ctx.codeSteps.push({ step, ...(typeof file === "string" ? { file } : {}), line: start?.line ?? 1, column: start?.column ?? 1 });
+  }
+
+  const diagramSource = given.get("source");
+  const diagramAlt = given.get("alt");
+  if (schema.name === "Diagram" && typeof diagramSource === "string" && typeof diagramAlt === "string") {
+    const prop = where.get("source")?.position?.start;
+    const tag = el.position?.start;
+    ctx.diagrams.push({
+      source: diagramSource,
+      alt: diagramAlt,
+      line: prop?.line ?? 1,
+      column: prop?.column ?? 1,
+      tagLine: tag?.line ?? 1,
+      tagColumn: tag?.column ?? 1,
+    });
   }
 
   for (const [name, value] of given) {

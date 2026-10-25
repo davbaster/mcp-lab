@@ -363,12 +363,19 @@ Run `npm run generate:api` and commit `frontend/src/api/schema.d.ts` in the same
 
 Needs Node 24 (the version in `.nvmrc`): it runs its TypeScript with Node's built-in type stripping, so no TypeScript runner is installed.
 
-Install (`make install-content-build`):
+Install (`make install-content-build`; it runs both commands):
 
 ```
 cd content-build
 npm ci
 ```
+
+```
+cd content-build
+npm run install:browser
+```
+
+`npm ci` installs the packages and downloads no browser. `npm run install:browser` downloads **chrome-headless-shell** (about 120 MiB to download, 274 MB on disk, a few seconds) into puppeteer's cache (`~/.cache/puppeteer`, `%USERPROFILE%\.cache\puppeteer` on Windows; `PUPPETEER_CACHE_DIR` changes it). Only `npm run build` needs it, and only when a lesson has a `<Diagram source="...">` that is not in the cache; `validate`, `compile`, and `ids:*` never start it, and a build without such a diagram works with no browser installed.
 
 Test (`make test-content-build`), lint (`make lint-content-build`), and typecheck (`make typecheck-content-build`):
 
@@ -402,6 +409,18 @@ Build every course in `courses/` into `build/` (`make build-content`; `COURSES=<
 cd content-build
 npm run build -- ../courses ../build
 ```
+
+#### Diagrams
+
+A diagram is `<Diagram alt="..." source="..." />` with Mermaid text. The build draws it to an SVG file (in a Chromium that it starts), so lessons ship no diagram code and the learner's browser never loads Mermaid. How to write one:
+
+- Write a double quote in a label as `&quot;`, or put the prop in single quotes.
+- MDX removes the spaces at the start of every line of the prop, so indentation cannot carry meaning.
+- The supported types are `flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`, `erDiagram`, and `pie`. The first word of the first line that is not blank and not a `%%` comment is the type.
+
+The rules for authors are in [`courses/README.md`](courses/README.md#diagrams). The settings, the cache, the browser flags, the Linux libraries the browser needs, the two tiers of tests, how to upgrade Mermaid or Chromium and regenerate the golden SVGs, and the Windows note are in [`content-build/README.md`](content-build/README.md#diagrams).
+
+The checks on the drawn SVG are one layer. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `Content-Security-Policy: script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox` (#58). The browser has no network and runs with its sandbox on, except that `--no-sandbox` is added when the build runs as root or when `MERMAID_NO_SANDBOX=1` is set (Ubuntu 24.04 can block the sandbox for a normal user). That is acceptable because the page holds only Mermaid and lesson text from this repo, offline.
 
 Write the `ids.json` of every course (`make update-content-ids`), check that they are up to date (`make check-content-ids`), and check that no published ID was removed without a note in `MIGRATIONS.md` (`make check-content-ids-base BASE=origin/main`; needs git history, so a shallow clone fails and says so):
 
@@ -519,7 +538,7 @@ Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a comm
 
 CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container and the `docker-images` job builds the images.
 
-The `content-build` job checks out the whole history (`fetch-depth: 0`). After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection). The `docker-images` job runs `make check-images`.
+The `content-build` job checks out the whole history (`fetch-depth: 0`). `make install-content-build` also downloads the headless Chromium (a few seconds; the runner does not keep `~/.cache/puppeteer` between jobs unless it is set up to), and the tests of both tiers need it. The browser needs the system libraries listed in its `deb.deps` file (see [`content-build/README.md`](content-build/README.md#the-browser)); if the runner lacks some, install them on the runner, not from the job. If the sandbox cannot start there (Ubuntu 24.04 can block it for a normal user), set `MERMAID_NO_SANDBOX: 1` in the `env:` of the job. After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection). The `docker-images` job runs `make check-images`.
 
 Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
 

@@ -2,7 +2,7 @@
 
 export { validateCourse } from "./course.ts";
 export { compileLesson } from "./lesson.ts";
-export type { LessonOptions, LessonResult } from "./lesson.ts";
+export type { DiagramUse, LessonOptions, LessonResult } from "./lesson.ts";
 export { serializeTree } from "./lesson-tree.ts";
 export type { BlockNode, ComponentNode, LessonTree, PhrasingNode } from "./lesson-tree.ts";
 export { DEFAULT_SCHEMA_DIR, SetupError, loadComponentSchemas } from "./component-schemas.ts";

@@ -1,0 +1,164 @@
+{
+  "course_id": "mermaid-course",
+  "chapter_id": "01-diagram-types",
+  "lesson_id": "01-types",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "heading",
+        "depth": 1,
+        "children": [
+          {
+            "type": "text",
+            "value": "Every diagram type"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A flowchart."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A learner takes the quiz; if they pass they go to the next chapter, otherwise they try again",
+          "src": "/api/courses/mermaid-course/assets/diagram-6a8203605f159ffd.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A graph, the older name of a flowchart."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A request goes to the server, which asks the database",
+          "src": "/api/courses/mermaid-course/assets/diagram-8edf4e5795cf2003.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A sequence diagram."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "The learner sends answers to the server and gets the result back",
+          "src": "/api/courses/mermaid-course/assets/diagram-7b4244901c212c98.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A class diagram."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A course has many lessons",
+          "src": "/api/courses/mermaid-course/assets/diagram-a2064e89915e4301.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A state diagram."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A chapter is locked, then in progress, then passed",
+          "src": "/api/courses/mermaid-course/assets/diagram-7ad2cfa9b865e94b.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A state diagram, version 2."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A quiz attempt is open until it is graded, then it is passed or failed",
+          "src": "/api/courses/mermaid-course/assets/diagram-a0bc4bac2c5be461.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "An entity-relationship diagram."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "A course has chapters, and a chapter has lessons",
+          "src": "/api/courses/mermaid-course/assets/diagram-191089c164765d86.svg"
+        },
+        "children": []
+      },
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "A pie chart."
+          }
+        ]
+      },
+      {
+        "type": "component",
+        "name": "Diagram",
+        "props": {
+          "alt": "Reading takes 40 percent of the time, the quiz 25 percent, and code 35 percent",
+          "src": "/api/courses/mermaid-course/assets/diagram-27eb4ddb18fbe5de.svg"
+        },
+        "children": []
+      }
+    ]
+  }
+}

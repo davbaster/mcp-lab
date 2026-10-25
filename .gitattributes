@@ -40,6 +40,9 @@ content-build/fixtures/**/*.glb binary
 # The golden asset output is compared byte for byte; its text files are LF already, so a Windows checkout must not change them.
 content-build/fixtures/expected/public/** -text
 content-build/fixtures/expected/assets-map/** text eol=lf
+# The golden Mermaid output is compared byte for byte, and its SVG files have no final newline to fix: a Windows checkout must not change them.
+# The `-text` rule comes after the `*.svg` rule above, so it wins.
+content-build/fixtures/expected-mermaid/**/*.svg -text
 # The SVG fixtures are scanned by line number.
 content-build/fixtures/svg/** text eol=lf
 # The IDs of a course are compared as parsed data, but the file is written with LF; the fixture's ids.json is compared byte for byte.

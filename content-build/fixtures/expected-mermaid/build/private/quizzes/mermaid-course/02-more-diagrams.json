@@ -1,0 +1,91 @@
+{
+  "course_id": "mermaid-course",
+  "chapter_id": "02-more-diagrams",
+  "questions": [
+    {
+      "id": "more-1",
+      "text": "How many files do two diagrams with the same drawing and the same alt text give?",
+      "options": [
+        {
+          "id": "a",
+          "text": "One"
+        },
+        {
+          "id": "b",
+          "text": "Two"
+        }
+      ],
+      "correct": "a",
+      "explanation": "The same bytes give the same hashed file name.",
+      "lesson": "01-repeats"
+    },
+    {
+      "id": "more-2",
+      "text": "Does other alt text give another file?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Yes"
+        },
+        {
+          "id": "b",
+          "text": "No"
+        }
+      ],
+      "correct": "a",
+      "explanation": "The alt text is the title of the SVG, so the bytes differ.",
+      "lesson": "01-repeats"
+    },
+    {
+      "id": "more-3",
+      "text": "Is the Mermaid text shipped to the learner?",
+      "options": [
+        {
+          "id": "a",
+          "text": "No"
+        },
+        {
+          "id": "b",
+          "text": "Yes"
+        }
+      ],
+      "correct": "a",
+      "explanation": "Only the SVG is shipped.",
+      "lesson": "01-repeats"
+    },
+    {
+      "id": "more-4",
+      "text": "What does a pie chart show?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Parts of a whole"
+        },
+        {
+          "id": "b",
+          "text": "A timeline"
+        }
+      ],
+      "correct": "a",
+      "explanation": "Each slice is a share of the total.",
+      "lesson": "01-repeats"
+    },
+    {
+      "id": "more-5",
+      "text": "Can a lesson use the same diagram twice?",
+      "options": [
+        {
+          "id": "a",
+          "text": "Yes"
+        },
+        {
+          "id": "b",
+          "text": "No"
+        }
+      ],
+      "correct": "a",
+      "explanation": "Each use points at the same file.",
+      "lesson": "01-repeats"
+    }
+  ]
+}

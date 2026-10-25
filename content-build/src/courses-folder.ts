@@ -54,8 +54,12 @@ export function checkCourses(folder: CoursesFolder, ids: readonly string[], opti
   });
 }
 
-export function allProblems(checked: readonly CheckedCourse[]): { course: CheckedCourse; problem: Problem }[] {
-  return checked.flatMap((course) => course.inspection.problems.map((problem) => ({ course, problem })));
+/** The problems of every course, course by course. `extra` are more problems of a course (by id), such as those of its diagrams, which come after the others. */
+export function allProblems(
+  checked: readonly CheckedCourse[],
+  extra: ReadonlyMap<string, readonly Problem[]> = new Map(),
+): { course: CheckedCourse; problem: Problem }[] {
+  return checked.flatMap((course) => [...course.inspection.problems, ...(extra.get(course.id) ?? [])].map((problem) => ({ course, problem })));
 }
 
 /** One line per problem, then the summary line. */
