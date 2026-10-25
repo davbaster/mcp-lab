@@ -1,0 +1,64 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "02-gated",
+  "zip": {
+    "file": "02-gated-ef5c645f6a202b52.zip",
+    "sha256": "ef5c645f6a202b524b7532c3b8598ef60270738c195773ddf092f6f20c77c37b",
+    "size": 295
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "added",
+          "content": "print('CODE-SENTINEL-02-gated')\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "files": [
+        {
+          "path": "extra.py",
+          "status": "added",
+          "content": "EXTRA = 1\n",
+          "changed_lines": [
+            1
+          ]
+        },
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "print('CODE-SENTINEL-02-gated')\nprint('two')\n",
+          "changed_lines": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "files": [
+        {
+          "path": "extra.py",
+          "status": "unchanged",
+          "content": "EXTRA = 1\n",
+          "changed_lines": []
+        },
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "print('CODE-SENTINEL-02-gated')\nprint('three')\n",
+          "changed_lines": [
+            2
+          ]
+        }
+      ]
+    }
+  ]
+}

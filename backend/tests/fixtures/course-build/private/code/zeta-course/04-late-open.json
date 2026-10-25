@@ -1,0 +1,37 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "04-late-open",
+  "zip": {
+    "file": "04-late-open-cc6f33cc8480ede3.zip",
+    "sha256": "cc6f33cc8480ede3f02bcca657edde2183ec23dca68b9f4656d0240490f4bb7c",
+    "size": 183
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "added",
+          "content": "print('CODE-SENTINEL-04-late-open')\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "print('CODE-SENTINEL-04-late-open')\nprint('two')\n",
+          "changed_lines": [
+            2
+          ]
+        }
+      ]
+    }
+  ]
+}

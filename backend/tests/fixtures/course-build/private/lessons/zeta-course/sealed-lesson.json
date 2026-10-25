@@ -1,0 +1,19 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "03-sealed",
+  "lesson_id": "sealed-lesson",
+  "tree": {
+    "type": "root",
+    "children": [
+      {
+        "type": "paragraph",
+        "children": [
+          {
+            "type": "text",
+            "value": "LESSON-SENTINEL-zeta-03-sealed"
+          }
+        ]
+      }
+    ]
+  }
+}

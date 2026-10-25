@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from app.asset_routes import install_asset_routes
 from app.auth import install_auth_routes
+from app.code_routes import install_code_routes
 from app.content_routes import install_content_routes
 from app.course_routes import install_course_routes
 from app.courses import load_catalog_from_environment
@@ -47,6 +48,7 @@ install_auth_routes(app)
 install_course_routes(app)
 install_asset_routes(app)
 install_content_routes(app)
+install_code_routes(app)
 install_quiz_routes(app)
 
 

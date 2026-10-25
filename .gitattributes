@@ -50,3 +50,5 @@ content-build/fixtures/expected/private/** text eol=lf
 # The backend fixture build is read byte for byte: the asset files are compared with the sizes in their map, so a Windows checkout must not change them.
 backend/tests/fixtures/course-build/public/** -text
 backend/tests/fixtures/course-build/assets-map/** text eol=lf
+# The ZIPs of the fixture build are served as they are and compared with the size and SHA-256 in their JSON, so a Windows checkout must not change a byte.
+backend/tests/fixtures/course-build/private/code/**/*.zip binary

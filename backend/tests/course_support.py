@@ -6,9 +6,12 @@
 `delta-course` (for the lesson and quiz tests, #15: a `free_preview` chapter of three lessons and a
 chapter of one lesson with a five-question quiz, one question with a snippet and two with three
 options), `epsilon-course` (for the quiz attempt tests, #16: two chapters of two lessons, each with a
-five-question quiz whose option IDs are unique and are not `a`, `b`, or `c`), and a deliberately
-broken `unlisted-course`. Its files hold sentinel strings that no response or log may contain. Load
-`delta-course` and `epsilon-course` only by asking for them: `serve("epsilon-course")`.
+five-question quiz whose option IDs are unique and are not `a`, `b`, or `c`), `zeta-course` (for the
+code step and chapter ZIP tests, #59: six chapters of one lesson each, four with real code steps and
+a real ZIP written by the content build; see `tests/code_support.py`), and a deliberately broken
+`unlisted-course`. Its files hold sentinel strings that no response or log may contain. Load
+`delta-course`, `epsilon-course`, and `zeta-course` only by asking for them:
+`serve("epsilon-course")`.
 """
 
 import json

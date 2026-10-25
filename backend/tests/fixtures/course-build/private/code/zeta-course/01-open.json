@@ -1,0 +1,115 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "01-open",
+  "zip": {
+    "file": "01-open-aa3e52c37b64f9c5.zip",
+    "sha256": "aa3e52c37b64f9c50b5cc7a99ab14d9e38a4ceadc95b8a3eb920ca86fc88c65e",
+    "size": 540
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "Z.py",
+          "status": "added",
+          "content": "print('CODE-SENTINEL-01-open')\n",
+          "changed_lines": [
+            1
+          ]
+        },
+        {
+          "path": "a.py",
+          "status": "added",
+          "content": "A = 1\n",
+          "changed_lines": [
+            1
+          ]
+        },
+        {
+          "path": "old.py",
+          "status": "added",
+          "content": "OLD = 1\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "files": [
+        {
+          "path": "Z.py",
+          "status": "unchanged",
+          "content": "print('CODE-SENTINEL-01-open')\n",
+          "changed_lines": []
+        },
+        {
+          "path": "a.py",
+          "status": "modified",
+          "content": "A = 2\nB = 3\n",
+          "changed_lines": [
+            1,
+            2
+          ]
+        },
+        {
+          "path": "old.py",
+          "status": "deleted",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/__init__.py",
+          "status": "added",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/util.py",
+          "status": "added",
+          "content": "def util():\n    return 1\n",
+          "changed_lines": [
+            1,
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "files": [
+        {
+          "path": "Z.py",
+          "status": "unchanged",
+          "content": "print('CODE-SENTINEL-01-open')\n",
+          "changed_lines": []
+        },
+        {
+          "path": "a.py",
+          "status": "unchanged",
+          "content": "A = 2\nB = 3\n",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/__init__.py",
+          "status": "unchanged",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/util.py",
+          "status": "modified",
+          "content": "def util():\n    return 2\n\n\nVALUE = util()\n",
+          "changed_lines": [
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -41,6 +41,29 @@ components:
       - answers
       title: AttemptRequest
       type: object
+    ChapterCodeResponse:
+      additionalProperties: false
+      properties:
+        chapter_id:
+          title: Chapter Id
+          type: string
+        course_id:
+          title: Course Id
+          type: string
+        steps:
+          items:
+            $ref: '#/components/schemas/CodeStep'
+          title: Steps
+          type: array
+        zip:
+          $ref: '#/components/schemas/CodeZip'
+      required:
+      - course_id
+      - chapter_id
+      - zip
+      - steps
+      title: ChapterCodeResponse
+      type: object
     ChapterProgressSummary:
       additionalProperties: false
       properties:
@@ -101,6 +124,71 @@ components:
       - lessons
       - status
       title: ChapterSummary
+      type: object
+    CodeFile:
+      additionalProperties: false
+      properties:
+        changed_lines:
+          items:
+            type: integer
+          title: Changed Lines
+          type: array
+        content:
+          title: Content
+          type: string
+        path:
+          title: Path
+          type: string
+        status:
+          $ref: '#/components/schemas/CodeFileStatus'
+      required:
+      - path
+      - status
+      - content
+      - changed_lines
+      title: CodeFile
+      type: object
+    CodeFileStatus:
+      enum:
+      - added
+      - modified
+      - deleted
+      - unchanged
+      title: CodeFileStatus
+      type: string
+    CodeStep:
+      additionalProperties: false
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/CodeFile'
+          title: Files
+          type: array
+        step:
+          title: Step
+          type: integer
+      required:
+      - step
+      - files
+      title: CodeStep
+      type: object
+    CodeZip:
+      additionalProperties: false
+      properties:
+        file_name:
+          title: File Name
+          type: string
+        size:
+          title: Size
+          type: integer
+        url:
+          title: Url
+          type: string
+      required:
+      - url
+      - file_name
+      - size
+      title: CodeZip
       type: object
     CourseChaptersResponse:
       additionalProperties: false
@@ -850,6 +938,147 @@ paths:
       - SessionCookie: []
       - {}
       summary: List the chapters of a course, with their lessons and (when signed in) status
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/code:
+    get:
+      operationId: getChapterCode
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChapterCodeResponse'
+          description: Successful Response
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      - {}
+      summary: A chapter's code steps (every file of every step), for anyone in a free preview chapter
+        and else for a learner whose chapter is unlocked
+      tags:
+      - courses
+  /api/courses/{course_id}/chapters/{chapter_id}/code.zip:
+    get:
+      operationId: getChapterCodeZip
+      parameters:
+      - in: path
+        name: course_id
+        required: true
+        schema:
+          title: Course Id
+          type: string
+      - in: path
+        name: chapter_id
+        required: true
+        schema:
+          title: Chapter Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/zip:
+              schema:
+                format: binary
+                type: string
+          description: The final project of the chapter, exactly as the content build wrote it.
+          headers:
+            Cache-Control:
+              description: 'Always `private, no-store`: the response can depend on who is signed in, so
+                no shared cache may keep it.'
+              schema:
+                type: string
+            Content-Disposition:
+              description: Always `attachment; filename="<chapter_id>.zip"`. The name is the chapter ID
+                from the catalog, which is also the ZIP's top-level folder.
+              schema:
+                type: string
+            X-Content-Type-Options:
+              description: Always `nosniff`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Not Found
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Validation error
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: Internal server error
+      security:
+      - SessionCookie: []
+      - {}
+      summary: A chapter's final project as a ZIP, with the same access rule as the code steps
       tags:
       - courses
   /api/courses/{course_id}/chapters/{chapter_id}/quiz:

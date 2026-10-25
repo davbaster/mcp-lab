@@ -1,0 +1,23 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "04-late-open",
+  "questions": [
+    {
+      "id": "04-late-open-1",
+      "text": "QUESTION-SENTINEL-zeta-04-late-open",
+      "options": [
+        {
+          "id": "a",
+          "text": "CORRECT-SENTINEL-zeta-04-late-open"
+        },
+        {
+          "id": "b",
+          "text": "WRONG-SENTINEL-zeta-04-late-open"
+        }
+      ],
+      "correct": "a",
+      "explanation": "EXPLANATION-SENTINEL-zeta-04-late-open",
+      "lesson": "late-open-lesson"
+    }
+  ]
+}

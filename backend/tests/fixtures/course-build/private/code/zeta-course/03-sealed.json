@@ -1,0 +1,37 @@
+{
+  "course_id": "zeta-course",
+  "chapter_id": "03-sealed",
+  "zip": {
+    "file": "03-sealed-6bf4e174437c2e5c.zip",
+    "sha256": "6bf4e174437c2e5cfdf4a6cf7d91237ec8a678bbbdd2a1c10c12682ad15c8075",
+    "size": 174
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "added",
+          "content": "print('CODE-SENTINEL-03-sealed')\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "files": [
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "print('CODE-SENTINEL-03-sealed')\nprint('two')\n",
+          "changed_lines": [
+            2
+          ]
+        }
+      ]
+    }
+  ]
+}

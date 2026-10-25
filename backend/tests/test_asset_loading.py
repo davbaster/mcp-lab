@@ -599,6 +599,7 @@ def test_the_fixture_build_has_exactly_the_asset_files_the_tests_know_about():
         "epsilon-course.json",
         "gamma-course.json",
         "unlisted-course.json",
+        "zeta-course.json",
     ]
 
 
