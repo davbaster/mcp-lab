@@ -17,6 +17,7 @@ from tests.feedback_support import (
     message,
     send,
 )
+from tests.helpers import without_request_id
 
 CATEGORIES = ["bug", "content_error", "confusing_explanation", "suggestion"]
 
@@ -190,7 +191,7 @@ def test_two_items_get_two_different_ids_and_nothing_is_returned_about_them(ana_
     second = send(ana_fb, body(message=message(2)))
 
     assert first.content == second.content == b""
-    assert dict(first.headers) == dict(second.headers)
+    assert without_request_id(first) == without_request_id(second)
     assert feedback_count(db) == 2
 
 

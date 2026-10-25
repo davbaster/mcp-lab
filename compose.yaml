@@ -41,6 +41,12 @@ services:
       # which is on the web network. The backend publishes no port, so only containers on its two
       # networks can reach it, and Docker gives those private addresses. See .env.example.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12,192.168.0.0/16,10.0.0.0/8}
+      # The deployment name, a label on every metric and every log line. Lowercase letters, digits,
+      # and hyphens; not "host". The backend does not start without it.
+      DEPLOYMENT: ${DEPLOYMENT:-local}
+      # The port of the metrics server (GET /metrics), in the backend's own process. It is not
+      # published and Caddy does not route to it: only containers on the db and web networks reach it.
+      METRICS_PORT: ${METRICS_PORT:-9000}
     networks:
       - db
       - web

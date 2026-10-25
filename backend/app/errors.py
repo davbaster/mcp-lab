@@ -17,6 +17,9 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.log_format import mark_logged
+from app.request_middleware import REQUEST_ID_HEADER, request_id_from
+
 logger = logging.getLogger(__name__)
 
 MAX_VALIDATION_ERRORS = 5
@@ -122,8 +125,15 @@ async def _validation_handler(request: Request, exc: Exception) -> Response:
 
 async def _unexpected_handler(request: Request, exc: Exception) -> Response:
     # Only the method and path are logged: never the query string, headers, cookies, or body.
+    # The JSON handler writes the trace as one `stack_trace` field.
     logger.error("Unhandled exception on %s %s", request.method, request.url.path, exc_info=exc)
-    return error_response(500, "internal_error", INTERNAL_ERROR_MESSAGE)
+    # Starlette re-raises after this handler and uvicorn would log the exception again; this
+    # mark makes the log handler skip that second record.
+    mark_logged(exc)
+    # This response is sent by Starlette's outermost middleware, outside the request middleware,
+    # so the request ID header is added here.
+    headers = {REQUEST_ID_HEADER: request_id_from(request.scope)}
+    return error_response(500, "internal_error", INTERNAL_ERROR_MESSAGE, headers)
 
 
 def _error_content(description: str) -> dict[str, Any]:

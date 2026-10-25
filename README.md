@@ -56,11 +56,11 @@ uv run ruff check .
 
 Typecheck: the backend has no typecheck step yet.
 
-Start the dev server on <http://localhost:8000> (the health check is at <http://localhost:8000/api/health>). It loads the courses at startup, so set `COURSES` and `COURSE_BUILD_DIR` first (see [Courses](#courses)):
+Start the dev server on <http://localhost:8000> (the health check is at <http://localhost:8000/api/health>). It loads the courses at startup, so set `COURSES` and `COURSE_BUILD_DIR` first (see [Courses](#courses)), and `DEPLOYMENT` (for example `local`, see [Metrics and logs](#metrics-and-logs)). `--log-config` makes every log line, uvicorn's too, one JSON object, and `--no-access-log` turns off uvicorn's access log (the app writes its own request line instead):
 
 ```
 cd backend
-uv run uvicorn app.main:app --port 8000
+uv run uvicorn app.main:app --port 8000 --no-access-log --log-config app/log_config.json
 ```
 
 #### Courses
@@ -81,8 +81,8 @@ npm run build -- fixtures/valid ../build
 
 ```
 cd backend
-export COURSES=sample-course COURSE_BUILD_DIR=../build
-uv run uvicorn app.main:app --port 8000
+export COURSES=sample-course COURSE_BUILD_DIR=../build DEPLOYMENT=local
+uv run uvicorn app.main:app --port 8000 --no-access-log --log-config app/log_config.json
 ```
 
 #### Database
@@ -237,6 +237,56 @@ The client address is the connection's peer address, unless the peer is a truste
 | Variable | Meaning |
 |---|---|
 | `TRUSTED_PROXIES` | The proxies whose `X-Forwarded-For` is believed. Unset: everyone behind the proxy shares one count (the proxy's address), so a few learners' typos can block everyone. Too wide: any sender who can reach the backend within the range can forge the header and get fresh counts. `compose.yaml` sets Docker's private ranges (`172.16.0.0/12,192.168.0.0/16,10.0.0.0/8`), which is safe there because the backend publishes no port; in that stack every browser reaches Caddy through Docker's gateway address, so all local sign-ins share one address count. Production and staging set their own value ([#114](https://github.com/davbaster/mcp-lab/issues/114)). |
+
+#### Metrics and logs
+
+The backend serves Prometheus metrics on a separate, internal-only port and writes one JSON line per log event (#36). Both carry the deployment, and the course where the event belongs to one. No password, session token, cookie, quiz answer, query string, username, or IP address reaches a metric label or a log line.
+
+| Variable | Meaning |
+|---|---|
+| `DEPLOYMENT` | The deployment name, the `deployment` label of every sample and the `deployment` field of every log line: lowercase letters, digits, and hyphens (`^[a-z0-9-]+$`). Required, read when the app starts. Unset, empty, invalid, or `host` (reserved for the server-wide exporters of #37 and #38) stops the backend with a message naming `DEPLOYMENT`. `compose.yaml` sets `${DEPLOYMENT:-local}`. |
+| `METRICS_PORT` | The port of the metrics server, default `9000`. A value that is not a port number, or a port already in use, stops the backend with a message naming `METRICS_PORT`. The server runs in the backend's own process and is closed when the app shuts down. (`0` picks a free port, which the tests use.) |
+
+**Access.** `GET /metrics` on the metrics port returns the Prometheus text format and needs no database (a scrape opens no connection, so it works while the database is down). The main app does not serve metrics: `GET /metrics` and `GET /api/metrics` on port 8000 are 404 in the shared error shape, and the routes are not in `openapi.yaml`. The metrics port has no authentication: the network is the control. `compose.yaml` publishes no port for it and Caddy proxies only `backend:8000`, so only containers on the Docker networks the backend joins can reach it. The local `caddy/Caddyfile` answers `/metrics` with 404 itself (otherwise it would fall through to the frontend's `index.html` with status 200). The production site file is #34's.
+
+Only the app's own series are on the page (a dedicated registry: no `process_*`, `python_*`, or `python_gc_*`), and every sample has `deployment`. Label values come from fixed sets or from the configured courses, never from request input.
+
+| Series | Type | Labels | Counted |
+|---|---|---|---|
+| `http_requests_total` | counter | `deployment`, `method`, `route`, `status` | once per HTTP request when its response has ended |
+| `http_request_duration_seconds` | histogram | `deployment`, `method`, `route`, `status` | same moment; seconds from request received to response ended; buckets `0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10` |
+| `lesson_loads_total` | counter | `deployment`, `course` | `GET /api/courses/{course_id}/lessons/{lesson_id}` answered 200 |
+| `quiz_submissions_total` | counter | `deployment`, `course`, `outcome` (`passed`, `failed`) | an attempt was saved |
+| `quiz_submission_errors_total` | counter | `deployment`, `course` | the quiz-attempt route answered 5xx for a configured course |
+| `auth_attempts_total` | counter | `deployment`, `action`, `outcome` | by route and status: `login` `success` (200), `invalid_credentials` (401), `validation_error` (422), `rate_limited` (429); `register` `success` (201), `username_taken` (409), `validation_error` (422). Any other status is only in `http_requests_total` |
+| `db_connection_errors_total` | counter | `deployment`, `reason` (`auth`, `timeout`, `refused`, `pool_exhausted`, `other`) | each failed attempt to get a database connection |
+| `db_pool_in_use`, `db_pool_waiting`, `db_pool_size` | gauge | `deployment` | read at scrape time: connections checked out now, callers waiting for one now, and the most connections the engine may hold (pool size plus overflow, 15 with SQLAlchemy's defaults) |
+
+- `method` is `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, or `OPTIONS`; any other method is `other`. `status` is the numeric code as a string. There is no separate 5xx series: use `http_requests_total{status=~"5.."}`. An unhandled exception is recorded once, as `500`.
+- `route` is the matched route's template with converters removed (`/api/courses/{course_id}/assets/{file_name}`), equal to a path in `openapi.yaml` for every API route (`/api/docs` and `/api/openapi.json` use their own paths). A request whose route did not fully match (an unknown path, a wrong method, a slash redirect) is `unmatched`. A route that matched and then answered 404 itself keeps its template.
+- `course` is a course ID of the catalog (logs call the same thing `course_id`). A request for an unknown course counts in the HTTP series and in no course series.
+- Every course-level series, every `auth_attempts_total` pair, and every `db_connection_errors_total` reason exists at 0 from startup, so `increase()` sees the first event.
+- `db_connection_errors_total` is classified from the exception type, never from message text. The driver gives no SQLSTATE for a connection that fails while it opens, so `auth` is a failure after the server asked for and got a password (or needs one) and `refused` is a failure with no SQLSTATE and no password involved (not listening, unreachable, name does not resolve). `timeout` is the driver's connect timeout, `pool_exhausted` is SQLAlchemy's `TimeoutError` from a full pool, `other` is anything else. `db_pool_waiting` counts callers inside the pool's `connect()` (SQLAlchemy has no public count of blocked callers), which includes one that is opening a new connection for the moment that takes. The pool keeps SQLAlchemy's default sizes and timeout (#113).
+- **Sample budget (for `sample_limit` in #37).** The page holds at most **3619 samples** with one configured course: (18 route and method pairs x 12 statuses + 8 method labels x 3 statuses for `unmatched`) x 15 samples per series (the counter, and the histogram's 11 buckets, `+Inf`, sum, and count) = 3600, plus 4 per course (`lesson_loads`, `quiz_submission_errors`, two `quiz_submissions`), 7 `auth_attempts_total`, 5 `db_connection_errors_total`, and 3 pool gauges. Each further course adds 4. The 12 statuses are the codes in `openapi.yaml`; a test fails when a new route or status makes the number change, and this paragraph is updated with it. Random paths, methods, and course IDs add no series.
+
+**One process per container.** The backend runs one uvicorn process per container: the Dockerfile `CMD` has no `--workers`, and `compose.yaml` sets no `WEB_CONCURRENCY` or `UVICORN_WORKERS` (a test checks all three). The counters, the pool gauges, and the metrics server are per process and share a port, so more processes would give a scrape of one of them. If #113 raises the worker count, it switches to `prometheus-client` multiprocess mode in the same change.
+
+**Logs.** Standard-library `logging` with a small JSON formatter (`app/log_format.py`), set up by `app/log_config.json` (uvicorn's `--log-config`, in the Dockerfile `CMD` and in the dev command above). Each record is one line on stderr holding one JSON object with `timestamp` (UTC, ISO 8601 with milliseconds and a `Z`), `level`, `message`, `deployment`, and `logger`, for every record in the process, uvicorn's startup and shutdown lines included. Fields passed with `extra=` are top-level keys and cannot replace those five. The only line that may carry `"deployment": "unknown"` is the one that reports a missing or invalid `DEPLOYMENT`. The existing lines keep their text and gain fields: `Quiz attempt graded` has `course_id`, `chapter_id`, `score`, `total`, `outcome`; `Feedback stored` has `course_id` and `category`; `loaded course` has `course_id`; `Login limit reached` has `scope`.
+
+- **Request line.** Every HTTP request writes one `INFO` line when its response ends, with `message` `request completed`, `request_id`, `method`, `route` (the metric's label), `status`, `latency_ms`, and `course_id` for a configured course. It has no path, query string, header, body, address, username, or account ID. Uvicorn's access log is off.
+- **Request ID.** A valid `X-Request-ID` request header (letters, digits, and hyphens, 1 to 64 characters, sent once) is kept; anything else is replaced by a new UUID. It is returned in the `X-Request-ID` response header of every response, including the 500 after an unhandled exception, and every record written while the request is handled carries it as `request_id` (also in the thread a sync route runs in). It is not in the JSON error body and not in `openapi.yaml`. Records outside a request have no `request_id`, `method`, `route`, `status`, or `latency_ms` key.
+- **Stack traces.** An unhandled exception writes one `ERROR` record with the whole trace in the single string field `stack_trace`; the second record that uvicorn would write for the same exception is dropped. For a validation error the trace and the message hold each error's location and type only, never the submitted or returned values; a database error's trace stops before Postgres's `DETAIL:` (the failing row).
+- **Redaction.** A filter on the handler covers records of every logger. It replaces with `[REDACTED]` the value of any key whose name (lowercased, `-` read as `_`) contains `password`, `token`, `session`, `cookie`, `authorization`, `answers`, `option_id`, `correct`, or `explanation`, in `extra` fields, in `args` mappings, and at any depth of dicts and lists. In every string it masks `session=...`, `Bearer ...`, `Cookie:`, `Set-Cookie:`, and `Authorization:` header text to the end of the line, `key=value`, `key: value`, and quoted `'key': 'value'` pairs for the same names, and the query string of any URL or path. A name such as `session_count` is masked too; over-masking is accepted.
+
+**Look at it in the Docker stack.** The stack publishes only Caddy. `curl -i http://localhost:8080/metrics` and `/api/metrics` are both 404 and neither body holds `http_requests_total`. Inside the network:
+
+```
+docker compose exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:9000/metrics').read().decode())"
+```
+
+and `docker compose logs backend` shows the JSON lines.
+
+**Notes for #37 and #38.** Prometheus renames a scraped label that clashes with a target label to `exported_deployment` unless the job sets `honor_labels: true`. The backend sets `deployment` itself, so #37's backend job must keep the app's label (or not set one on that target). The container health check (every 5 seconds) and the blackbox probe both hit `/api/health`, which would dilute request-rate and 5xx-ratio queries at quiet hours; the `route` label lets a recording rule exclude `route="/api/health"`.
 
 ### Frontend (`frontend/`)
 

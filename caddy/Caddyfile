@@ -6,6 +6,13 @@
 }
 
 :8080 {
+	# The backend's metrics are on its own port, which this site never proxies. Without this, /metrics
+	# would fall through to the frontend's index.html with status 200.
+	@metrics path /metrics /metrics/*
+	handle @metrics {
+		respond 404
+	}
+
 	handle /api/* {
 		reverse_proxy backend:8000
 	}

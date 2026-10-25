@@ -86,6 +86,14 @@ def db(db_engine):
 
 
 @pytest.fixture(autouse=True)
+def observability_settings(monkeypatch):
+    """DEPLOYMENT for every test that starts the app (#36), and a free metrics port, so that no
+    test depends on port 9000 being free. Each app start builds its own registry."""
+    monkeypatch.setenv("DEPLOYMENT", "test")
+    monkeypatch.setenv("METRICS_PORT", "0")
+
+
+@pytest.fixture(autouse=True)
 def no_password_in_logs(caplog):
     caplog.set_level(logging.DEBUG)
     yield

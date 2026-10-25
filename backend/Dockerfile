@@ -46,4 +46,7 @@ EXPOSE 8000
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]
 # --no-proxy-headers: uvicorn must not rewrite the client address from X-Forwarded-For. The app decides
 # itself, from TRUSTED_PROXIES (app/client_address.py).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]
+# --log-config: every line, uvicorn's own included, is one JSON object (app/log_config.json).
+# --no-access-log: the app writes one "request completed" line per request instead, without the query string.
+# One process per container (no worker option): the metrics and the pool gauges are per process (see the README).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers", "--no-access-log", "--log-config", "app/log_config.json"]

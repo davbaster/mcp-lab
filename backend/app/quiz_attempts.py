@@ -19,6 +19,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.metrics import record_quiz_submission
 from app.models import ChapterProgress, QuizAttempt
 
 # Under uvicorn only its own loggers print INFO lines (see app.courses).
@@ -113,13 +114,23 @@ def record_attempt(
 
 
 def log_attempt(*, course_id: str, chapter_id: str, score: int, total: int, passed: bool) -> None:
-    """One INFO line per saved attempt. Only values from the catalog and the grade go in: never
-    the request text, an ID of the learner, or an answer."""
+    """One INFO line and one `quiz_submissions_total` count per saved attempt, called after the
+    commit. Only values from the catalog and the grade go in: never the request text, an ID of
+    the learner, or an answer."""
+    outcome = "passed" if passed else "failed"
     logger.info(
         "Quiz attempt graded: course_id=%s chapter_id=%s score=%d total=%d outcome=%s",
         course_id,
         chapter_id,
         score,
         total,
-        "passed" if passed else "failed",
+        outcome,
+        extra={
+            "course_id": course_id,
+            "chapter_id": chapter_id,
+            "score": score,
+            "total": total,
+            "outcome": outcome,
+        },
     )
+    record_quiz_submission(course_id, passed)

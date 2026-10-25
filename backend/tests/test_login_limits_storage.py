@@ -300,7 +300,7 @@ PROXY = "10.0.0.2"
 
 
 def _app_records(caplog):
-    quiet = ("httpx", "httpcore", "asyncio")
+    quiet = ("httpx", "httpcore", "asyncio", "mcp_lab.requests")
     return [r for r in caplog.records if not r.name.startswith(quiet)]
 
 
@@ -375,6 +375,7 @@ def test_the_429_body_and_headers_hold_no_username_address_or_count(accounts):
 
     assert_too_many(response, WINDOW_SECONDS)
     assert set(response.headers) == {
+        "x-request-id",
         "retry-after",
         "cache-control",
         "content-type",

@@ -1,6 +1,7 @@
 """Which address a request counts as (#54): the peer, unless it is a trusted proxy, and then the
 first `X-Forwarded-For` entry from the right that is not itself a trusted proxy."""
 
+import json
 import os
 import subprocess
 import sys
@@ -213,7 +214,18 @@ def test_uvicorn_exits_non_zero_and_names_trusted_proxies_when_it_is_invalid():
     env.update(COURSES="alpha-course", COURSE_BUILD_DIR=str(FIXTURE_BUILD), TRUSTED_PROXIES="x/y")
 
     process = subprocess.run(  # noqa: PLW1510 (the exit code is asserted below)
-        [sys.executable, "-m", "uvicorn", "app.main:app", "--port", "0", "--no-proxy-headers"],
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "app.main:app",
+            "--port",
+            "0",
+            "--no-proxy-headers",
+            "--no-access-log",
+            "--log-config",
+            "app/log_config.json",
+        ],
         cwd=BACKEND_DIR,
         env=env,
         capture_output=True,
@@ -222,7 +234,8 @@ def test_uvicorn_exits_non_zero_and_names_trusted_proxies_when_it_is_invalid():
     )
 
     assert process.returncode != 0
-    assert "TRUSTED_PROXIES" in process.stderr
+    records = [json.loads(line) for line in process.stderr.splitlines()]
+    assert any("TRUSTED_PROXIES" in r["message"] + r.get("stack_trace", "") for r in records)
 
 
 # --- through the login route ---

@@ -1,6 +1,7 @@
 """Loading the courses at startup (#13): every way it can fail, and what a good load logs."""
 
 import copy
+import json
 import logging
 import os
 import queue
@@ -535,6 +536,10 @@ def _uvicorn(port, env):
             "127.0.0.1",
             "--port",
             str(port),
+            "--no-proxy-headers",
+            "--no-access-log",
+            "--log-config",
+            "app/log_config.json",
         ],
         cwd=BACKEND_DIR,
         env=env,
@@ -588,9 +593,11 @@ def test_uvicorn_logs_one_line_per_course_and_starts_without_a_database():
         process.wait(timeout=30)
         process.stderr.close()
 
-    loaded = [line.strip() for line in seen if "loaded course" in line]
+    loaded = [
+        json.loads(line)["message"] for line in seen if "loaded course" in line
+    ]
     assert loaded == [
-        "INFO:     loaded course beta-course: 1 chapters, 1 lessons",
-        "INFO:     loaded course alpha-course: 2 chapters, 3 lessons",
+        "loaded course beta-course: 1 chapters, 1 lessons",
+        "loaded course alpha-course: 2 chapters, 3 lessons",
     ]
     assert SENTINEL_MARKER not in "".join(seen)
