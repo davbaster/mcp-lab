@@ -20,15 +20,17 @@ Agreed with the owner (David, `davbaster`):
 
 ## Where things are
 
-- **Open PR [#132](https://github.com/davbaster/mcp-lab/pull/132):** #20 (Video and Model3D components plus the Content-Security-Policy) and #22 (code viewer step mode). Both passed QA. Waiting on CI and David's merge.
-- **#63 (syntax-highlight fenced code in lessons):** groomed and built, in final browser checks. Not pushed yet. It goes in the next PR after #132 merges.
+- **Merged:** PR #132 with #20 (Video and Model3D components plus the Content-Security-Policy) and #22 (code viewer step mode).
+- **Open PR [#134](https://github.com/davbaster/mcp-lab/pull/134):** #63 (syntax highlighting for fenced code in lessons and for quiz snippets). It passed QA and CI is green. Waiting on David's merge.
 - **After #63** the frontend phase is done and the chapters start, but only after #108 (below).
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## Decisions to keep
 
-- **Packages need David's approval** before they're added (see `AGENTS.md`). Everything in the current `package.json` and `pyproject.toml` files is approved. Recent approvals, all pinned exactly and in `frontend/` only unless noted: react-router 7.18.4 and @testing-library/user-event 14.6.7 (#17); Shiki 4.5.0 with @shikijs/langs (#21); @google/model-viewer 4.4.0 and three.js 0.183.2 (#20, arriving with PR #132); @mermaid-js/mermaid-cli 12.0.0 and puppeteer 25.16.0 in `content-build/` only (#55).
-- **CSP (in PR #132):** `connect-src` allows `blob:` so textured 3D models load (approved by David for #20). Compressed models (Draco, KTX2, Meshopt) stay unsupported in v1; see #126.
+- **Packages need David's approval** before they're added (see `AGENTS.md`). Everything in the current `package.json` and `pyproject.toml` files is approved. Recent approvals, all pinned exactly and in `frontend/` only unless noted: react-router 7.18.4 and @testing-library/user-event 14.6.7 (#17); Shiki 4.5.0 with @shikijs/langs (#21); @google/model-viewer 4.4.0 and three.js 0.183.2 (#20); @mermaid-js/mermaid-cli 12.0.0 and puppeteer 25.16.0 in `content-build/` only (#55).
+- **CSP:** `connect-src` allows `blob:` so textured 3D models load (approved by David for #20). Compressed models (Draco, KTX2, Meshopt) stay unsupported in v1; see #126.
+- **The frontend may import exactly one file from `content-build/`:** `media-config.json`, the single list of media and embed origins. The CSP generator and the Video component both read it. `content-build/tests/component-schemas.test.ts` refuses every other import from `content-build/`.
+- **Code highlighting (#21, #63):** one Shiki highlighter for CodeSteps, lesson fences and quiz snippets. A file over 100,000 characters, or with any line over 2,000 characters, stays plain text. Fence languages are matched case-insensitively against an alias table. That table is `python`/`py`, `toml`, `json`, `yaml`/`yml`, `markdown`/`md` and `shellscript`/`shell`/`sh`/`bash`, and any other language is shown as plain text. Lesson fences have a Copy button and quiz snippets don't.
 - **Mermaid diagram goldens use Linux as the reference.** On Windows only the byte-for-byte diagram comparisons are skipped ("Linux is the reference"); every other diagram check still runs there. Windows text measurement differs by a fraction of a pixel, and rounding doesn't fix it.
 - **CI runs on a self-hosted runner, `itias-vps`** (Linux). David installs system packages there by hand (for example `unzip`, and Chromium's libraries and fonts for the diagram renderer). If a job fails because something is missing on the runner, ask David to install it rather than changing the workflow.
 - **The `content-build` CI job is not a required check** for now. Making `ci-ok` the required check is #90.
