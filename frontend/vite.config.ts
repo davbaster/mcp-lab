@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       environment: "jsdom",
+      // By default Vitest turns every CSS import into an empty string, even `?raw`. The tokens
+      // test reads the real CSS files.
+      css: { include: [/.+/] },
     },
   };
 });

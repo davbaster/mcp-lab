@@ -1,0 +1,46 @@
+/* Design tokens from _docs/design-system.md. This is the only CSS file with raw color values;
+   every other file uses these variables. A new color is added here and to the design system. */
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #f6f7f9;
+  --color-border: #d0d5dd;
+  --color-border-strong: #8a94a6;
+  --color-text: #1d2330;
+  --color-text-muted: #4a5363;
+  --color-primary: #1f5fbf;
+  --color-primary-hover: #174a96;
+  --color-success: #1a7f37;
+  --color-warning: #9a6700;
+  --color-danger: #c62828;
+  --color-tip-bg: #eaf6ee;
+  --color-warning-bg: #fff6e0;
+  --color-note-bg: #eaf1fb;
+  --color-danger-bg: #fdecec;
+  --color-changed-line: #fff3c4;
+
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-code: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 30px;
+
+  --line-height-body: 1.6;
+  --line-height-heading: 1.25;
+  --line-height-code: 1.5;
+
+  /* Named by their size in pixels. */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --space-64: 64px;
+
+  --radius: 6px;
+}

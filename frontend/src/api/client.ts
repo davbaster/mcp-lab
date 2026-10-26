@@ -25,6 +25,9 @@ export const API_BASE_URL = "";
 
 export type ApiClient = Client<paths>;
 
+/** The middleware type for `api.use`, so other files need not import `openapi-fetch`. */
+export type ApiMiddleware = Middleware;
+
 /** Creates a client. Pass options only in tests (for example a `fetch` to inspect requests). */
 export function createApiClient(options: ClientOptions = {}): ApiClient {
   // No `credentials: "include"`: the browser's default (`same-origin`) sends the session
