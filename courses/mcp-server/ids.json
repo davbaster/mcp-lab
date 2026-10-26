@@ -1,7 +1,8 @@
 {
   "course_id": "mcp-server",
   "chapters": [
-    "01-what-is-mcp"
+    "01-what-is-mcp",
+    "02-first-server"
   ],
   "lessons": [
     "01-before-you-start",
@@ -10,13 +11,23 @@
     "04-server-primitives",
     "05-messages",
     "06-lifecycle",
-    "07-transports"
+    "07-transports",
+    "01-setup",
+    "02-server-py",
+    "03-function-to-tool",
+    "04-inspecting-the-server",
+    "05-raw-json-rpc"
   ],
   "questions": [
     "what-is-mcp-1",
     "what-is-mcp-2",
     "what-is-mcp-3",
     "what-is-mcp-4",
-    "what-is-mcp-5"
+    "what-is-mcp-5",
+    "first-server-1",
+    "first-server-2",
+    "first-server-3",
+    "first-server-4",
+    "first-server-5"
   ]
 }

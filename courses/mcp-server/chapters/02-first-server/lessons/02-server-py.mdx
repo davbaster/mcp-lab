@@ -1,0 +1,28 @@
+---
+title: Write server.py
+order: 2
+---
+
+# Write server.py
+
+Create a file named `server.py` next to `pyproject.toml`. This is the whole server.
+
+<CodeSteps step="2" file="server.py" />
+
+What each part does:
+
+- `MCPServer("notes")` creates the server. The name `notes` is what clients show to the user.
+- `@mcp.tool()` registers the function under it as a tool. You will look at this in the next lesson.
+- `mcp.run()` starts the server and waits for a client. The `if __name__ == "__main__":` line makes it start only when you run the file directly.
+
+## The default transport
+
+`mcp.run()` with no argument uses the stdio transport from Chapter 1. A client starts the server as a child process and talks to it through standard input and output. For a Streamable HTTP server you would call `mcp.run(transport="streamable-http")`, but you will not need that here.
+
+<Callout type="warning" title="Do not run it and type into it">
+
+If you run `uv run server.py` yourself, it sits and waits for JSON-RPC messages on standard input. Nothing is wrong. Press Ctrl+C to stop it. In lesson 4 the Inspector starts the server for you.
+
+</Callout>
+
+Check that the file has no syntax errors with `uv run python -m py_compile server.py`. No output means it is fine.

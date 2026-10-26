@@ -1,0 +1,67 @@
+questions:
+  - id: first-server-1
+    text: Which command adds the MCP SDK and its command line tool to your project?
+    options:
+      - id: a
+        text: uv add "mcp[cli]"
+      - id: b
+        text: pip install fastmcp-cli
+      - id: c
+        text: uv tool install inspector
+    correct: a
+    explanation: "uv add \"mcp[cli]\" installs the MCP Python SDK in your project, and the [cli] part adds the mcp command that you use to open the Inspector."
+    lesson: 01-setup
+  - id: first-server-2
+    text: What is the name of the tool that this code registers?
+    snippet:
+      language: python
+      code: |
+        @mcp.tool()
+        def add(a: int, b: int) -> int:
+            return a + b
+    options:
+      - id: a
+        text: tool_1
+      - id: b
+        text: add
+      - id: c
+        text: mcp.add
+    correct: b
+    explanation: The tool is named after the function, so def add registers a tool called add.
+    lesson: 03-function-to-tool
+  - id: first-server-3
+    text: Where does the SDK get a tool's input schema from?
+    options:
+      - id: a
+        text: A separate JSON file
+      - id: b
+        text: The return value
+      - id: c
+        text: The type hints
+    correct: c
+    explanation: The type hints of the function's parameters become the JSON Schema for the tool's inputs, so you write no schema by hand.
+    lesson: 03-function-to-tool
+  - id: first-server-4
+    text: What does the command mcp dev server.py do?
+    options:
+      - id: a
+        text: Deploys the server
+      - id: b
+        text: Runs the server and opens the Inspector
+      - id: c
+        text: Generates a client
+    correct: b
+    explanation: mcp dev starts your server and opens the MCP Inspector, which connects to it so you can list and call its tools.
+    lesson: 04-inspecting-the-server
+  - id: first-server-5
+    text: Which transport does mcp.run() use when you give it no arguments?
+    options:
+      - id: a
+        text: Streamable HTTP
+      - id: b
+        text: WebSocket
+      - id: c
+        text: stdio
+    correct: c
+    explanation: With no argument mcp.run() uses stdio. The client starts the server as a child process and talks to it through standard input and output.
+    lesson: 02-server-py

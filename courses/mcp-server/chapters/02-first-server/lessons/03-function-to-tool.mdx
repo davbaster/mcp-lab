@@ -1,0 +1,26 @@
+---
+title: From function to tool
+order: 3
+---
+
+# From function to tool
+
+The `@mcp.tool()` decorator reads your function and builds the tool description from it. You write no schema by hand. Three parts of the function matter.
+
+- **The name.** The tool is named after the function. `def add` becomes the tool `add`.
+- **The input schema.** The type hints become a JSON Schema. `a: int` and `b: int` make two required integer properties. Without type hints the SDK cannot describe the inputs, so always write them.
+- **The description.** The docstring becomes the tool's description. This is the text the model reads to decide when to call the tool.
+
+Step 2 had no docstring, so the tool had an empty description. Step 3 adds one.
+
+<CodeSteps step="3" file="server.py" />
+
+The return type is used too. `-> int` tells clients that the result is an integer, and the SDK sends the answer back as text and as structured data.
+
+<Callout type="tip" title="Write the docstring for the model">
+
+Say what the tool does in one short sentence. A model can only choose a tool well if its description is clear.
+
+</Callout>
+
+The next lesson shows how to see all of this in the Inspector.

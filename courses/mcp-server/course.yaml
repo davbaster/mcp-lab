@@ -4,5 +4,7 @@ description: Learn what the Model Context Protocol is and build your own MCP ser
 chapters:
   - id: 01-what-is-mcp
     title: What is MCP?
+  - id: 02-first-server
+    title: Your first server
 free_preview:
   - 01-what-is-mcp

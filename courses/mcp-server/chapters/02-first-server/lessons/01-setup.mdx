@@ -1,0 +1,63 @@
+---
+title: Set up the project
+order: 1
+---
+
+# Set up the project
+
+In this chapter you build a small MCP server in Python. You need Python 3.10 or newer and [uv](https://docs.astral.sh/uv/), a tool that creates Python projects and installs their packages. To open the Inspector in lesson 4 you also need Node.js, which provides the `npx` command.
+
+## Install uv
+
+Skip this if `uv --version` already works. The install command depends on your system.
+
+<Tabs>
+
+<Tab label="macOS / Linux">
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+</Tab>
+
+<Tab label="Windows">
+
+Run this in PowerShell:
+
+```bash
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+</Tab>
+
+</Tabs>
+
+Open a new terminal afterwards so that the `uv` command is found.
+
+## Create the project
+
+The next commands are the same on every system.
+
+```bash
+uv init notes-server
+cd notes-server
+```
+
+## Add the MCP SDK
+
+```bash
+uv add "mcp[cli]"
+```
+
+This installs the official MCP Python SDK. The `[cli]` part adds the `mcp` command, which you use in lesson 4. This course pins version 2.3.0 so that the code behaves the same for everyone.
+
+<Callout type="note" title="Version 2 names">
+
+In version 2 of the SDK the server class is called `MCPServer`. Older tutorials call it `FastMCP`. Code copied from one of them may not work here.
+
+</Callout>
+
+Your project now looks like this. The `main.py` file is not used in this course.
+
+<CodeSteps step="1" />
