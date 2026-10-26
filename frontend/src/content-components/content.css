@@ -318,6 +318,63 @@
   background: var(--color-surface);
 }
 
+/* Step mode: "Step N of M" and the changes line, and the two step buttons, in one row that wraps when it must. */
+.code-step-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+  margin-bottom: var(--space-8);
+}
+
+.code-step-status {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.code-step-count {
+  display: block;
+  font-weight: 600;
+}
+
+.code-step-changes {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.code-step-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-8);
+}
+
+/* The label of a tab says New, Changed or Deleted in words; the color comes second. */
+.file-label {
+  font-family: var(--font-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.file-label-added {
+  color: var(--color-success);
+}
+
+.file-label-modified {
+  color: var(--color-primary);
+}
+
+.file-label-deleted {
+  color: var(--color-danger);
+}
+
+.code-note {
+  margin: 0 0 var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 /* A long path keeps its one line; the tab list scrolls sideways instead of the text overlapping. */
 .code-steps .tab {
   max-width: none;
@@ -394,16 +451,34 @@
 }
 
 .code-line {
+  position: relative;
   display: flex;
 }
 
+/* The 3px at the left is the room of the bar that a changed line draws there. */
 .code-line-number {
   flex: 0 0 auto;
   box-sizing: content-box;
   width: var(--code-gutter);
   padding-right: var(--space-16);
+  padding-left: 3px;
   color: var(--color-text-muted);
   text-align: right;
+  user-select: none;
+}
+
+/* A line that changed since the previous step: a background, and a bar in the gutter that is a border, so forced colors keep it. */
+.code-line-changed {
+  background: var(--color-changed-line);
+}
+
+.code-line-changed .code-line-number {
+  padding-left: 0;
+  border-left: 3px solid var(--color-primary);
+}
+
+/* The "changed" text is read by screen readers, but is not drawn and is not part of a selection. */
+.code-line-flag {
   user-select: none;
 }
 

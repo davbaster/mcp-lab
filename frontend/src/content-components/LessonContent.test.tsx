@@ -392,7 +392,7 @@ describe("nodes that cannot be shown", () => {
     expect(screen.getAllByRole("button", { name: "Load 3D model" })).toHaveLength(2);
     // CodeSteps is built: step 2 of the stubbed chapter, with the file named in the node selected.
     expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "server.py", selected: true })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: /^server\.py/, selected: true })).toBeTruthy();
     expect(api.calls()).toHaveLength(1);
     // Only the Mermaid-only Diagram is a mistake in the lesson.
     await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));

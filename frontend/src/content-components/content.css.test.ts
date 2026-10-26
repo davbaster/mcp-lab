@@ -121,6 +121,41 @@ describe("content.css, the code viewer", () => {
   });
 });
 
+describe("content.css, step mode", () => {
+  it("draws a changed line on --color-changed-line, with a 3px --color-primary bar in the gutter that is a border", () => {
+    expect(rule(".code-line-changed")).toMatch(/background:\s*var\(--color-changed-line\)/);
+    const bar = rule(".code-line-changed .code-line-number");
+    expect(bar).toMatch(/border-left:\s*3px solid var\(--color-primary\)/);
+    // The bar is a border and not a background, so forced colors keep it.
+    expect(bar).not.toMatch(/background/);
+    expect(rule(".code-line-changed")).not.toMatch(/border/);
+  });
+
+  it("gives every gutter the room of the bar, so the numbers line up with and without it", () => {
+    expect(rule(".code-line-number")).toMatch(/padding-left:\s*3px/);
+    expect(rule(".code-line-changed .code-line-number")).toMatch(/padding-left:\s*0/);
+  });
+
+  it("hides the changed text from sight but not from screen readers, and keeps it out of a selection", () => {
+    expect(rule(".code-line-flag")).toMatch(/user-select:\s*none/);
+    expect(rule(".code-line-flag")).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    expect(rule(".visually-hidden")).toMatch(/clip-path:\s*inset\(50%\)/);
+  });
+
+  it("lays the step bar out as one row that wraps", () => {
+    const bar = rule(".code-step-bar");
+    expect(bar).toMatch(/display:\s*flex/);
+    expect(bar).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(".code-step-buttons")).toMatch(/display:\s*flex/);
+  });
+
+  it("colors the labels New, Changed and Deleted from the success, primary and danger tokens", () => {
+    expect(rule(".file-label-added")).toMatch(/color:\s*var\(--color-success\)/);
+    expect(rule(".file-label-modified")).toMatch(/color:\s*var\(--color-primary\)/);
+    expect(rule(".file-label-deleted")).toMatch(/color:\s*var\(--color-danger\)/);
+  });
+});
+
 describe("content.css, videos and 3D models", () => {
   it("gives the frame a 16:9 ratio that never grows wider than the content", () => {
     const frame = rule(".media-frame");

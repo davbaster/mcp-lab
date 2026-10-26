@@ -37,6 +37,9 @@ function show(nodes: unknown[], options: Parameters<typeof renderTree>[1] = {}) 
 const tabs = () => screen.getAllByRole("tab");
 const tabNames = () => tabs().map((t) => t.textContent);
 const selectedTab = () => tabs().find((t) => t.getAttribute("aria-selected") === "true");
+/** The path of a tab, without the New, Changed or Deleted label that may follow it. */
+const pathOf = (element: Element | undefined) => element?.firstChild?.textContent;
+const selectedPath = () => pathOf(selectedTab());
 const codeText = (root: ParentNode = document) =>
   Array.from(root.querySelectorAll(".code-line-text"))
     .map((line) => line.textContent)
@@ -65,7 +68,7 @@ describe("getting the data", () => {
     expect(api.calls(CODE)).toHaveLength(1);
     expect(api.calls(CODE)[0].method).toBe("GET");
     expect(api.calls()).toHaveLength(1);
-    expect(tabNames()).toEqual(["helper.py", "main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(tabNames()).toEqual(["helper.py", "main.py Changed", "pkg/__init__.py New", "pkg/util.py New", "settings.txt"]);
   });
 
   it("uses the course and chapter IDs of the lesson, not the ones in the answer", async () => {
@@ -108,15 +111,21 @@ describe("getting the data", () => {
     const lists = Array.from(container.querySelectorAll<HTMLElement>(".code-steps [role=tablist]"));
     expect(lists.map((list) => list.getAttribute("aria-label"))).toEqual(["Files in step 1", "Files in step 2", "Files in step 3"]);
     expect(Array.from(lists[0].querySelectorAll("[role=tab]")).map((t) => t.textContent)).toEqual(["helper.py", "main.py", "settings.txt"]);
-    expect(Array.from(lists[2].querySelectorAll("[role=tab]")).map((t) => t.textContent)).toEqual(["main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(Array.from(lists[2].querySelectorAll("[role=tab]")).map((t) => t.textContent)).toEqual([
+      "helper.py Deleted",
+      "main.py Changed",
+      "pkg/__init__.py",
+      "pkg/util.py Changed",
+      "settings.txt",
+    ]);
 
     await user.click(within(lists[0]).getByRole("tab", { name: "settings.txt" }));
-    await user.click(within(lists[2]).getByRole("tab", { name: "pkg/util.py" }));
+    await user.click(within(lists[2]).getByRole("tab", { name: /^pkg\/util\.py/ }));
 
     expect(within(lists[0]).getByRole("tab", { name: "settings.txt" }).getAttribute("aria-selected")).toBe("true");
-    expect(within(lists[2]).getByRole("tab", { name: "pkg/util.py" }).getAttribute("aria-selected")).toBe("true");
-    // The viewer in the hidden tab still has its first file selected.
-    expect(within(lists[1], ).getAllByRole("tab", { hidden: true })[0].getAttribute("aria-selected")).toBe("true");
+    expect(within(lists[2]).getByRole("tab", { name: /^pkg\/util\.py/ }).getAttribute("aria-selected")).toBe("true");
+    // The viewer in the hidden tab still has its own first changed file selected.
+    expect(within(lists[1]).getByRole("tab", { name: /^main\.py/, hidden: true }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("does not keep the code after the lesson view: a new view sends a new request", async () => {
@@ -147,7 +156,8 @@ describe("getting the data", () => {
     expect(container.querySelector(".code-steps")).toBeTruthy();
     pending.resolve(jsonResponse(golden));
     expect(await screen.findByRole("tablist")).toBeTruthy();
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText("Loading code…")).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("Step 1 of 3");
   });
 });
 
@@ -236,14 +246,15 @@ describe("a step that cannot be shown", () => {
     expect(api.calls(CODE)).toHaveLength(1);
   });
 
-  it("shows it for a step with no file left to show (every file deleted)", async () => {
+  it("shows a step whose files were all deleted as deleted tabs, with the removed-file note", async () => {
     const log = spyOnConsole();
     serve(chapter((d) => (d.steps[0].files = [file("gone.py", "", "deleted")])));
     show([steps({ step: "1" }), paragraph(text("After the viewer."))]);
 
-    expect(await screen.findByText("This code step can't be shown")).toBeTruthy();
-    expect(screen.getByText("After the viewer.")).toBeTruthy();
-    await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("tab", { name: "gone.py" })).toBeTruthy();
+    expect(screen.getByText("This file was removed in this step")).toBeTruthy();
+    expect(screen.queryByText("This code step can't be shown")).toBeNull();
+    expect(log.error).not.toHaveBeenCalled();
   });
 
   it("shows it for a step with no files at all", async () => {
@@ -308,11 +319,11 @@ describe("files and tabs", () => {
     expect(tabNames()).toEqual(["src/util.py", "lib/util.py", "README.md"]);
   });
 
-  it("does not show files that were deleted", async () => {
+  it("shows a file that was deleted in the step as a tab, in the API's order", async () => {
     serve();
     show([steps({ step: "3" })]);
     await screen.findByRole("tablist");
-    expect(tabNames()).toEqual(["main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(tabNames()).toEqual(["helper.py Deleted", "main.py Changed", "pkg/__init__.py", "pkg/util.py Changed", "settings.txt"]);
   });
 
   it("shows one tab for a step with one file", async () => {
@@ -322,11 +333,12 @@ describe("files and tabs", () => {
     expect(tabs()).toHaveLength(1);
   });
 
-  it("selects the first tab when there is no file prop", async () => {
+  it("selects the first file when there is no file prop on step 1, and the first added or modified file on a later step", async () => {
     serve();
-    show([steps({ step: "2" })]);
-    await screen.findByRole("tablist");
-    expect(selectedTab()?.textContent).toBe("helper.py");
+    show([steps({ step: "1" }), steps({ step: "2" }), steps({ step: "3" })]);
+    await waitFor(() => expect(screen.getAllByRole("tablist")).toHaveLength(3));
+    const selected = screen.getAllByRole("tab").filter((t) => t.getAttribute("aria-selected") === "true");
+    expect(selected.map(pathOf)).toEqual(["helper.py", "main.py", "main.py"]);
   });
 
   it("selects the file named in the file prop", async () => {
@@ -334,19 +346,19 @@ describe("files and tabs", () => {
     serve();
     show([steps({ step: "2", file: "pkg/util.py" })]);
     await screen.findByRole("tablist");
-    expect(selectedTab()?.textContent).toBe("pkg/util.py");
+    expect(selectedTab()?.textContent).toBe("pkg/util.py New");
     expect(codeText()).toBe("def shout(text):\n    return text.upper()\n");
     expect(log.warn).not.toHaveBeenCalled();
   });
 
   it.each([["a file that is not in the step", "nope.py"], ["a file that was deleted in the step", "helper.py"]])(
-    "selects the first tab and warns once for %s",
+    "selects the first changed file and warns once for %s",
     async (_name, name) => {
       const log = spyOnConsole();
       serve();
       show([steps({ step: "3", file: name })], { strict: true });
       await screen.findByRole("tablist");
-      expect(selectedTab()?.textContent).toBe("main.py");
+      expect(selectedPath()).toBe("main.py");
       await waitFor(() => expect(log.warn).toHaveBeenCalledTimes(1));
       await new Promise((done) => setTimeout(done, 20));
       expect(log.warn).toHaveBeenCalledTimes(1);
@@ -356,7 +368,7 @@ describe("files and tabs", () => {
 
   it("follows the tabs pattern: roles, names, aria-selected, aria-controls and a roving tabindex", async () => {
     serve();
-    const { container } = show([steps({ step: "2" })]);
+    const { container } = show([steps({ step: "2", file: "helper.py" })]);
     await screen.findByRole("tablist");
 
     expect(screen.getByRole("tablist").getAttribute("aria-label")).toBe("Files in step 2");
@@ -371,25 +383,27 @@ describe("files and tabs", () => {
 
   it("shows only the selected file's code, in a focusable area named by the file path", async () => {
     serve();
-    const { user, container } = show([steps({ step: "2" })]);
+    const { user, container } = show([steps({ step: "2", file: "helper.py" })]);
     await screen.findByRole("tablist");
 
     const area = screen.getByRole("region", { name: "helper.py" });
     expect(area.getAttribute("tabindex")).toBe("0");
     expect(codeText()).toBe("def helper():\n    return 1\n");
 
-    await user.click(screen.getByRole("tab", { name: "main.py" }));
+    await user.click(screen.getByRole("tab", { name: /^main\.py/ }));
     expect(screen.getByRole("region", { name: "main.py" })).toBeTruthy();
     expect(screen.queryByRole("region", { name: "helper.py" })).toBeNull();
     expect(container.querySelectorAll(".code-area")).toHaveLength(1);
-    expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(screen.getByRole("tab", { name: "main.py" }).id);
+    expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(screen.getByRole("tab", { name: /^main\.py/ }).id);
   });
 
-  it("puts the selected tab, then the Copy button, then the code area in the Tab key order", async () => {
+  it("puts the step buttons, then the selected tab, then the Copy button, then the code area in the Tab key order", async () => {
     serve();
     const { user } = show([steps({ step: "1" })]);
     await screen.findByRole("tablist");
 
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Next step" }));
     await user.tab();
     expect(document.activeElement).toBe(selectedTab());
     await user.tab();
@@ -403,16 +417,16 @@ describe("files and tabs", () => {
     const { user } = show([steps({ step: "2" })]);
     await screen.findByRole("tablist");
 
-    await user.click(screen.getByRole("tab", { name: "pkg/util.py" }));
+    await user.click(screen.getByRole("tab", { name: /^pkg\/util\.py/ }));
 
-    expect(selectedTab()?.textContent).toBe("pkg/util.py");
+    expect(selectedPath()).toBe("pkg/util.py");
     expect(tabs().map((t) => t.getAttribute("tabindex"))).toEqual(["-1", "-1", "-1", "0", "-1"]);
   });
 
   describe("the keyboard", () => {
     async function focusFirst() {
       serve();
-      const view = show([steps({ step: "2" })]);
+      const view = show([steps({ step: "2", file: "helper.py" })]);
       await screen.findByRole("tablist");
       tabs()[0].focus();
       return view;
@@ -421,40 +435,40 @@ describe("files and tabs", () => {
     it("moves to the next tab with Right Arrow and wraps from the last to the first", async () => {
       const { user } = await focusFirst();
       await user.keyboard("{ArrowRight}");
-      expect(selectedTab()?.textContent).toBe("main.py");
+      expect(selectedPath()).toBe("main.py");
       expect(document.activeElement).toBe(selectedTab());
       await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
-      expect(selectedTab()?.textContent).toBe("helper.py");
+      expect(selectedPath()).toBe("helper.py");
     });
 
     it("moves to the previous tab with Left Arrow and wraps from the first to the last", async () => {
       const { user } = await focusFirst();
       await user.keyboard("{ArrowLeft}");
-      expect(selectedTab()?.textContent).toBe("settings.txt");
+      expect(selectedPath()).toBe("settings.txt");
       await user.keyboard("{ArrowLeft}");
-      expect(selectedTab()?.textContent).toBe("pkg/util.py");
+      expect(selectedPath()).toBe("pkg/util.py");
     });
 
     it("goes to the first tab with Home and the last with End, and shows that file at once", async () => {
       const { user } = await focusFirst();
       await user.keyboard("{End}");
-      expect(selectedTab()?.textContent).toBe("settings.txt");
+      expect(selectedPath()).toBe("settings.txt");
       expect(document.activeElement).toBe(selectedTab());
       expect(screen.getByRole("region", { name: "settings.txt" })).toBeTruthy();
       await user.keyboard("{Home}");
-      expect(selectedTab()?.textContent).toBe("helper.py");
+      expect(selectedPath()).toBe("helper.py");
     });
 
     it.each(["{ArrowUp}", "{ArrowDown}", "a", "{Enter}", "{PageDown}"])("does nothing for %s", async (key) => {
       const { user } = await focusFirst();
       await user.keyboard(key);
-      expect(selectedTab()?.textContent).toBe("helper.py");
+      expect(selectedPath()).toBe("helper.py");
     });
 
     it.each(["Control", "Alt", "Meta", "Shift"])("does nothing for an arrow key with %s held", async (modifier) => {
       const { user } = await focusFirst();
       await user.keyboard(`{${modifier}>}{ArrowRight}{End}{/${modifier}}`);
-      expect(selectedTab()?.textContent).toBe("helper.py");
+      expect(selectedPath()).toBe("helper.py");
     });
   });
 
@@ -467,7 +481,7 @@ describe("files and tabs", () => {
 
       await user.click(screen.getByRole("tab", { name: path }));
 
-      expect(selectedTab()?.textContent).toBe(path);
+      expect(selectedPath()).toBe(path);
       expect(screen.getByRole("region", { name: path })).toBeTruthy();
       expect(codeText()).toBe("<b>not bold</b>\n");
       expect(container.querySelector("script, b")).toBeNull();
@@ -478,7 +492,7 @@ describe("files and tabs", () => {
     serve(oneStep(file("first.txt", "one"), file("__proto__", "two")));
     show([steps({ step: "1", file: "__proto__" })]);
     await screen.findByRole("tablist");
-    expect(selectedTab()?.textContent).toBe("__proto__");
+    expect(selectedPath()).toBe("__proto__");
   });
 });
 
@@ -611,7 +625,7 @@ describe("line numbers", () => {
 
   it("keeps the numbers out of the text of the code and hides them from screen readers", async () => {
     serve();
-    const { container } = show([steps({ step: "2" })]);
+    const { container } = show([steps({ step: "2", file: "helper.py" })]);
     await screen.findByRole("tablist");
 
     for (const number of container.querySelectorAll(".code-line-number")) {
@@ -695,7 +709,7 @@ describe("copying", () => {
     // Only the word is seen; the file name is for screen readers.
     expect(screen.getByRole("button", { name: "Copy main.py" }).querySelector(".visually-hidden")?.textContent).toBe("main.py");
 
-    await user.click(screen.getByRole("tab", { name: "pkg/util.py" }));
+    await user.click(screen.getByRole("tab", { name: /^pkg\/util\.py/ }));
     expect(screen.getByRole("button", { name: "Copy pkg/util.py" })).toBeTruthy();
   });
 
@@ -765,13 +779,13 @@ describe("copying", () => {
     });
 
     it("goes back to Copy for the new file when another tab is chosen, and the old timer changes nothing", async () => {
-      await ready([steps({ step: "2" })]);
+      await ready([steps({ step: "2", file: "helper.py" })]);
       await press();
       await wait(1000);
       expect(label()).toBe("Copied helper.py");
 
       await act(async () => {
-        fireEvent.click(screen.getByRole("tab", { name: "main.py" }));
+        fireEvent.click(screen.getByRole("tab", { name: /^main\.py/ }));
       });
       expect(label()).toBe("Copy main.py");
 
@@ -786,12 +800,12 @@ describe("copying", () => {
 
     it("does not show Copied for the new file when the clipboard answers after the tab was changed", async () => {
       const slow = deferred<void>();
-      await ready([steps({ step: "2" })]);
+      await ready([steps({ step: "2", file: "helper.py" })]);
       vi.spyOn(navigator.clipboard, "writeText").mockReturnValueOnce(slow.promise);
 
       await press();
       await act(async () => {
-        fireEvent.click(screen.getByRole("tab", { name: "main.py" }));
+        fireEvent.click(screen.getByRole("tab", { name: /^main\.py/ }));
       });
       await act(async () => {
         slow.resolve();
@@ -876,19 +890,19 @@ describe("the ZIP link", () => {
     expect(link.getAttribute("href")).toBe("/api/courses/sample-course/chapters/01-first-steps/code.zip");
     expect(link.getAttribute("download")).toBe("01-first-steps.zip");
     expect(link.className).toContain("link-action");
-    expect(screen.getByText("This ZIP has the final code of the whole chapter, not only step 2.")).toBeTruthy();
+    expect(screen.getByText("This ZIP has the final code of the whole chapter (step 3), not only step 2.")).toBeTruthy();
     expect(container.querySelector("button[download]")).toBeNull();
     // The link is only a link: nothing fetched it.
     expect(api.calls(CODE)).toHaveLength(1);
     expect(api.calls()).toHaveLength(1);
   });
 
-  it("names the step of its own viewer in the hint", async () => {
+  it("names the last step and the step shown in the hint, and drops both on the last step", async () => {
     serve();
     show([steps({ step: "1" }), steps({ step: "3" })]);
     await waitFor(() => expect(screen.getAllByRole("tablist")).toHaveLength(2));
-    expect(screen.getByText("This ZIP has the final code of the whole chapter, not only step 1.")).toBeTruthy();
-    expect(screen.getByText("This ZIP has the final code of the whole chapter, not only step 3.")).toBeTruthy();
+    expect(screen.getByText("This ZIP has the final code of the whole chapter (step 3), not only step 1.")).toBeTruthy();
+    expect(screen.getByText("This ZIP has the final code of the whole chapter.")).toBeTruthy();
   });
 
   it.each(["https://other.example/x.zip", "//host/x.zip", "javascript:alert(1)", "relative/x.zip", "", "/\\evil.example/x.zip", "/api/x\n.zip"])(

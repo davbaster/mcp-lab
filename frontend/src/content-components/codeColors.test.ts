@@ -85,3 +85,40 @@ describe("the code colors", () => {
     expect(area).toMatch(/color:\s*var\(--color-text\)/);
   });
 });
+
+describe("the colors on a changed line and the labels", () => {
+  const changed = () => color("--color-changed-line");
+
+  it.each(CODE_TOKENS)("%s is at least 4.5:1 on --color-changed-line", (name) => {
+    expect(contrast(color(name), changed())).toBeGreaterThanOrEqual(MIN);
+  });
+
+  it("keeps the default text and the line number color at least 4.5:1 on --color-changed-line", () => {
+    expect(contrast(color("--color-text"), changed())).toBeGreaterThanOrEqual(MIN);
+    expect(contrast(color("--color-text-muted"), changed())).toBeGreaterThanOrEqual(MIN);
+  });
+
+  it.each(Object.entries(SAMPLES))("uses only colors that are at least 4.5:1 on --color-changed-line in the output for %s", async (path, content) => {
+    const lines = await highlight(content, languageForPath(path)!);
+    expect(lines).not.toBeNull();
+    const classes = new Set(lines!.flat().flatMap((token) => (token.className === null ? [] : token.className.split(" "))));
+    for (const className of classes) {
+      if (!className.startsWith("code-token-")) continue;
+      expect(contrast(color(tokenOfClass(className)!), changed()), className).toBeGreaterThanOrEqual(MIN);
+    }
+  });
+
+  it.each([
+    ["New", "--color-success"],
+    ["Changed", "--color-primary"],
+    ["Deleted", "--color-danger"],
+  ])("draws the %s label (%s) at least 4.5:1 on --color-bg and on the tab hover background, --color-surface", (_label, name) => {
+    expect(contrast(color(name), color("--color-bg"))).toBeGreaterThanOrEqual(MIN);
+    expect(contrast(color(name), color("--color-surface"))).toBeGreaterThanOrEqual(MIN);
+  });
+
+  it("takes the tab hover background from --color-surface", () => {
+    const hover = withoutComments.match(/\.tab:hover\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(hover).toMatch(/background:\s*var\(--color-surface\)/);
+  });
+});

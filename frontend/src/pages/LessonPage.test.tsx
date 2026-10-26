@@ -677,9 +677,31 @@ describe("code steps", () => {
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["helper.py", "main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["helper.py", "main.py Changed", "pkg/__init__.py New", "pkg/util.py New", "settings.txt"]);
     expect(api.calls(CODE_ROUTE)).toHaveLength(1);
     expect(api.calls(CODE_ROUTE)[0].method).toBe("GET");
+  });
+
+  it("moves between steps without a new request for the lesson or the code, and without remounting the page", async () => {
+    const api = routes({
+      lessons: { a: withCode },
+      extra: { [CODE_ROUTE]: () => jsonResponse(chapterCode) },
+    });
+    const { user } = renderApp("/courses/demo/lessons/a");
+    expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
+    const title = screen.getByRole("heading", { level: 1, name: "Title of a" });
+    const calls = api.calls().length;
+
+    await user.click(screen.getByRole("button", { name: "Next step" }));
+    expect(await screen.findByRole("tablist", { name: "Files in step 3" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Previous step" }));
+    await user.click(screen.getByRole("button", { name: "Previous step" }));
+    expect(await screen.findByRole("tablist", { name: "Files in step 1" })).toBeTruthy();
+
+    expect(api.calls()).toHaveLength(calls);
+    expect(api.calls(lessonRoute("a"))).toHaveLength(1);
+    expect(api.calls(CODE_ROUTE)).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Title of a" })).toBe(title);
   });
 
   it("asks for the code again when another lesson with a viewer is opened", async () => {
