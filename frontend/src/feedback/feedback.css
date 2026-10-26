@@ -1,0 +1,136 @@
+/* The feedback button, dialog and form. Only tokens: no raw colors (tokens.css has them all). */
+
+/* The header's right side: the account links, then the feedback button. */
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8) var(--space-16);
+}
+
+/* Below 480px wide the dialog fills the screen; from 480px it is a centred box. */
+.feedback-dialog {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  /* Taller content scrolls inside the dialog, and never moves the page behind it. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 480px) {
+  .feedback-dialog {
+    width: 560px;
+    max-width: calc(100% - 2 * var(--space-16));
+    height: auto;
+    max-height: calc(100% - 2 * var(--space-32));
+    margin: auto;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius);
+  }
+}
+
+/* The backdrop is an existing token, made see-through. */
+.feedback-dialog::backdrop {
+  background: var(--color-text);
+  opacity: 0.5;
+}
+
+/* The page behind a modal dialog does not scroll. */
+body:has(.feedback-dialog[open]) {
+  overflow: hidden;
+}
+
+.feedback-dialog-body {
+  padding: var(--space-24) var(--space-16);
+  /* A long server message wraps instead of widening the dialog. */
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 480px) {
+  .feedback-dialog-body {
+    padding: var(--space-24);
+  }
+}
+
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+}
+
+.feedback-category {
+  min-width: 0;
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  border: 0;
+}
+
+.feedback-category legend {
+  padding: 0;
+  margin-bottom: var(--space-4);
+  font-weight: 600;
+}
+
+/* A radio or checkbox row: the whole row is the target, at least 44px high. */
+.feedback-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-4);
+  cursor: pointer;
+}
+
+.feedback-choice input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: var(--space-4) 0 0;
+}
+
+.feedback-choice span {
+  min-width: 0;
+  padding-top: var(--space-4);
+}
+
+/* The hint sits under its radio, in line with the label text. */
+.feedback-category .feedback-hint {
+  margin: 0 0 var(--space-8);
+  padding-left: calc(20px + var(--space-12) + var(--space-4));
+}
+
+.feedback-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.feedback-form textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+}
+
+.feedback-form .feedback-privacy {
+  margin: var(--space-16) 0;
+}
+
+/* The button after a quiz question. */
+.feedback-question-button {
+  margin-top: var(--space-8);
+}

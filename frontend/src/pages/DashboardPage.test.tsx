@@ -56,7 +56,8 @@ it("shows the course title, description and document title, with the chapters in
   expect(await screen.findByRole("heading", { level: 1, name: "Demo course" })).toBeTruthy();
   expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   expect(screen.getByText("Learn the demo.")).toBeTruthy();
-  expect(document.title).toBe("Demo course – Courses");
+  // The title is set in an effect, which can run after the heading shows.
+  await waitFor(() => expect(document.title).toBe("Demo course – Courses"));
   const titles = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
   expect(titles.slice(-3)).toEqual(["First steps", "Middle part", "Last part"]);
   const lessons = within(card("First steps").getByRole("list")).getAllByRole("listitem");

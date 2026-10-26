@@ -1,0 +1,136 @@
+/* The quiz page. Only tokens: no raw colors (tokens.css has them all). */
+
+.quiz-region {
+  max-width: 72ch;
+  /* Long unbroken question, option and answer-note text wraps instead of widening the page. */
+  overflow-wrap: anywhere;
+}
+
+.quiz-region code {
+  padding: 0 var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  font-family: var(--font-code);
+  font-size: 0.9em;
+}
+
+.quiz-intro {
+  color: var(--color-text-muted);
+}
+
+.quiz-questions,
+.quiz-review {
+  list-style: none;
+  margin: 0 0 var(--space-24);
+  padding: 0;
+  display: grid;
+  /* A column that can shrink, so a wide code sample scrolls in its box instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+}
+
+.quiz-question {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.quiz-question legend {
+  max-width: 100%;
+  padding: 0 var(--space-4);
+  font-weight: 600;
+}
+
+.quiz-question-number {
+  font-weight: 700;
+}
+
+/* A code sample scrolls inside its own box. */
+.quiz-snippet {
+  max-width: 100%;
+  margin: var(--space-8) 0 var(--space-12);
+  padding: var(--space-16);
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  font-family: var(--font-code);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-code);
+}
+
+.quiz-snippet code {
+  padding: 0;
+  background: none;
+  font: inherit;
+  white-space: pre;
+}
+
+/* The whole row is the target: at least 44px high. */
+.quiz-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  min-height: 44px;
+  padding: var(--space-8) var(--space-4);
+  cursor: pointer;
+}
+
+.quiz-option input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: var(--space-4) 0 0;
+}
+
+.quiz-option-text {
+  min-width: 0;
+  padding-top: var(--space-4);
+}
+
+.quiz-question:disabled .quiz-option {
+  cursor: not-allowed;
+}
+
+.quiz-submit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+}
+
+.quiz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+  margin-bottom: var(--space-24);
+}
+
+.quiz-review-item {
+  padding: var(--space-16);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+.quiz-review-item p {
+  margin: 0 0 var(--space-8);
+}
+
+.quiz-review-item p:last-child {
+  margin-bottom: 0;
+}
+
+.quiz-review-question {
+  font-weight: 600;
+}
+
+/* The word is always there; the color only backs it up. */
+.quiz-correct {
+  color: var(--color-success);
+}
+
+.quiz-incorrect {
+  color: var(--color-danger);
+}

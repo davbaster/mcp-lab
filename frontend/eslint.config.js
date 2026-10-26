@@ -129,4 +129,13 @@ export default tseslint.config(
       "no-restricted-syntax": ["error", ...restrictedSyntax, ...noHtmlSyntax],
     },
   },
+  // The quiz page: question, option and explanation text is author text too. Its tests read the
+  // rendered HTML to prove that nothing leaked, so they are not covered.
+  {
+    files: ["src/quiz/**/*.{ts,tsx}", "src/pages/QuizPage.tsx"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": ["error", ...restrictedSyntax, ...noHtmlSyntax],
+    },
+  },
 );

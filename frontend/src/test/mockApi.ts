@@ -47,6 +47,11 @@ export function jsonResponse(body: unknown, status = 200, headers: Record<string
   });
 }
 
+/** An accepted request with no body, like `POST /api/feedback` answers. */
+export function acceptedResponse(): Response {
+  return new Response(null, { status: 202, headers: { "Cache-Control": "private, no-store" } });
+}
+
 /**
  * A response in the shared error shape `{ "error": { "code", "message" } }`. `headers` are added
  * to the JSON content type, for example `{ "Retry-After": "900" }` for a 429.

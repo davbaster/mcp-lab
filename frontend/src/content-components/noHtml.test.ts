@@ -51,6 +51,17 @@ describe("the no-HTML rule in the renderer", () => {
     expect((await messages(snippets[0][1], "src/content-components/deep/Snippet.tsx")).length).toBeGreaterThan(0);
   });
 
+  it("applies in the quiz page and the quiz folder", async () => {
+    expect((await messages(snippets[3][1], "src/pages/QuizPage.tsx")).length).toBeGreaterThan(0);
+    expect((await messages(snippets[0][1], "src/quiz/Snippet.tsx")).length).toBeGreaterThan(0);
+    expect((await messages(snippets[8][1], "src/quiz/deep/Snippet.ts")).length).toBeGreaterThan(0);
+  });
+
+  it("does not apply to the quiz tests, which read the rendered HTML", async () => {
+    expect(await messages(snippets[3][1], "src/pages/QuizPage.test.tsx")).toEqual([]);
+    expect(await messages(snippets[3][1], "src/quiz/Snippet.test.tsx")).toEqual([]);
+  });
+
   it("still bans fetch there (the existing rule list is kept)", async () => {
     const found = await messages("export const f = () => globalThis.fetch('/x');");
     expect(found.join(" ")).toContain("Use the generated API client");

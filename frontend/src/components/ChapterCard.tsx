@@ -7,6 +7,9 @@ type ChapterStatus = components["schemas"]["ChapterStatus"];
 /** Every quiz has 5 questions (the plan fixes it); the API does not return the total. */
 export const QUESTIONS_PER_QUIZ = 5;
 
+/** A score of 4 or more passes a quiz (the plan fixes it); the API does not return the pass mark. */
+export const PASS_SCORE = 4;
+
 const STATUS_LABEL: Record<ChapterStatus, string> = {
   locked: "Locked",
   in_progress: "In progress",

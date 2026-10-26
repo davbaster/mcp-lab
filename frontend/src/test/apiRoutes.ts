@@ -20,6 +20,8 @@ export interface RecordedCall {
   credentials: RequestCredentials;
   /** The parsed JSON body, or undefined when there was none. */
   body: unknown;
+  /** The body as sent, to prove that a value is nowhere in it. */
+  text: string;
 }
 
 type Handler = (call: RecordedCall) => Response | Promise<Response>;
@@ -41,6 +43,7 @@ export function apiRoutes(overrides: Record<string, Handler> = {}) {
       headers: Object.fromEntries(request.headers.entries()),
       credentials: request.credentials,
       body: text === "" ? undefined : JSON.parse(text),
+      text,
     };
     recorded.push(call);
     const handler = handlers[`${call.method} ${call.path}`];
