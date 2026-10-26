@@ -32,6 +32,10 @@ content-build/README.md text eol=lf
 courses/README.md text eol=lf
 /README.md text eol=lf
 /AGENTS.md text eol=lf
+# Files that a test reads line by line (the ignore rules), or whose bytes go into the cache key of the Mermaid diagrams (the config and its schema).
+/.gitignore text eol=lf
+content-build/mermaid-config.json text eol=lf
+content-build/schemas/mermaid-config.schema.json text eol=lf
 # The binary assets of the fixtures are committed as they are; the text ones are normalized before they are hashed, so line endings cannot change the golden output.
 content-build/fixtures/**/*.png binary
 content-build/fixtures/**/*.jpg binary

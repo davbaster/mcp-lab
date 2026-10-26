@@ -1,6 +1,7 @@
 // The renderer without a real browser (tier 1): how the browser is started, what its failures become, and what Mermaid's message is cleaned to.
 
-import { existsSync } from "node:fs";
+import { EventEmitter } from "node:events";
+import { existsSync, rmSync } from "node:fs";
 import type { Browser, LaunchOptions } from "puppeteer";
 import { describe, expect, it } from "vitest";
 import { DiagramRenderError, RENDER_TIMEOUT_MS, createMermaidRenderer, errorTextOfSvg, launchArguments, mermaidMessage } from "../src/mermaid-render.ts";
@@ -91,6 +92,134 @@ describe("how the browser is started", () => {
 
     expect(existsSync(profile)).toBe(false);
     expect(fake.browsers[0]?.closed).toBe(true);
+  });
+});
+
+describe("removing the temporary profile (Windows refuses for a while while the browser still holds files)", () => {
+  const eperm = () => Object.assign(new Error("EPERM, Permission denied: \\\\?\\C:\\Temp\\mermaid-profile-x"), { code: "EPERM" });
+
+  it("tries again when the system refuses (EPERM), and succeeds when it lets go", async () => {
+    const fake = fakeLauncher();
+    const profile = () => fake.launches[0]?.options.userDataDir as string;
+    let calls = 0;
+    const warnings: string[] = [];
+    const renderer = await createMermaidRenderer(CONFIG, {
+      launch: fake.launch,
+      env: {},
+      isRoot: false,
+      removeDelayMs: 1,
+      warn: (text) => warnings.push(text),
+      remove: (folder) => {
+        calls += 1;
+        if (calls <= 3) throw eperm();
+        rmSync(folder, { recursive: true, force: true });
+      },
+    });
+
+    await renderer.close();
+
+    expect(calls).toBe(4);
+    expect(warnings).toEqual([]);
+    expect(existsSync(profile())).toBe(false);
+  });
+
+  it("does not throw from close when it never lets go: it warns, with the folder and the reason, and the build goes on", async () => {
+    const fake = fakeLauncher();
+    const warnings: string[] = [];
+    let calls = 0;
+    const renderer = await createMermaidRenderer(CONFIG, {
+      launch: fake.launch,
+      env: {},
+      isRoot: false,
+      removeTries: 5,
+      removeDelayMs: 1,
+      warn: (text) => warnings.push(text),
+      remove: () => {
+        calls += 1;
+        throw eperm();
+      },
+    });
+    const profile = fake.launches[0]?.options.userDataDir as string;
+
+    await expect(renderer.close()).resolves.toBeUndefined();
+
+    expect(calls).toBe(5);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain(profile);
+    expect(warnings[0]).toContain("could not be removed");
+    expect(warnings[0]).toContain("EPERM");
+    expect(warnings[0]?.endsWith("\n")).toBe(true);
+    rmSync(profile, { recursive: true, force: true });
+  });
+
+  it("starts the next browser after a crash even when the old profile cannot be removed", async () => {
+    const fake = fakeLauncher(async (browser) => {
+      browser.connected = false;
+      throw new Error("Protocol error (Target.createTarget): Target closed");
+    });
+    const warnings: string[] = [];
+    const renderer = await createMermaidRenderer(CONFIG, {
+      launch: fake.launch,
+      env: {},
+      isRoot: false,
+      removeTries: 1,
+      warn: (text) => warnings.push(text),
+      remove: () => {
+        throw eperm();
+      },
+    });
+
+    const error = await renderer.render("graph TD\n A --> B").catch((caught: unknown) => caught);
+
+    expect((error as DiagramRenderError).kind).toBe("crash");
+    expect(warnings).toHaveLength(1);
+    await renderer.render("graph TD\n A --> B").catch(() => undefined);
+    expect(fake.launches).toHaveLength(2);
+    for (const { options } of fake.launches) rmSync(options.userDataDir as string, { recursive: true, force: true });
+  });
+
+  it("waits until the browser process has exited before it removes the profile, and kills a browser that did not close", async () => {
+    const order: string[] = [];
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: null as number | null,
+      signalCode: null as string | null,
+      kill: () => {
+        order.push("kill");
+        setTimeout(() => {
+          child.exitCode = 0;
+          order.push("exit");
+          child.emit("exit", 0);
+        }, 30);
+        return true;
+      },
+    });
+    const launches: LaunchOptions[] = [];
+    const launch = async (options: LaunchOptions): Promise<Browser> => {
+      launches.push(options);
+      return { connected: true, close: async () => undefined, process: () => child, newPage: () => new Promise<never>(() => undefined) } as unknown as Browser;
+    };
+    const renderer = await createMermaidRenderer(CONFIG, { launch, env: {}, isRoot: false, remove: () => void order.push("remove") });
+
+    await renderer.close();
+
+    expect(order).toEqual(["kill", "exit", "remove"]);
+    rmSync(launches[0]?.userDataDir as string, { recursive: true, force: true });
+  });
+
+  it("removes the profile at once when the browser has already exited", async () => {
+    const order: string[] = [];
+    const child = Object.assign(new EventEmitter(), { exitCode: 0, signalCode: null, kill: () => void order.push("kill") });
+    const launches: LaunchOptions[] = [];
+    const launch = async (options: LaunchOptions): Promise<Browser> => {
+      launches.push(options);
+      return { connected: true, close: async () => undefined, process: () => child, newPage: () => new Promise<never>(() => undefined) } as unknown as Browser;
+    };
+    const renderer = await createMermaidRenderer(CONFIG, { launch, env: {}, isRoot: false, remove: () => void order.push("remove") });
+
+    await renderer.close();
+
+    expect(order).toEqual(["remove"]);
+    rmSync(launches[0]?.userDataDir as string, { recursive: true, force: true });
   });
 });
 

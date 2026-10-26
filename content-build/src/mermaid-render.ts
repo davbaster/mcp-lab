@@ -5,6 +5,7 @@
 // network, a temporary profile, and its sandbox on (see `launchArguments`). The page holds only Mermaid and the text of the
 // diagram, from this repo. puppeteer and mermaid-cli are imported when the first diagram is drawn, so the other commands never load them.
 
+import type { ChildProcess } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -49,7 +50,18 @@ export type RendererOptions = {
   isRoot?: boolean;
   /** The time one diagram may take. Defaults to {@link RENDER_TIMEOUT_MS}. */
   timeoutMs?: number;
+  /** Removes the temporary profile folder. Defaults to `rmSync` with `recursive`. For tests (Windows can refuse for a while after the browser exits). */
+  remove?: (folder: string) => void;
+  /** How often removing the profile is tried, and how long to wait between tries. Defaults to {@link PROFILE_REMOVE_TRIES} and {@link PROFILE_REMOVE_DELAY_MS}. */
+  removeTries?: number;
+  removeDelayMs?: number;
+  /** Where the warning goes when the profile cannot be removed. Defaults to stderr. */
+  warn?: (text: string) => void;
 };
+
+/** Windows keeps the files of a browser locked for a short time after it exits, so removing its profile is tried again and again before it is given up. */
+export const PROFILE_REMOVE_TRIES = 20;
+export const PROFILE_REMOVE_DELAY_MS = 250;
 
 /**
  * The flags of the browser: no network (every host name, and so every address, is not found), and `--no-sandbox` only when the
@@ -137,18 +149,52 @@ export async function createMermaidRenderer(config: MermaidConfig, options: Rend
     browser = await launch(launchOptions);
   };
 
+  const remove = options.remove ?? ((folder: string) => rmSync(folder, { recursive: true, force: true }));
+  const warn = options.warn ?? ((text: string) => void process.stderr.write(text));
+
+  /** Waits until `child` has exited (or `ms` have passed), so that it no longer holds the files of the profile. */
+  const exited = (child: ChildProcess | null | undefined, ms: number) =>
+    child === null || child === undefined || child.exitCode !== null || child.signalCode !== null
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, ms);
+          child.once("exit", () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        });
+
+  /** Removes the profile folder, trying again while the system refuses. A folder that cannot be removed is a warning, never an error of the build. */
+  const removeProfile = async (folder: string) => {
+    const tries = options.removeTries ?? PROFILE_REMOVE_TRIES;
+    let failure: unknown;
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
+      try {
+        remove(folder);
+        return;
+      } catch (error) {
+        failure = error;
+        if (attempt < tries) await new Promise((resolve) => setTimeout(resolve, options.removeDelayMs ?? PROFILE_REMOVE_DELAY_MS));
+      }
+    }
+    warn(`warning: the temporary browser profile ${folder} could not be removed (${failure instanceof Error ? failure.message : String(failure)}); delete it by hand\n`);
+  };
+
   const discard = async () => {
     const old = browser;
     browser = undefined;
     if (old !== undefined) {
+      const child = old.process();
       await Promise.race([old.close().catch(() => undefined), new Promise<void>((resolve) => setTimeout(resolve, 5000).unref())]);
       try {
-        old.process()?.kill("SIGKILL");
+        if (child !== null && child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
       } catch {
         // already gone
       }
+      // The browser must be gone before its profile is removed: a running browser holds files in it (Windows refuses with EPERM).
+      await exited(child, 5000);
     }
-    if (profile !== undefined) rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    if (profile !== undefined) await removeProfile(profile);
     profile = undefined;
   };
 

@@ -12,7 +12,7 @@ export const DEFAULT_MERMAID_CONFIG = join(dirname(fileURLToPath(import.meta.url
 
 const validateConfig = newAjv().compile(mermaidConfigSchema);
 
-/** The config as parsed, and its bytes exactly as they are on disk (the cache key hashes the bytes). */
+/** The config as parsed, and its bytes (the cache key hashes them): the file's text as UTF-8 with LF line endings, so a checkout with CRLF gives the same key. */
 export type MermaidConfig = { bytes: Uint8Array; settings: Record<string, unknown> };
 
 /** Reads and checks the config. A file that cannot be read, is not JSON, or does not match `schemas/mermaid-config.schema.json` throws a `SetupError` that names the file and the key. */
@@ -25,8 +25,10 @@ export function loadMermaidConfig(path: string = DEFAULT_MERMAID_CONFIG): Mermai
     throw new SetupError(`${name}: the file cannot be read`);
   }
   let data: unknown;
+  let text: string;
   try {
-    data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    data = JSON.parse(text);
   } catch (error) {
     const reason = error instanceof SyntaxError ? `is not valid JSON (${error.message})` : "is not valid UTF-8 text";
     throw new SetupError(`${name}: the file ${reason}`);
@@ -37,5 +39,5 @@ export function loadMermaidConfig(path: string = DEFAULT_MERMAID_CONFIG): Mermai
     const extra = first?.keyword === "additionalProperties" ? ` (unknown key \`${String(first.params.additionalProperty)}\`)` : "";
     throw new SetupError(`${name}: ${key === "" ? "the file" : `\`${key}\``} ${first?.message ?? "does not match mermaid-config.schema.json"}${extra}`);
   }
-  return { bytes, settings: data as Record<string, unknown> };
+  return { bytes: new TextEncoder().encode(text.replace(/\r\n?/g, "\n")), settings: data as Record<string, unknown> };
 }

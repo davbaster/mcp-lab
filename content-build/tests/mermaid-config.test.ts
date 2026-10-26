@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SetupError } from "../src/component-schemas.ts";
+import { cacheKey } from "../src/mermaid-cache.ts";
 import { DEFAULT_MERMAID_CONFIG, loadMermaidConfig } from "../src/mermaid-config.ts";
 import { PART_DIR, temporaryFolder } from "./helpers.ts";
 
@@ -188,5 +189,29 @@ describe("the colors are the colors of the design system", () => {
   it("uses the light theme only, with a white background", () => {
     expect(THEME.darkMode).toBe(false);
     expect(THEME.background).toBe(tokens.get("--color-bg"));
+  });
+});
+
+describe("a config file with CRLF line endings (a Windows checkout without the .gitattributes rule)", () => {
+  const crlf = () => {
+    const path = join(temporaryFolder(), "mermaid-config.json");
+    writeFileSync(path, readFileSync(DEFAULT_MERMAID_CONFIG, "utf8").replaceAll("\n", "\r\n"));
+    return path;
+  };
+
+  it("loads, with the same settings and the same bytes (LF), so the cache key does not depend on the line endings", () => {
+    const path = crlf();
+    expect(readFileSync(path, "utf8")).toContain("\r\n");
+
+    const loaded = loadMermaidConfig(path);
+
+    expect(loaded.settings).toEqual(SETTINGS);
+    expect(Buffer.from(loaded.bytes).equals(Buffer.from(loadMermaidConfig().bytes))).toBe(true);
+    const parts = { source: "graph TD\n A --> B", mermaid: "1", mermaidCli: "1", chromium: "1" };
+    expect(cacheKey({ ...parts, config: loaded.bytes })).toBe(cacheKey({ ...parts, config: loadMermaidConfig().bytes }));
+  });
+
+  it("keeps the committed file at LF in the repository", () => {
+    expect(readFileSync(DEFAULT_MERMAID_CONFIG, "utf8")).not.toContain("\r");
   });
 });

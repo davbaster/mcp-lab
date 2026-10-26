@@ -437,6 +437,18 @@ def test_ci_content_build_job_runs_the_make_targets_with_the_node_version_file()
     assert "frontend" not in content_build
 
 
+def test_ci_content_build_job_turns_the_browser_sandbox_off_and_no_other_job_does():
+    content_build = _ci_job("content-build")
+
+    # Ubuntu 24.04 (AppArmor) blocks Chromium's sandbox for a normal user, and the diagram tests start Chromium (#55).
+    env = re.search(r"^    env:\n((?:      .*\n)+)    steps:\n", content_build + "\n", re.MULTILINE)
+    assert env, "the content-build job needs a job-level env: block, before steps:"
+    assert [line.strip() for line in env.group(1).splitlines() if not line.strip().startswith("#")] == ["MERMAID_NO_SANDBOX: 1"]
+    assert "AppArmor" in env.group(1)
+    for other in ("backend", "frontend", "docker-images"):
+        assert "MERMAID_NO_SANDBOX" not in _ci_job(other)
+
+
 def test_ci_content_build_job_checks_out_the_whole_history_for_the_id_check():
     content_build = _ci_job("content-build")
 

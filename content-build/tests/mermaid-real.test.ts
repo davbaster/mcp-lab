@@ -15,7 +15,7 @@ import { DiagramRenderError, chromiumBuild } from "../src/mermaid-render.ts";
 import { svgProblems } from "../src/svg.ts";
 import { VALID_COURSES, filesOf, newBuildFolder, runBuild } from "./build-support.ts";
 import { temporaryFolder } from "./helpers.ts";
-import { BROWSER_TEST_TIMEOUT_MS, MERMAID_GOLDEN, TYPES_LESSON, lesson, mermaidCourses, realRenderer, typesLessonUses } from "./mermaid-helpers.ts";
+import { BROWSER_TEST_TIMEOUT_MS, MERMAID_GOLDEN, TYPES_LESSON, lesson, mermaidCourses, firstDifference, realRenderer, typesLessonUses } from "./mermaid-helpers.ts";
 
 const REPEATS = "chapters/02-more-diagrams/lessons/01-repeats.mdx";
 const NO_DIAGRAM = lesson("No diagram here.");
@@ -65,9 +65,9 @@ describe("the same source gives the same bytes (all supported types)", () => {
   it.each(TYPED.map(({ type }) => type))("%s: twice in one browser, in the reverse order, and in a new browser gives byte-identical SVG that equals the golden file", (type) => {
     const golden = readFileSync(join(MERMAID_GOLDEN, "renderer", `${type}.svg`), "utf8");
 
-    expect(renders.forward.get(type)).toBe(golden);
-    expect(renders.reverse.get(type)).toBe(golden);
-    expect(renders.fresh.get(type)).toBe(golden);
+    expect(firstDifference(renders.forward.get(type) ?? "", golden)).toBe("");
+    expect(firstDifference(renders.reverse.get(type) ?? "", golden)).toBe("");
+    expect(firstDifference(renders.fresh.get(type) ?? "", golden)).toBe("");
   });
 });
 
@@ -120,7 +120,7 @@ describe.runIf(process.platform === "linux")("Linux only: a fontconfig with one 
     const renderer = await realRenderer({ launch });
     try {
       for (const { type, source } of TYPED) {
-        expect(await renderer.render(source), type).toBe(readFileSync(join(MERMAID_GOLDEN, "renderer", `${type}.svg`), "utf8"));
+        expect(firstDifference(await renderer.render(source), readFileSync(join(MERMAID_GOLDEN, "renderer", `${type}.svg`), "utf8")), type).toBe("");
       }
     } finally {
       await renderer.close();
@@ -192,7 +192,7 @@ describe("how the real browser is started", () => {
     try {
       const golden = readFileSync(join(MERMAID_GOLDEN, "renderer", "graph.svg"), "utf8");
       const graph = TYPED.find(({ type }) => type === "graph")?.source as string;
-      expect(await renderer.render(graph)).toBe(golden);
+      expect(firstDifference(await renderer.render(graph), golden)).toBe("");
       browsers[0]?.process()?.kill("SIGKILL");
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -200,7 +200,7 @@ describe("how the real browser is started", () => {
 
       expect((error as DiagramRenderError).kind).toBe("crash");
       expect((error as DiagramRenderError).message).toBe("the browser crashed while it drew this diagram; run the build again");
-      expect(await renderer.render(graph)).toBe(golden);
+      expect(firstDifference(await renderer.render(graph), golden)).toBe("");
       expect(browsers).toHaveLength(2);
     } finally {
       await renderer.close();

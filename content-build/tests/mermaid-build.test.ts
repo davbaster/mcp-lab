@@ -235,6 +235,18 @@ describe("when the browser is needed", () => {
     expect(same.code).toBe(0);
   });
 
+  it("treats a mermaid-config.json with CRLF line endings as the same config: it is a cache hit", async () => {
+    const first = await buildWith();
+    const config = join(temporaryFolder(), "mermaid-config.json");
+    writeFileSync(config, readFileSync(join(PART_DIR, "mermaid-config.json"), "utf8").replaceAll("\n", "\r\n"));
+
+    const second = await buildWith({ cache: first.cache, extra: { mermaidConfigPath: config }, renderer: { ...fakeRenderer(), factory: forbiddenRenderer } });
+
+    expect(second.stderr).toBe("");
+    expect(second.code).toBe(0);
+    expect(snapshotOf(second.build)).toEqual(snapshotOf(first.build));
+  });
+
   it("ignores a cache entry that is empty, is not UTF-8, or fails the SVG rules, and draws that diagram again", async () => {
     const first = await buildWith();
     const files = readdirSync(first.cache).filter((name) => name.endsWith(".svg")).sort();

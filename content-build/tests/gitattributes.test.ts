@@ -11,7 +11,7 @@ import { FIXTURES, PART_DIR, temporaryFolder } from "./helpers.ts";
 const ROOT = join(PART_DIR, "..");
 const ATTRIBUTES = readFileSync(join(ROOT, ".gitattributes"), "utf8");
 /** The docs (outside fixtures/) that the tests read as text. */
-const DOCS = ["content-build/README.md", "courses/README.md", "README.md", "AGENTS.md"];
+const DOCS = ["content-build/README.md", "courses/README.md", "README.md", "AGENTS.md", ".gitignore", "content-build/mermaid-config.json", "content-build/schemas/mermaid-config.schema.json"];
 
 /** Every file under fixtures/, as a path from the repository root with `/`. */
 function fixtureFiles(): string[] {
@@ -110,5 +110,13 @@ describe(".gitattributes covers the files that the tests read", () => {
       .join("\n");
 
     expect(unclassified(without, DOCS)).toEqual(["content-build/README.md", "courses/README.md"]);
+  });
+
+  it("fails for the ignore rules, the Mermaid config, and its schema when their rules are removed (a Windows checkout would give them CRLF)", () => {
+    const without = ATTRIBUTES.split("\n")
+      .filter((line) => !/^(\/\.gitignore|content-build\/mermaid-config\.json|content-build\/schemas\/mermaid-config\.schema\.json) /.test(line))
+      .join("\n");
+
+    expect(unclassified(without, DOCS)).toEqual([".gitignore", "content-build/mermaid-config.json", "content-build/schemas/mermaid-config.schema.json"]);
   });
 });

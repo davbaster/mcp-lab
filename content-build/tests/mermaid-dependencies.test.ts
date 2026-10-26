@@ -76,6 +76,6 @@ describe("the browser is a separate install", () => {
   });
 
   it("keeps the cache folder out of git", () => {
-    expect(read(".gitignore").split("\n")).toContain("/content-build/.cache/");
+    expect(read(".gitignore").split(/\r?\n/)).toContain("/content-build/.cache/");
   });
 });

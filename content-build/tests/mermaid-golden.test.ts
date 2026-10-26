@@ -8,9 +8,9 @@ import { describe, expect, it } from "vitest";
 import { treeErrors } from "../src/lesson-tree.ts";
 import type { LessonTree } from "../src/lesson-tree.ts";
 import { svgProblems } from "../src/svg.ts";
-import { filesOf, newBuildFolder, runBuild, snapshotOf } from "./build-support.ts";
+import { filesOf, foldersOf, newBuildFolder, runBuild } from "./build-support.ts";
 import { PART_DIR, SLOW_PROCESS_TIMEOUT_MS, temporaryFolder } from "./helpers.ts";
-import { BROWSER_TEST_TIMEOUT_MS, MERMAID_COURSES, MERMAID_GOLDEN } from "./mermaid-helpers.ts";
+import { BROWSER_TEST_TIMEOUT_MS, MERMAID_COURSES, MERMAID_GOLDEN, differences } from "./mermaid-helpers.ts";
 
 const BUILD_GOLDEN = join(MERMAID_GOLDEN, "build");
 const TYPES = ["classDiagram", "erDiagram", "flowchart", "graph", "pie", "sequenceDiagram", "stateDiagram", "stateDiagram-v2"];
@@ -95,7 +95,8 @@ describe("the real build of the fixture gives the golden bytes (tier 2)", () => 
 
     expect(stderr).toBe("");
     expect(code).toBe(0);
-    expect(snapshotOf(build)).toEqual(snapshotOf(BUILD_GOLDEN));
+    expect(differences(filesOf(build), filesOf(BUILD_GOLDEN))).toEqual([]);
+    expect(foldersOf(build)).toEqual(foldersOf(BUILD_GOLDEN));
   }, BROWSER_TEST_TIMEOUT_MS);
 
   it("gives byte-identical files from two working folders, into two build folders, with two caches, and a warm cache gives the same bytes again", () => {
@@ -117,8 +118,8 @@ describe("the real build of the fixture gives the golden bytes (tier 2)", () => 
       expect(result.stderr).toBe("");
       expect(result.status).toBe(0);
     }
-    expect(snapshotOf(one.build)).toEqual(snapshotOf(two.build));
-    expect(snapshotOf(warm.build)).toEqual(snapshotOf(one.build));
-    expect(snapshotOf(one.build)).toEqual(snapshotOf(BUILD_GOLDEN));
+    expect(differences(filesOf(two.build), filesOf(one.build))).toEqual([]);
+    expect(differences(filesOf(warm.build), filesOf(one.build))).toEqual([]);
+    expect(differences(filesOf(one.build), filesOf(BUILD_GOLDEN))).toEqual([]);
   }, BROWSER_TEST_TIMEOUT_MS + 2 * SLOW_PROCESS_TIMEOUT_MS);
 });
