@@ -118,7 +118,7 @@ On-call commands will be added as their task is done.
 ## Working style
 
 - Keep changes scoped to the issue you're working on. If you find something else that needs doing, note it rather than fixing it in the same change.
-- Add or update tests with every change, and run the relevant test suites, linters, and type checks before saying a task is done.
+- For now, don't add new tests (David's decision, 2026-10-26; see `HANDOFF.md`). Never skip or delete existing tests, and run the relevant test suites, linters, and type checks before saying a task is done.
 - Match the surrounding code's style, naming, and comment density.
 - Work on a branch, never directly on `main`. Reference the issue in commits and PRs (for example `Closes #7`).
 - Don't commit secrets. Configuration comes from environment variables.
