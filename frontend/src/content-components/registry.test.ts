@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { Model3DBlock } from "./Model3DBlock";
 import { PendingComponent } from "./PendingComponent";
 import { lookupComponent, registry } from "./registry";
+import { VideoBlock } from "./VideoBlock";
 
 /**
- * Components that have a schema but no component yet. They map to PendingComponent. #20 removes
- * Video and Model3D when it builds them.
+ * Components that have a schema but no component yet. They map to PendingComponent. Every
+ * component is built, so the list is empty; a new schema adds its name here until its component
+ * exists.
  */
-const PENDING = ["Model3D", "Video"];
+const PENDING: string[] = [];
 
 const schemas = import.meta.glob("./schemas/*.schema.json", { eager: true, import: "default" });
 const schemaNames = Object.keys(schemas).map((path) => /\/([^/]+)\.schema\.json$/.exec(path)?.[1] as string);
@@ -30,6 +33,11 @@ describe("the registry and the schemas", () => {
       .map(([name]) => name)
       .sort();
     expect(placeholders).toEqual(PENDING);
+  });
+
+  it("maps Video and Model3D to their own components", () => {
+    expect(registry.Video).toBe(VideoBlock);
+    expect(registry.Model3D).toBe(Model3DBlock);
   });
 
   it("does not list a pending component that has no schema", () => {

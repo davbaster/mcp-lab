@@ -10,6 +10,7 @@ import chapterCode from "../content-components/fixtures/chapter-code.response.js
 import markdown from "../content-components/fixtures/markdown.tree.json";
 import welcome from "../content-components/fixtures/welcome.lesson.json";
 import { apiRoutes, deferred } from "../test/apiRoutes";
+import { stubWebgl } from "../test/device";
 import { errorResponse, htmlResponse, jsonResponse } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
 import { component, heading, paragraph, spyOnConsole, tab, text } from "../test/renderTree";
@@ -110,11 +111,16 @@ describe("loading and the loaded lesson", () => {
 
   it("renders a copy of the real build's output, with the components it has built", async () => {
     const log = spyOnConsole();
+    stubWebgl([]);
     routes({ lessons: { a: lesson("a", { tree: allAssets }) } });
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findAllByRole("tab")).toHaveLength(2);
     expect(document.querySelector("img[alt='A picture']")).toBeTruthy();
+    expect(document.querySelector("video")).toBeTruthy();
+    expect(document.querySelector("iframe")).toBeTruthy();
+    // This test browser has no WebGL, so each model shows its poster and says so.
+    expect(screen.getAllByText("3D view is not available on this device")).toHaveLength(2);
     expect(document.querySelector(".callout-note")).toBeTruthy();
     await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));
   });

@@ -9,6 +9,17 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    resolve: {
+      alias: [
+        {
+          // <model-viewer> imports this three.js module but never uses it here, and evaluating it compiles
+          // WebAssembly, which the Content-Security-Policy refuses. See the stub for the full reason.
+          find: /^three\/examples\/jsm\/libs\/meshopt_decoder\.module\.js$/,
+          // Relative to the project root, so it is the same on every platform.
+          replacement: "/src/content-components/meshoptDecoderStub.ts",
+        },
+      ],
+    },
     // Dev server only. `vite preview` copies `server.proxy` unless `preview.proxy` is set, so
     // it is set to an empty object. The production build never proxies.
     // In Docker and production, Caddy routes /api to the backend.

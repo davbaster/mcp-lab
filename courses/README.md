@@ -128,6 +128,7 @@ See the [MCP specification](https://modelcontextprotocol.io/) for more.
   | `Tab` (only inside `Tabs`) | `label` | Markdown and components |
   | `CodeSteps` | `step` (a whole number of 1 or more); optional `file` | none |
 
+- A `Model3D` file must be an uncompressed `.glb` or `.gltf` (export without Draco, KTX2, or Meshopt compression): the page's Content-Security-Policy does not allow the decoders for those, so a compressed model shows "This 3D model could not be loaded." with its poster.
 - Props are written as text in quotes (`alt="A server"`). A prop must not be empty. The text can hold character references such as `&amp;`.
 - Links and URL props (`src`, `captions`, `poster`) that are relative (`../a.md`, `/x`, `#section`, `?q=1`) or start with `http:`, `https:`, or `mailto:`.
 - Code that only looks like code: inside a code fence or in `inline code`, anything goes (`import x`, `<script>`, `{1 + 1}`, `onClick`). In ordinary text, write a brace as `\{`. The text `a < b` is fine.
