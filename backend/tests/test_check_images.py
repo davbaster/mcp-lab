@@ -112,5 +112,5 @@ def test_the_script_builds_the_backend_with_the_fixture_course_and_the_repo_root
 
     assert 'FIXTURE_COURSES = "content-build/fixtures/valid"' in text
     assert '"-f", "backend/Dockerfile", "--build-arg", f"COURSES_DIR={FIXTURE_COURSES}", "."' in text
-    assert 'build(frontend_image, "frontend")' in text
+    assert 'build(frontend_image, "-f", "frontend/Dockerfile", ".")' in text  # the repo root too: it reads media-config.json
     assert "rmi" in text and "rm" in text  # it removes what it made

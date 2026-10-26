@@ -1,0 +1,24 @@
+# The build context of the frontend image is the repo root (compose.yaml: context: .), so this file is an
+# allowlist: everything is ignored except what the Dockerfile copies. BuildKit reads this file because it
+# sits next to the Dockerfile and is named Dockerfile.dockerignore; a .dockerignore in frontend/ or at the
+# repo root is not used for this image.
+# Later lines win. Patterns start with **/ so they match in subfolders too (a bare name only matches at the context root).
+*
+
+# The app, and the one list of media origins (its Content-Security-Policy is built from it).
+!frontend
+!content-build/media-config.json
+
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.eslintcache
+**/.vite
+**/.git
+**/.env*
+# Course build output must never end up in the frontend image.
+**/build
+**/private
+frontend/Dockerfile
+frontend/Dockerfile.dockerignore
