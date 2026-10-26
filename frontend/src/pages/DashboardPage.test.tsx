@@ -1,5 +1,5 @@
-import { screen, waitFor, within } from "@testing-library/react";
-import { expect, it } from "vitest";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { NETWORK_ERROR_MESSAGE, UNEXPECTED_RESPONSE_MESSAGE } from "../api/apiError";
 import { apiRoutes, deferred } from "../test/apiRoutes";
 import { errorResponse, htmlResponse, jsonResponse } from "../test/mockApi";
@@ -442,4 +442,245 @@ it("becomes the visitor view without an error when the progress call answers 401
   }
   expect(screen.queryByRole("link", { name: /Resume|Start course|quiz/i })).toBeNull();
   await waitFor(() => expect(api.calls("GET /api/courses/demo/progress")).toHaveLength(1));
+});
+
+/** Lets a held-back response's continuation run before the test looks at the page. */
+const settleOldResponse = () => act(() => new Promise<void>((done) => setTimeout(done, 20)));
+
+it("ignores a chapters answer from before the session ended, and shows the visitor view", async () => {
+  const oldChapters = deferred<Response>();
+  let chaptersCalls = 0;
+  const api = apiRoutes({
+    "GET /api/auth/me": learnerMe,
+    "GET /api/courses": () => jsonResponse({ courses: [course] }),
+    "GET /api/courses/demo/chapters": () => {
+      chaptersCalls += 1;
+      return chaptersCalls === 1 ? oldChapters.promise : jsonResponse({ course_id: "demo", chapters });
+    },
+    "GET /api/courses/demo/progress": () => errorResponse(401, "not_authenticated", "Sign in to continue."),
+  });
+  renderApp("/courses/demo");
+
+  // The progress 401 turns the page into the visitor view, which loads again.
+  expect(await screen.findByRole("link", { name: "Start reading" })).toBeTruthy();
+  expect(api.calls("GET /api/courses/demo/chapters")).toHaveLength(2);
+  oldChapters.resolve(jsonResponse({ course_id: "demo", chapters: [chapter("old", "Old chapter", true, ["z"])] }));
+  await settleOldResponse();
+
+  expect(screen.getByRole("link", { name: "Start reading" })).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.queryByRole("heading", { level: 2, name: "Old chapter" })).toBeNull();
+  expect(screen.getByRole("heading", { level: 2, name: "First steps" })).toBeTruthy();
+});
+
+it("shows Loading…, not the answer of a request that started before the session check restarted", async () => {
+  const oldChapters = deferred<Response>();
+  const secondMe = deferred<Response>();
+  const secondChapters = deferred<Response>();
+  let me = 0;
+  let chaptersCalls = 0;
+  apiRoutes({
+    "GET /api/auth/me": () => {
+      me += 1;
+      return me === 1 ? errorResponse(500, "internal_error", "Session check broke.") : secondMe.promise;
+    },
+    "GET /api/courses": () => jsonResponse({ courses: [course] }),
+    "GET /api/courses/demo/chapters": () => {
+      chaptersCalls += 1;
+      return chaptersCalls === 1 ? oldChapters.promise : secondChapters.promise;
+    },
+  });
+  const { user } = renderApp("/courses/demo");
+
+  // The visitor load is under way when the banner's Try again starts the session check again.
+  await user.click(await screen.findByRole("button", { name: "Try again" }));
+  oldChapters.resolve(jsonResponse({ course_id: "demo", chapters: [chapter("old", "Old chapter", true, ["z"])] }));
+  await settleOldResponse();
+  secondMe.resolve(errorResponse(401, "not_authenticated", "Sign in to continue."));
+
+  // Back to a visitor, the same caller as the old answer, whose request is still the only answer so far.
+  await waitFor(() => expect(chaptersCalls).toBe(2));
+  expect(screen.getByRole("status").textContent).toBe("Loading…");
+  expect(screen.queryByRole("heading", { level: 2, name: "Old chapter" })).toBeNull();
+  secondChapters.resolve(jsonResponse({ course_id: "demo", chapters }));
+  expect(await screen.findByRole("heading", { level: 2, name: "First steps" })).toBeTruthy();
+  expect(screen.queryByRole("heading", { level: 2, name: "Old chapter" })).toBeNull();
+});
+
+it("resumes the first of two in-progress chapters", async () => {
+  routes({
+    progressBody: progress([
+      progressEntry("c1", "in_progress", null, "b"),
+      progressEntry("c2", "in_progress", null, "d"),
+      progressEntry("c3", "locked", null, null),
+    ]),
+  });
+  renderApp("/courses/demo");
+
+  expect(href(await screen.findByRole("link", { name: "Resume" }))).toBe("/courses/demo/lessons/b");
+  expect(screen.getAllByRole("link", { name: "Resume" })).toHaveLength(1);
+});
+
+it("says Resume, not Start course, when a lesson was saved but no chapter is passed", async () => {
+  routes({
+    progressBody: progress([
+      progressEntry("c1", "in_progress", null, "b"),
+      progressEntry("c2", "locked", null, null),
+      progressEntry("c3", "locked", null, null),
+    ]),
+  });
+  renderApp("/courses/demo");
+
+  expect(href(await screen.findByRole("link", { name: "Resume" }))).toBe("/courses/demo/lessons/b");
+  expect(screen.queryByRole("link", { name: "Start course" })).toBeNull();
+});
+
+it("shows a best score of 0 as Best score: 0/5, not Not attempted", async () => {
+  routes({
+    progressBody: progress([
+      progressEntry("c1", "in_progress", 0, null),
+      progressEntry("c2", "locked", null, null),
+      progressEntry("c3", "locked", null, null),
+    ]),
+  });
+  renderApp("/courses/demo");
+
+  await screen.findByRole("link", { name: "Start course" });
+  expect(card("First steps").getByText("Best score: 0/5")).toBeTruthy();
+  expect(card("First steps").queryByText("Not attempted")).toBeNull();
+});
+
+it("shows the progress status when it conflicts with the status of the chapters answer", async () => {
+  routes({
+    progressBody: progress([
+      progressEntry("c1", "passed", 4, "b"),
+      progressEntry("c2", "in_progress", null, "c"),
+      progressEntry("c3", "locked", null, null),
+    ]),
+    chaptersBody: {
+      course_id: "demo",
+      chapters: [
+        chapter("c1", "First steps", true, ["a", "b"], "locked"),
+        chapter("c2", "Middle part", false, ["c", "d"], "passed"),
+        chapter("c3", "Last part", false, ["e"], "in_progress"),
+      ],
+    },
+  });
+  renderApp("/courses/demo");
+
+  expect(href(await screen.findByRole("link", { name: "Resume" }))).toBe("/courses/demo/lessons/c");
+  expect(card("First steps").getByText("Passed")).toBeTruthy();
+  expect(card("Middle part").getByText("In progress")).toBeTruthy();
+  expect(card("Last part").getByText("Locked")).toBeTruthy();
+  expect(screen.queryByText("Passed", { selector: ".status-locked" })).toBeNull();
+  expect(card("Last part").queryByRole("link")).toBeNull();
+});
+
+it("falls back to the status of the chapters answer, not Locked, for a chapter with no progress entry", async () => {
+  routes({
+    progressBody: progress([]),
+    chaptersBody: {
+      course_id: "demo",
+      chapters: [
+        chapter("c1", "First steps", true, ["a"], "passed"),
+        chapter("c2", "Middle part", false, ["c", "d"], "in_progress"),
+        chapter("c3", "Last part", false, ["e"], "locked"),
+      ],
+    },
+  });
+  renderApp("/courses/demo");
+
+  expect(href(await screen.findByRole("link", { name: "Resume" }))).toBe("/courses/demo/lessons/c");
+  expect(card("First steps").getByText("Passed")).toBeTruthy();
+  expect(href(card("First steps").getByRole("link", { name: "Retake the quiz" }))).toBe("/courses/demo/chapters/c1/quiz");
+  expect(card("Middle part").getByText("In progress")).toBeTruthy();
+  expect(href(card("Middle part").getByRole("link", { name: "Take the quiz" }))).toBe("/courses/demo/chapters/c2/quiz");
+  expect(card("Last part").getByText("Locked")).toBeTruthy();
+});
+
+it("treats a learner's chapter with no progress entry and no status as locked", async () => {
+  routes({ progressBody: progress([]) });
+  renderApp("/courses/demo");
+
+  await screen.findByRole("heading", { level: 2, name: "Middle part" });
+  expect(screen.getAllByText("Locked")).toHaveLength(3);
+  expect(screen.queryByRole("link", { name: /quiz/i })).toBeNull();
+});
+
+describe("a course id that needs encoding", () => {
+  const odd = { ...course, id: "a b/c?d#e" };
+  const encoded = "a%20b%2Fc%3Fd%23e";
+  const oddChapters = [chapter("c 1", "Odd chapter", true, ["l 1"], "in_progress")];
+
+  function oddRoutes(learner: boolean) {
+    apiRoutes({
+      ...(learner && {
+        "GET /api/auth/me": learnerMe,
+        [`GET /api/courses/${encoded}/progress`]: () =>
+          jsonResponse({ course_id: odd.id, course_complete: false, chapters: [progressEntry("c 1", "in_progress", null, "l 1")] }),
+      }),
+      "GET /api/courses": () => jsonResponse({ courses: [odd] }),
+      [`GET /api/courses/${encoded}/chapters`]: () => jsonResponse({ course_id: odd.id, chapters: oddChapters }),
+    });
+  }
+
+  it("encodes it in the lesson, quiz and Resume links of a learner", async () => {
+    oddRoutes(true);
+    renderApp(`/courses/${encoded}`);
+
+    expect(href(await screen.findByRole("link", { name: "Resume" }))).toBe(`/courses/${encoded}/lessons/l%201`);
+    expect(href(screen.getByRole("link", { name: "Lesson l 1" }))).toBe(`/courses/${encoded}/lessons/l%201`);
+    expect(href(screen.getByRole("link", { name: "Take the quiz" }))).toBe(`/courses/${encoded}/chapters/c%201/quiz`);
+  });
+
+  it("encodes it in the Start reading link and in the next value of the sign-in links of a visitor", async () => {
+    oddRoutes(false);
+    renderApp(`/courses/${encoded}`);
+
+    expect(href(await screen.findByRole("link", { name: "Start reading" }))).toBe(`/courses/${encoded}/lessons/l%201`);
+    // The course path is encoded once for the URL and again as the value of `next`.
+    const next = "/courses/a%2520b%252Fc%253Fd%2523e";
+    const prompt = within(screen.getByRole("region", { name: /Sign in to save/ }));
+    expect(href(prompt.getByRole("link", { name: "Sign in" }))).toBe(`/login?next=${next}`);
+    expect(href(prompt.getByRole("link", { name: "Create account" }))).toBe(`/register?next=${next}`);
+  });
+});
+
+it("shows an error with Try again when a public call answers 401, and keeps it for a visitor", async () => {
+  let attempt = 0;
+  apiRoutes({
+    "GET /api/courses": () => {
+      attempt += 1;
+      return attempt === 1 ? errorResponse(401, "not_authenticated", "Sign in to continue.") : jsonResponse({ courses: [course] });
+    },
+    "GET /api/courses/demo/chapters": () => jsonResponse({ course_id: "demo", chapters }),
+  });
+  const { user } = renderApp("/courses/demo");
+
+  const alert = await screen.findByRole("alert");
+  expect(within(alert).getByText("Sign in to continue.")).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
+  await user.click(within(alert).getByRole("button", { name: "Try again" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "First steps" })).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("shows no error when a public call answers 401 because the session ended, only the visitor view", async () => {
+  let chaptersCalls = 0;
+  apiRoutes({
+    "GET /api/auth/me": learnerMe,
+    "GET /api/courses": () => jsonResponse({ courses: [course] }),
+    "GET /api/courses/demo/chapters": () => {
+      chaptersCalls += 1;
+      return chaptersCalls === 1
+        ? errorResponse(401, "not_authenticated", "Sign in to continue.")
+        : jsonResponse({ course_id: "demo", chapters });
+    },
+    "GET /api/courses/demo/progress": () => jsonResponse(progress([progressEntry("c1", "in_progress", null, null)])),
+  });
+  renderApp("/courses/demo");
+
+  expect(await screen.findByRole("link", { name: "Start reading" })).toBeTruthy();
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("region", { name: "Sign in to save your progress and take quizzes" })).toBeTruthy();
 });

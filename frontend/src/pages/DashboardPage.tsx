@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { toApiError, type ApiError } from "../api/apiError";
+import { toApiError, UNEXPECTED_RESPONSE_MESSAGE, type ApiError } from "../api/apiError";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { registerPath, signInPath } from "../auth/paths";
@@ -71,18 +71,19 @@ export function DashboardPage() {
       learner ? settle(api.GET("/api/courses/{course_id}/progress", params)) : Promise.resolve(null),
     ]);
 
-    let next: State | null;
-    const failures = [courses, chapters, progress].flatMap((r) => (r && "failure" in r ? [r.failure] : []));
+    // A 401 from the progress call is not a failure: the learner's session ended, so the page shows
+    // the visitor view. A 401 from the public calls is one (the server never needs a session for them);
+    // if AuthProvider flips to visitor, the key changes and this answer is never shown.
+    let next: State;
+    const failures = [courses, chapters, progress].flatMap((r, i) =>
+      r && "failure" in r && !(i === 2 && isNotAuthenticated(r.failure)) ? [r.failure] : [],
+    );
     const found = "data" in courses ? courses.data.courses.find((c) => c.id === courseId) : undefined;
     if (failures.some(isCourseNotFound) || ("data" in courses && !found)) {
       next = { kind: "notFound", key };
-    } else if (failures.some((f) => !isNotAuthenticated(f))) {
-      next = { kind: "error", key, message: failures.find((f) => !isNotAuthenticated(f))!.message };
-    } else if (!found || !("data" in chapters)) {
-      // Only a 401 from a public call: the session ended and AuthProvider is about to say "visitor".
-      next = null;
+    } else if (failures.length > 0 || !found || !("data" in chapters)) {
+      next = { kind: "error", key, message: failures[0]?.message ?? UNEXPECTED_RESPONSE_MESSAGE };
     } else {
-      // A 401 from the progress call leaves `progress` empty. AuthProvider turns the page into the visitor view.
       next = {
         kind: "loaded",
         key,
@@ -92,7 +93,7 @@ export function DashboardPage() {
       };
     }
     // Only the newest request may update the page.
-    if (id === requestId.current && next) setState(next);
+    if (id === requestId.current) setState(next);
   }, [courseId, mode, key]);
 
   useEffect(() => {
@@ -165,7 +166,9 @@ function Loaded({
   if (progress) {
     const target = complete ? null : resumeTarget(chapters, progressById);
     if (target) {
-      const started = progress.chapters.some((c) => c.last_lesson_id !== null || c.status === "passed");
+      const started =
+        progress.chapters.some((c) => c.last_lesson_id !== null) ||
+        chapters.some((c) => (progressById.get(c.id)?.status ?? c.status) === "passed");
       action = { label: started ? "Resume" : "Start course", to: lessonPath(courseId, target) };
     }
   } else {
@@ -175,7 +178,7 @@ function Loaded({
 
   return (
     <>
-      <p>{course.description}</p>
+      <p className="course-description">{course.description}</p>
       {action && (
         <p>
           <Link className="button" to={action.to}>
@@ -193,6 +196,7 @@ function Loaded({
       <ol className="chapter-list">
         {chapters.map((chapter) => {
           const entry = progressById.get(chapter.id);
+          // No progress entry and no status from the chapters call: nothing says it is open, so locked.
           const learner: ChapterLearnerView | null = progress
             ? { status: entry?.status ?? chapter.status ?? "locked", bestScore: entry?.best_score ?? null }
             : null;
