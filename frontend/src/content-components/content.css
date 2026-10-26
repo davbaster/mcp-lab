@@ -111,6 +111,7 @@
   background: none;
   font-size: var(--font-size-sm);
   white-space: pre;
+  tab-size: 4;
   overflow-wrap: normal;
   word-break: normal;
 }

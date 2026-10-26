@@ -66,6 +66,7 @@
   background: none;
   font: inherit;
   white-space: pre;
+  tab-size: 4;
 }
 
 /* The whole row is the target: at least 44px high. */

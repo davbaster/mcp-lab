@@ -38,6 +38,10 @@ describe("quiz.css", () => {
     expect(rule(".quiz-snippet code")).not.toMatch(/user-select/);
   });
 
+  it("shows a tab in a snippet as 4 columns, as the code viewer does", () => {
+    expect(rule(".quiz-snippet code")).toMatch(/tab-size:\s*4\b/);
+  });
+
   it("uses no raw color", () => {
     expect(css.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/);
   });

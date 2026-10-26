@@ -206,6 +206,11 @@ describe("content.css, code fences in lessons", () => {
     expect(rule(".lesson-content pre code")).not.toMatch(/white-space:\s*(normal|pre-wrap|pre-line)/);
   });
 
+  it("shows a tab as 4 columns, as the code viewer does", () => {
+    expect(rule(".lesson-content pre code")).toMatch(/tab-size:\s*4\b/);
+    expect(rule(".code-area")).toMatch(/tab-size:\s*4\b/);
+  });
+
   it("makes the block with its Copy button a shrinkable grid item that is never wider than the column", () => {
     expect(rule(".lesson-content > *")).toMatch(/min-width:\s*0/);
     expect(rule(".lesson-content .code-prose")).toMatch(/min-width:\s*0/);
