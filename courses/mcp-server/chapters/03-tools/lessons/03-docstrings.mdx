@@ -27,7 +27,7 @@ Compare the same server with weak and improved docstrings. Only the docstrings d
 
 "Get a note." does not say where the id comes from, so a model may guess one. The improved version says:
 
-- **When to call it.** "Call this when the user asks to remember something" and "Call this only when the user clearly asks to delete a note".
+- **When to call it.** "Call this when the user asks to remember, write down or save something." and "Call this only when the user clearly asks to delete a note".
 - **What each argument means.** The `Args:` section is part of the description the model sees, so it can tell what `note_id` and `body` are for.
 - **What happens to omitted values.** For `update_note`, a field you leave out keeps its current value.
 

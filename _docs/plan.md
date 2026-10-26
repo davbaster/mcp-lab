@@ -94,12 +94,12 @@ Lessons:
 2. `create_note`, `list_notes`, `get_note`, `update_note`, and `delete_note`.
 3. Writing names and docstrings for an LLM reader: when to call the tool and what each argument means.
 4. Return values: plain values versus typed/structured output.
-5. Errors: raising an exception produces a tool result with `isError: true`, not a crash.
+5. Errors: raising `ToolError` (from `mcp.server.mcpserver.exceptions`) produces a tool result with `isError: true` and the message, not a crash. In `mcp` 2.3.0 any other exception also gives `isError: true` but hides its message.
 6. Tool annotations: `readOnlyHint` and `destructiveHint`.
 
 Quiz:
 1. Why do tool docstrings matter? **They become the description the model uses to decide when and how to call the tool** · They are required for Python to run · They speed up execution
-2. `get_note` raises `ValueError("Note 42 not found")`. What does the client receive? **A tool result marked `isError: true` with the message** · The server process crashes · The connection closes
+2. `get_note` raises `ToolError("Note 42 not found")`. What does the client receive? **A tool result marked `isError: true` with the message** · The server process crashes · The connection closes
 3. Which annotation best fits `delete_note`? **`destructiveHint: true`** · `readOnlyHint: true` · `openWorldHint: false` only
 4. *(snippet: `def get_note(note_id):` with no type hint)* What problem does this cause? **The input schema has no type for `note_id`, so the model gets no guidance on what to pass** · Python raises a `SyntaxError` · The tool is hidden from clients
 5. Which design is generally better for an LLM? **Separate focused tools (`create_note`, `delete_note`, …) with clear schemas** · One `manage_notes(action: str, data: str)` tool · One tool that runs raw SQL
