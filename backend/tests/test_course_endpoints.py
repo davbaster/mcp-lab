@@ -1,5 +1,6 @@
 """The public course list and chapter list (#13)."""
 
+import asyncio
 import json
 import re
 import shutil
@@ -171,18 +172,60 @@ def test_an_id_that_is_not_a_configured_course_is_404_course_not_found(course_id
     assert_course_not_found(serve().get(f"/api/courses/{course_id}/chapters"))
 
 
-@pytest.mark.parametrize(
-    "course_id", ["alpha-course%2Fx", "..%2F..%2Fetc", "a%5Cb", "..", ".", "%2e%2e%2f"]
-)
-def test_a_dot_segment_or_an_encoded_slash_in_the_id_is_a_404_with_the_shared_shape(
-    course_id, serve
-):
-    # The client resolves `..` and `.` before the request is sent, and the path then matches no
-    # route, so these get the generic not_found. Either way: 404, never 422 or 500.
+# `..` and `.` are here because the client resolves them before the request is sent: the request
+# becomes `/api/chapters` or `/api/courses/chapters`, which match no route. The segment as typed
+# reaches the route in the next test. An encoded slash matches no route either way.
+@pytest.mark.parametrize("course_id", ["alpha-course%2Fx", "..%2F..%2Fetc", "%2e%2e%2f", "..", "."])
+def test_a_dot_segment_or_an_encoded_slash_in_the_id_is_a_404_not_found(course_id, serve):
     response = serve().get(f"/api/courses/{course_id}/chapters")
 
     assert response.status_code == 404
-    assert response.json()["error"]["code"] in ("course_not_found", "not_found")
+    body = response.json()
+    assert list(body) == ["error"]
+    assert body["error"]["code"] == "not_found"
+    assert body["error"]["message"]
+
+
+def test_an_encoded_backslash_in_the_id_is_404_course_not_found(serve):
+    assert_course_not_found(serve().get("/api/courses/a%5Cb/chapters"))
+
+
+@pytest.mark.parametrize("segment", ["..", "."])
+def test_a_dot_segment_sent_as_typed_reaches_the_route_and_is_404_course_not_found(segment, serve):
+    serve()  # the lifespan runs and the catalog is loaded
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    path = f"/api/courses/{segment}/chapters"
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "root_path": "",
+        "query_string": b"",
+        "headers": [(b"host", b"testserver")],
+        "client": ("127.0.0.1", 50000),
+        "server": ("testserver", 80),
+    }
+    asyncio.run(app(scope, receive, send))
+
+    start = next(m for m in sent if m["type"] == "http.response.start")
+    body = json.loads(
+        b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    )
+    assert start["status"] == 404
+    assert list(body) == ["error"]
+    assert body["error"]["code"] == "course_not_found"
+    assert body["error"]["message"]
 
 
 def test_an_unknown_course_reads_nothing_from_disk(serve, build_copy, monkeypatch):

@@ -39,6 +39,10 @@ BUILD_DIR_VARIABLE = "COURSE_BUILD_DIR"
 logger = logging.getLogger("uvicorn.error")
 
 _ID = re.compile(r"[a-z0-9-]+")
+# The longest course, chapter, or lesson ID. The request side limits the same IDs to 100 too
+# (`ID_MAX` in `feedback_routes`). It also keeps `<id>.json` far below the file name limit of the
+# file system, where a longer name would raise `OSError` instead of saying "not a file".
+MAX_ID_LENGTH = 100
 _MAX_SHOWN = 80
 
 
@@ -141,7 +145,7 @@ def get_catalog(request: Request) -> Catalog:
 class _ManifestLesson(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Annotated[StrictStr, Field(pattern=r"^[a-z0-9-]+$")]
+    id: Annotated[StrictStr, Field(pattern=r"^[a-z0-9-]+$", max_length=MAX_ID_LENGTH)]
     title: Annotated[StrictStr, Field(min_length=1)]
     order: StrictInt
 
@@ -149,7 +153,7 @@ class _ManifestLesson(BaseModel):
 class _ManifestChapter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: Annotated[StrictStr, Field(pattern=r"^[a-z0-9-]+$")]
+    id: Annotated[StrictStr, Field(pattern=r"^[a-z0-9-]+$", max_length=MAX_ID_LENGTH)]
     title: Annotated[StrictStr, Field(min_length=1)]
     free_preview: StrictBool
     has_code: StrictBool
@@ -197,6 +201,11 @@ def parse_courses_setting(value: str | None) -> list[str]:
                 f"{COURSES_VARIABLE} entry {_short(entry)} is not a valid course ID "
                 "(lowercase letters, digits, and hyphens only)."
             )
+        if len(entry) > MAX_ID_LENGTH:
+            raise CourseLoadError(
+                f"{COURSES_VARIABLE} entry {_short(entry)} (entry {position}, {len(entry)} "
+                f"characters) is too long: a course ID has at most {MAX_ID_LENGTH} characters."
+            )
         if entry in ids:
             raise CourseLoadError(f"{COURSES_VARIABLE} lists the course {entry} more than once.")
         ids.append(entry)
@@ -209,7 +218,12 @@ def _build_dir(value: str | None) -> Path:
             f"{BUILD_DIR_VARIABLE} is not set. Set it to the folder the content build wrote."
         )
     path = Path(value)
-    if not path.is_dir():
+    try:
+        exists = path.is_dir()
+    except OSError:  # a path part longer than the file system allows
+        exists = False
+        value = value if len(value) <= _MAX_SHOWN else value[: _MAX_SHOWN - 3] + "..."
+    if not exists:
         raise CourseLoadError(f"{BUILD_DIR_VARIABLE} is not an existing folder: {value}")
     return path
 

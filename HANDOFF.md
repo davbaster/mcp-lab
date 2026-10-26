@@ -41,7 +41,7 @@ Agreed with the owner (David, `davbaster`):
 Filed during the build, all still open:
 
 - **#108 Keep quiz option IDs from revealing the answer. Must be fixed before any real chapter content is written.**
-- #107 course loader edge cases, #111 trailing newline in route paths, #113 database pool under bursts, #114 trust the shared proxy for client addresses
+- #107 course loader edge cases (built on branch `local/issue-107`, waiting on QA), #111 trailing newline in route paths, #113 database pool under bursts, #114 trust the shared proxy for client addresses
 - #116 render Mermaid in the backend image build, #117 Mermaid as a fenced code block, #118 content-build job on Windows
 - #124-#130, filed 2026-10-26 from the frontend work: heading anchors, pausing hidden videos, compressed 3D models, a CSP for `/api/docs`, caption language, a clipboard fallback for Copy, and an error when the ZIP download fails. These don't have the `backlog` label yet.
 
