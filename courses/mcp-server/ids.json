@@ -4,7 +4,8 @@
     "01-what-is-mcp",
     "02-first-server",
     "03-tools",
-    "04-resources-prompts"
+    "04-resources-prompts",
+    "05-transports"
   ],
   "lessons": [
     "01-before-you-start",
@@ -29,7 +30,13 @@
     "02-static-resource",
     "03-resource-template",
     "04-prompts",
-    "05-choosing-primitive"
+    "05-choosing-primitive",
+    "01-stdio",
+    "02-never-write-to-stdout",
+    "03-claude-desktop",
+    "04-streamable-http",
+    "05-choosing-a-transport",
+    "06-local-http-safety"
   ],
   "questions": [
     "what-is-mcp-1",
@@ -51,6 +58,11 @@
     "resources-2",
     "resources-3",
     "resources-4",
-    "resources-5"
+    "resources-5",
+    "transports-1",
+    "transports-2",
+    "transports-3",
+    "transports-4",
+    "transports-5"
   ]
 }

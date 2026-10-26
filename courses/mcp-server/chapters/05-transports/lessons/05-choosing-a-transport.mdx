@@ -1,0 +1,36 @@
+---
+title: Choosing a transport
+order: 5
+---
+
+# Choosing a transport
+
+Your tools, resources and prompts are the same on both transports. Only the way clients reach the server changes, so the choice is about where the server runs and who uses it.
+
+## Use stdio when
+
+- The server is a personal tool for one user on one computer.
+- You want a client such as Claude Desktop to start and stop it for you.
+- It should not be reachable from the network. With stdio, nothing is listening.
+- You want the simplest setup, with no ports and no sign-in.
+
+The notes server on your laptop is a good example.
+
+## Use Streamable HTTP when
+
+- Several people or several clients share one server.
+- The server runs on another machine, or in the cloud.
+- It must keep running without a client starting it.
+- You need to control access, for example with sign-in, for each user.
+
+A server that gives a whole team access to a company database is a good example.
+
+## A simple way to decide
+
+Ask who starts the server. If the client starts it, use stdio. If you start it and clients find it by its address, use Streamable HTTP.
+
+<Callout type="tip" title="You do not have to pick only one">
+
+Step 3 supports both with a flag. That is handy while you learn, and for tools that you use locally and also want to share later. Remember that going from stdio to HTTP adds new duties, which the next lesson covers.
+
+</Callout>

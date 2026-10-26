@@ -1,0 +1,37 @@
+---
+title: Streamable HTTP
+order: 4
+---
+
+# Streamable HTTP
+
+With Streamable HTTP the server runs by itself and clients connect to it over the network. Step 3 lets the same server do both: it starts in HTTP mode when you pass `--http`.
+
+<CodeSteps step="3" file="server.py" />
+
+`mcp.run(transport="streamable-http", host="127.0.0.1", port=8000)` starts a web server. Run it like this:
+
+```shell
+uv run server.py --http
+```
+
+The log shows `Uvicorn running on http://127.0.0.1:8000`. The server has a single endpoint, `http://127.0.0.1:8000/mcp`, and all of the protocol goes through it.
+
+- **The client sends each message as an HTTP POST** to `/mcp`. It must accept both `application/json` and `text/event-stream`.
+- **The reply can be JSON or an SSE stream.** SSE (server-sent events) is a stream of `event:` and `data:` lines. The server can use it to send several messages for one request. The notes server answers `initialize` as a stream with one `message` event.
+- **The server sets a session id.** The response to `initialize` has an `Mcp-Session-Id` header. The client must send that header back on every later request.
+
+A reply to `initialize` starts like this:
+
+```
+HTTP/1.1 200 OK
+content-type: text/event-stream
+mcp-session-id: 48ac79387685414e82384f7b09f99cc3
+
+event: message
+data: {"jsonrpc":"2.0","id":1,"result":{...}}
+```
+
+To try it, start the server with `--http`. Then run the Inspector with `npx @modelcontextprotocol/inspector`. Choose the transport "Streamable HTTP", enter `http://127.0.0.1:8000/mcp`, and connect. You can list the tools and call `create_note` as before.
+
+Stop the server with Ctrl+C. Notice that the server runs on its own now. You start it, and clients come and go.

@@ -1,0 +1,30 @@
+---
+title: Never write to stdout
+order: 2
+---
+
+# Never write to stdout
+
+With stdio, standard output is the protocol channel. The client reads it line by line and expects every line to be a JSON-RPC message. Anything else you write there, even a harmless `print("debug")`, can make the client fail to parse the stream.
+
+The rule is simple: never write to stdout. Send logs to standard error instead. Step 1 sets this up.
+
+<CodeSteps step="1" file="server.py" />
+
+`logging.basicConfig(stream=sys.stderr, ...)` sends every log record to stderr. The level comes from the `NOTES_LOG_LEVEL` environment variable and defaults to `INFO`. `create_note` now logs a line each time it saves a note. On stderr it looks like this:
+
+```
+INFO:notes:Created note 1
+```
+
+Notice the order in the file. `basicConfig` runs before `MCPServer("notes")`. The `MCPServer` constructor sets up logging too, and `basicConfig` does nothing once logging already has a handler. Keep your call first so that it takes effect.
+
+A `print()` that runs at module level, before `mcp.run()`, writes a non-JSON line to stdout before the first protocol message. That corrupts the stream from the start.
+
+<Callout type="note" title="A print inside a tool may seem fine">
+
+In `mcp` 2.3.0 the SDK moves stray stdout writes made while the server is serving to stderr, so a `print()` inside a tool does not break anything there. Do not rely on that. Older SDK versions, other libraries, and child processes that you start can still write to stdout directly and break the stream.
+
+</Callout>
+
+When a stdio server misbehaves, check stderr first. Clients usually save it to a log file.

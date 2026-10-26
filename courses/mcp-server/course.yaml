@@ -10,5 +10,7 @@ chapters:
     title: "Building tools: the notes CRUD"
   - id: 04-resources-prompts
     title: Resources and prompts
+  - id: 05-transports
+    title: Transports and connecting real clients
 free_preview:
   - 01-what-is-mcp
