@@ -316,12 +316,13 @@ def test_a_learner_asking_for_an_unknown_course_gets_404(learner, course_id):
     assert_error(learner.get(f"/api/courses/{course_id}/progress"), 404, "course_not_found")
 
 
+# The client resolves `..` before the request is sent, so it becomes `/api/progress`, and an
+# encoded slash adds a path part: neither matches a route.
 @pytest.mark.parametrize("course_id", ["..", "a%2Fb", "%2e%2e%2f"])
-def test_a_dot_segment_or_encoded_slash_is_a_404_with_the_shared_shape(learner, course_id):
-    response = learner.get(f"/api/courses/{course_id}/progress")
-
-    assert response.status_code == 404
-    assert response.json()["error"]["code"] in ("course_not_found", "not_found")
+def test_a_dot_segment_or_encoded_slash_is_a_404_not_found_with_the_shared_shape(
+    learner, course_id
+):
+    assert_error(learner.get(f"/api/courses/{course_id}/progress"), 404, "not_found")
 
 
 def test_a_new_learner_gets_the_initial_state(learner):
