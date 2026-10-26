@@ -32,10 +32,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     catalog is read-only memory; it opens no database connection. A bad `TRUSTED_PROXIES` also
     stops the app here (`TrustedProxiesError`, naming the variable), and so do a missing or
     invalid `DEPLOYMENT` and a bad or busy `METRICS_PORT` (the error names the variable). The
-    metrics server runs for as long as the app does, and its port is free again afterwards.
+    metrics server runs for as long as the app does, and its port is free again afterwards. On exit
+    the catalog that was on `app.state` before the start is put back (or removed if there was none),
+    and a failed start leaves `app.state` as it was.
     """
     deployment, metrics_port = check_settings()
     trusted_proxies()
+    # Put back what was there on exit, so that a lifespan that overlaps another (nested test
+    # clients share this one `app`) does not remove the catalog the outer one still serves.
+    previous = getattr(app.state, "catalog", None)
     app.state.catalog = load_catalog_from_environment()
     try:
         with observability(
@@ -43,7 +48,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ):
             yield
     finally:
-        del app.state.catalog
+        if previous is not None:
+            app.state.catalog = previous
+        elif hasattr(app.state, "catalog"):
+            del app.state.catalog
 
 
 app = FastAPI(

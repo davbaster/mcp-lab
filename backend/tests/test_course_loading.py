@@ -157,6 +157,51 @@ def test_a_duplicate_entry_fails_naming_the_id():
     assert "more than once" in message
 
 
+@pytest.mark.parametrize("length", [101, 251, 255, 256, 5000])
+def test_an_entry_over_100_characters_fails_as_too_long_not_as_an_oserror(length):
+    message = load_error(f"alpha-course,{'a' * length}")
+
+    assert "COURSES" in message
+    assert "too long" in message
+    assert "'" + "a" * 76 + "... (entry 2" in message  # shortened to 80 characters, like the others
+    assert "a" * 77 not in message
+    assert "entry 2" in message
+    assert f"{length} characters" in message
+    assert "at most 100 characters" in message
+    assert len(message) < 300
+
+
+def test_an_entry_of_exactly_100_characters_gets_past_the_parse_and_has_no_manifest():
+    message = load_error("a" * 100)
+
+    assert "No manifest for the course " + "a" * 100 in message
+
+
+def test_the_length_of_an_entry_is_counted_after_trimming():
+    assert "No manifest" in load_error(f"  {'a' * 100}  ")
+
+
+def test_an_entry_that_is_both_invalid_and_too_long_gets_the_not_a_valid_id_message():
+    message = load_error("A" * 300)
+
+    assert "not a valid course ID" in message
+    assert "too long" not in message
+
+
+def test_the_first_problem_in_courses_order_is_reported_empty_entry_before_long_one():
+    message = load_error(f",{'a' * 300}")
+
+    assert "empty entry (entry 1)" in message
+    assert "too long" not in message
+
+
+def test_the_length_check_comes_before_the_build_folder_is_looked_at():
+    message = load_error("a" * 300, build=None)
+
+    assert "too long" in message
+    assert "COURSE_BUILD_DIR" not in message
+
+
 # --- COURSE_BUILD_DIR ---
 
 
@@ -170,6 +215,13 @@ def test_a_bad_build_dir_fails_naming_course_build_dir(kind, tmp_path):
     }[kind]
 
     assert "COURSE_BUILD_DIR" in load_error("alpha-course", build)
+
+
+def test_a_build_folder_with_a_300_character_part_fails_naming_course_build_dir(tmp_path):
+    message = load_error("alpha-course", tmp_path / ("d" * 300))
+
+    assert "COURSE_BUILD_DIR is not an existing folder" in message
+    assert len(message) < 300
 
 
 # --- the manifest ---
@@ -397,6 +449,45 @@ def test_a_lesson_id_that_is_not_lowercase_letters_digits_and_hyphens_fails(bad,
     assert "chapters[0].lessons[0].id" in message
 
 
+@pytest.mark.parametrize("length", [101, 251])
+def test_a_chapter_id_over_100_characters_fails_naming_file_and_field(length, build_copy):
+    message = break_manifest(build_copy, lambda doc: doc["chapters"][0].update(id="a" * length))
+
+    assert (
+        message == f"{ALPHA_FILE}: field chapters[0].id: String should have at most 100 characters."
+    )
+
+
+@pytest.mark.parametrize("length", [101, 251])
+def test_a_lesson_id_over_100_characters_fails_naming_file_and_field(length, build_copy):
+    message = break_manifest(
+        build_copy, lambda doc: doc["chapters"][0]["lessons"][0].update(id="a" * length)
+    )
+
+    assert message == (
+        f"{ALPHA_FILE}: field chapters[0].lessons[0].id: String should have at most 100 characters."
+    )
+
+
+def test_a_chapter_id_and_a_lesson_id_of_100_characters_load(build_copy):
+    long_id = "a" * 100
+    document = read_manifest(build_copy, "alpha-course")
+    document["chapters"][1]["id"] = long_id
+    document["chapters"][1]["lessons"][0]["id"] = long_id
+    write_manifest(build_copy, "alpha-course", document)
+    (build_copy / "private" / "quizzes" / "alpha-course" / "02-more.json").rename(
+        build_copy / "private" / "quizzes" / "alpha-course" / f"{long_id}.json"
+    )
+    (build_copy / "private" / "lessons" / "alpha-course" / "next-steps.json").rename(
+        build_copy / "private" / "lessons" / "alpha-course" / f"{long_id}.json"
+    )
+
+    chapter = load_catalog("alpha-course", str(build_copy)).get("alpha-course").chapters[1]
+
+    assert chapter.id == long_id
+    assert chapter.lessons[0].id == long_id
+
+
 # --- the files the manifest points to ---
 
 
@@ -503,6 +594,61 @@ def test_the_lifespan_raises_the_load_error(monkeypatch):
 
     with pytest.raises(CourseLoadError, match="COURSES"), TestClient(app):
         pass
+
+
+def listed(client) -> list[str]:
+    response = client.get("/api/courses")
+    assert response.status_code == 200
+    return [course["id"] for course in response.json()["courses"]]
+
+
+def test_nested_lifespans_with_the_same_courses_leave_the_outer_one_serving(monkeypatch):
+    monkeypatch.setenv("COURSES", "alpha-course")
+    monkeypatch.setenv("COURSE_BUILD_DIR", BUILD)
+
+    with TestClient(app) as outer:
+        assert listed(outer) == ["alpha-course"]
+        with TestClient(app) as inner:
+            assert listed(inner) == ["alpha-course"]
+        assert listed(outer) == ["alpha-course"]
+
+    assert not hasattr(app.state, "catalog")
+
+
+def test_a_nested_lifespan_with_other_courses_gives_the_catalog_back_on_exit(monkeypatch):
+    monkeypatch.setenv("COURSES", "alpha-course")
+    monkeypatch.setenv("COURSE_BUILD_DIR", BUILD)
+
+    with TestClient(app) as outer:
+        monkeypatch.setenv("COURSES", "beta-course")
+        with TestClient(app) as inner:
+            assert listed(inner) == ["beta-course"]
+        assert listed(outer) == ["alpha-course"]
+
+    assert not hasattr(app.state, "catalog")
+
+
+def test_a_nested_lifespan_that_fails_to_start_leaves_the_outer_one_serving(monkeypatch):
+    monkeypatch.setenv("COURSES", "alpha-course")
+    monkeypatch.setenv("COURSE_BUILD_DIR", BUILD)
+
+    with TestClient(app) as outer:
+        monkeypatch.delenv("COURSES")
+        with pytest.raises(CourseLoadError, match="COURSES"), TestClient(app):
+            pass
+        assert listed(outer) == ["alpha-course"]
+
+    assert not hasattr(app.state, "catalog")
+
+
+def test_the_lifespan_exit_does_not_fail_when_the_catalog_is_already_gone(monkeypatch):
+    monkeypatch.setenv("COURSES", "alpha-course")
+    monkeypatch.setenv("COURSE_BUILD_DIR", BUILD)
+
+    with TestClient(app):
+        del app.state.catalog
+
+    assert not hasattr(app.state, "catalog")
 
 
 def test_environment_variables_are_read_when_called(monkeypatch):
