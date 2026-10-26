@@ -16,6 +16,7 @@ from app.errors import install_error_handling
 from app.feedback_routes import install_feedback_routes
 from app.observability import check_settings, install_observability, observability
 from app.quiz_routes import install_quiz_routes
+from app.route_paths import install_strict_paths
 
 # A fixed string, changed by hand when the API changes in a way clients should notice.
 # It is not read from git, the clock, or package metadata, so the exported spec stays the same.
@@ -72,3 +73,6 @@ class HealthResponse(BaseModel):
 @app.get("/api/health", operation_id="health")
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+install_strict_paths(app)  # after the last route is added; see app/route_paths.py
