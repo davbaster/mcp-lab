@@ -37,7 +37,7 @@ export function FailedReview({
         {`You scored ${attempt.score}/${attempt.total}. You need ${PASS_SCORE} to pass.`}
       </h2>
       {alreadyPassed && <p>You have already passed this chapter. This score does not change that.</p>}
-      <ol className="quiz-review">
+      <ol className="quiz-review" role="list">
         {quiz.questions.map((question, index) => {
           const lessonId = attempt.wrong.get(question.id);
           const lessonTitle = lessonId === undefined ? undefined : info.lessonTitles.get(lessonId);

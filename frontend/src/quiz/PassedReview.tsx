@@ -101,7 +101,7 @@ export function PassedReview({
           Retake the quiz
         </button>
       </div>
-      <ol className="quiz-review">
+      <ol className="quiz-review" role="list">
         {quiz.questions.map((question, index) => {
           const result = attempt.results.find((candidate) => candidate.questionId === question.id);
           const picked = result && question.options.find((option) => option.id === result.optionId);

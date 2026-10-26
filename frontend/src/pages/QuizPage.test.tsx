@@ -88,7 +88,16 @@ const chapterList = (status: string | null = "in_progress", chapters: unknown[] 
         { id: "l2", title: "Second lesson" },
       ],
     },
-    { id: "c2", title: "Chapter two", free_preview: false, status: "locked", lessons: [{ id: "l3", title: "Third lesson" }] },
+    {
+      id: "c2",
+      title: "Chapter two",
+      free_preview: false,
+      status: "locked",
+      lessons: [
+        { id: "l3", title: "Third lesson" },
+        { id: "l4", title: "Fourth lesson" },
+      ],
+    },
     { id: "c3", title: "Chapter three", free_preview: false, status: "locked", lessons: [] },
   ],
 });
@@ -214,7 +223,7 @@ describe("loading and the title", () => {
 
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Loading…"));
     expect(h1().textContent).toBe("Quiz");
-    expect(document.title).toBe("Quiz – Courses");
+    await waitFor(() => expect(document.title).toBe("Quiz – Courses"));
     pending.resolve(jsonResponse(makeQuiz()));
     expect(await screen.findByRole("group", { name: /^Question 1\b/ })).toBeTruthy();
   });
@@ -224,7 +233,7 @@ describe("loading and the title", () => {
     await loaded();
 
     expect(h1().textContent).toBe("Quiz: Chapter one");
-    expect(document.title).toBe("Quiz: Chapter one – Courses");
+    await waitFor(() => expect(document.title).toBe("Quiz: Chapter one – Courses"));
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.queryByRole("status")).toBeNull();
   });
@@ -891,7 +900,7 @@ describe("access", () => {
     expect(h1().textContent).toBe("Quiz");
     const link = screen.getAllByRole("link", { name: "Sign in" }).find((l) => !l.closest("header"))!;
     expect(href(link)).toBe(signInPath(`${URL_OF_QUIZ}?x=1`));
-    expect(document.title).toBe("Quiz – Courses");
+    await waitFor(() => expect(document.title).toBe("Quiz – Courses"));
   });
 
   it("turns into the visitor view when the session ends on submit, with the answers gone", async () => {
@@ -1368,5 +1377,183 @@ describe("layout hooks", () => {
     await screen.findByRole("heading", { level: 2 });
     expect(screen.getByText("Incorrect").className).toContain("quiz-incorrect");
     expect(screen.getAllByText("Correct")[0].className).toContain("quiz-correct");
+  });
+});
+
+describe("more cases", () => {
+  const chaptersWith = (nextLessons: { id: string; title: string }[]) => [
+    { id: "c1", title: "Chapter one", free_preview: true, status: "in_progress", lessons: [{ id: "l1", title: "First lesson" }] },
+    { id: "c2", title: "Chapter two", free_preview: false, status: "locked", lessons: nextLessons },
+  ];
+  async function submitAll(user: UserEvent, wrongFrom = 99) {
+    await answerAll(user, wrongFrom);
+    await user.click(submitButton());
+    await screen.findByRole("heading", { level: 2 });
+  }
+
+  it("links Start the next chapter to the first lesson in the list, not the last or the smallest id", async () => {
+    setup({
+      chapters: chaptersWith([
+        { id: "l9", title: "Ninth" },
+        { id: "l4", title: "Fourth" },
+        { id: "l5", title: "Fifth" },
+      ]),
+    });
+    const { user } = await loaded();
+    await submitAll(user);
+    expect(href(screen.getByRole("link", { name: "Start the next chapter" }))).toBe("/courses/demo/lessons/l9");
+  });
+
+  it("matches results to questions by id when they arrive in another order than the quiz", async () => {
+    setup({
+      attempt: (call) => {
+        const body = grade(call) as { results: unknown[] };
+        body.results = [3, 0, 4, 1, 2].map((i) => body.results[i]);
+        return jsonResponse(body);
+      },
+    });
+    const { user } = await loaded();
+    await submitAll(user, 5);
+
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(5);
+    items.forEach((item, index) => {
+      const n = index + 1;
+      const view = within(item);
+      expect(item.textContent).toContain(`Question ${n} Question text ${n}`);
+      expect(view.getByText(`Explanation: ${EXPLANATION}-q${n}`)).toBeTruthy();
+      expect(view.getByText(`Correct answer: Q${n} option a`)).toBeTruthy();
+      expect(view.getByText(n === 5 ? "Incorrect" : "Correct")).toBeTruthy();
+      expect(view.getByText(`Your answer: Q${n} option ${n === 5 ? "b" : "a"}`)).toBeTruthy();
+    });
+  });
+
+  it.each([
+    ["failed", 4],
+    ["passed", 99],
+  ])("puts no option or lesson id in title or data-* of a %s review, and no option id anywhere", async (_name, wrongFrom) => {
+    const LESSON = "LESSON-ID-SENTINEL-7f3a";
+    setup({
+      quizzes: [makeQuiz({ tag: `${OPTION_ID}-` })],
+      chapters: [
+        { id: "c1", title: "Chapter one", free_preview: true, status: "in_progress", lessons: [{ id: `${LESSON}-1`, title: "L1" }] },
+        { id: "c2", title: "Chapter two", free_preview: false, status: "locked", lessons: [{ id: `${LESSON}-2`, title: "L2" }] },
+      ],
+      attempt: (call) => {
+        const body = grade(call) as { wrong?: { lesson_id: string }[] };
+        body.wrong?.forEach((w) => (w.lesson_id = `${LESSON}-1`));
+        return jsonResponse(body);
+      },
+    });
+    const { user } = await loaded();
+    await submitAll(user, wrongFrom);
+
+    expect(h2().textContent).toMatch(wrongFrom === 4 ? /^You scored/ : /^You passed/);
+    expect(document.body.innerHTML).not.toContain(OPTION_ID);
+    for (const element of document.querySelectorAll("main *")) {
+      expect(element.hasAttribute("title")).toBe(false);
+      for (const attribute of element.attributes) {
+        // React Router puts data-discover on its links; the page adds no other data-* attribute.
+        if (attribute.name.startsWith("data-")) expect(attribute.name).toBe("data-discover");
+        // A lesson id may only be in the href of a link.
+        if (attribute.name !== "href") expect(attribute.value).not.toContain(LESSON);
+      }
+    }
+  });
+
+  it("does not show hostile extra keys on the snippet", async () => {
+    const quiz = makeQuiz();
+    quiz.questions[0].snippet = {
+      language: "LANG-SENTINEL-7f3a",
+      code: "x = 1",
+      correct: CORRECT,
+      explanation: EXPLANATION,
+      correct_option_id: CORRECT,
+    } as never;
+    setup({ quizzes: [quiz] });
+    await loaded();
+
+    expect(group(1).querySelector("pre")?.textContent).toBe("x = 1");
+    for (const sentinel of [CORRECT, EXPLANATION, "LANG-SENTINEL"]) expect(document.body.innerHTML).not.toContain(sentinel);
+  });
+
+  it("does not show hostile extra keys on the entries of wrong", async () => {
+    correctLabel = (n) => (n >= 4 ? `${CORRECT}-${n}` : `Q${n} option a`);
+    setup({
+      quizzes: [makeQuiz({ correctText: correctLabel })],
+      attempt: (call) => {
+        const body = grade(call) as { wrong: Record<string, unknown>[] };
+        body.wrong = body.wrong.map((w) => ({
+          ...w,
+          option_id: "a",
+          correct_option_id: `${CORRECT}-id`,
+          correct: `${CORRECT}-flag`,
+          explanation: `${EXPLANATION}-w`,
+          hint: `${CORRECT}-hint`,
+          lesson: { title: `${EXPLANATION}-lesson` },
+        }));
+        return jsonResponse(body);
+      },
+    });
+    const { user } = await loaded();
+    await submitAll(user, 4);
+
+    expect(h2().textContent).toBe("You scored 3/5. You need 4 to pass.");
+    expect(document.body.innerHTML).not.toContain(CORRECT);
+    expect(document.body.innerHTML).not.toContain(EXPLANATION);
+    expect(screen.getAllByText("Incorrect")).toHaveLength(2);
+  });
+
+  it.each([
+    ["a 401 that is not not_authenticated", 401, "token_expired"],
+    ["a 403 that is not chapter_locked", 403, "forbidden"],
+  ])("treats %s on the quiz request as an ordinary load error", async (_name, status, code) => {
+    setup({ extra: { [QUIZ()]: () => errorResponse(status, code, "Plain failure.") } });
+    renderApp(URL_OF_QUIZ);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Plain failure.");
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(screen.queryByText("Sign in to take the quiz")).toBeNull();
+    expect(screen.queryByText(/This chapter is locked/)).toBeNull();
+  });
+
+  it.each([
+    ["a 401 that is not not_authenticated", 401, "token_expired"],
+    ["a 403 that is not chapter_locked", 403, "forbidden"],
+  ])("treats %s on submit as an ordinary submit error: answers stay", async (_name, status, code) => {
+    setup({ attempt: () => errorResponse(status, code, "Plain submit failure.") });
+    const { user } = await loaded();
+    await answerAll(user);
+    await user.click(submitButton());
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Plain submit failure.");
+    expect(screen.getByText("5 of 5 answered")).toBeTruthy();
+    expect(screen.queryByText("Sign in to take the quiz")).toBeNull();
+    expect(screen.queryByText(/This chapter is locked/)).toBeNull();
+  });
+
+  it.each([
+    ["a 500", () => errorResponse(500, "internal_error", "Could not grade.")],
+    ["a network failure", () => Promise.reject(new TypeError("Failed to fetch"))],
+    ["a malformed 200", () => jsonResponse({ passed: "maybe" })],
+  ])("moves focus back to Submit answers after %s on submit", async (_name, attempt) => {
+    setup({ attempt });
+    const { user } = await loaded();
+    await answerAll(user);
+    await user.click(submitButton());
+
+    await screen.findByRole("alert");
+    await waitFor(() => expect(document.activeElement).toBe(submitButton()));
+  });
+
+  it("gives the question and review lists a list role", async () => {
+    setup();
+    const { user } = await loaded();
+    expect(screen.getByRole("list").getAttribute("role")).toBe("list");
+    await answerAll(user);
+    await user.click(submitButton());
+    await screen.findByRole("heading", { level: 2 });
+    expect(screen.getByRole("list").getAttribute("role")).toBe("list");
   });
 });

@@ -1,4 +1,4 @@
-import { useId, type FormEvent, type Ref } from "react";
+import { useEffect, useId, useRef, type FormEvent, type Ref } from "react";
 import { PASS_SCORE, QUESTIONS_PER_QUIZ } from "../components/ChapterCard";
 import { InlineText } from "./InlineText";
 import type { Quiz } from "./quizData";
@@ -27,6 +27,18 @@ export function QuizForm({
   const counterId = `${formId}-count`;
   const total = quiz.questions.length;
   const answered = choices.filter((choice) => choice !== null).length;
+  const button = useRef<HTMLButtonElement>(null);
+  const wasSubmitting = useRef(false);
+
+  // The disabled button cannot keep focus, so give it back when a failed submit enables it again.
+  useEffect(() => {
+    if (submitting) {
+      wasSubmitting.current = true;
+    } else if (wasSubmitting.current) {
+      wasSubmitting.current = false;
+      button.current?.focus();
+    }
+  }, [submitting]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -39,7 +51,7 @@ export function QuizForm({
       <p className="quiz-intro">
         {`Answer all ${QUESTIONS_PER_QUIZ} questions. You need ${PASS_SCORE} to pass, and you can retake the quiz as often as you like.`}
       </p>
-      <ol className="quiz-questions">
+      <ol className="quiz-questions" role="list">
         {quiz.questions.map((question, qi) => (
           <li key={qi}>
             <fieldset className="quiz-question" disabled={submitting} tabIndex={-1} ref={qi === 0 ? firstQuestion : undefined}>
@@ -74,7 +86,7 @@ export function QuizForm({
         </div>
       )}
       <div className="quiz-submit">
-        <button type="submit" className="button" disabled={answered < total || submitting} aria-describedby={counterId}>
+        <button ref={button} type="submit" className="button" disabled={answered < total || submitting} aria-describedby={counterId}>
           {submitting ? "Submitting…" : "Submit answers"}
         </button>
         <span id={counterId} className="muted">
