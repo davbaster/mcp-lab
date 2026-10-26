@@ -16,10 +16,12 @@
     "check:api": "node scripts/check-api.mjs"
   },
   "dependencies": {
+    "@shikijs/langs": "4.5.0",
     "openapi-fetch": "0.17.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router": "7.18.4"
+    "react-router": "7.18.4",
+    "shiki": "4.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

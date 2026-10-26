@@ -14,7 +14,8 @@
   min-width: 0;
 }
 
-.lesson-content > .diagram {
+.lesson-content > .diagram,
+.lesson-content > .code-steps {
   grid-column: 1 / -1;
 }
 
@@ -220,4 +221,189 @@
 
 .tabpanel {
   padding-top: var(--space-16);
+}
+
+/* Text for screen readers only. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Code viewer (CodeSteps). It spans the full content width and never grows wider than it. */
+.code-steps {
+  max-width: 100%;
+  margin: 0 0 var(--space-16);
+  overflow-wrap: normal;
+}
+
+/* Reserves room for the code, so the page does not jump much when it arrives. */
+.code-steps-loading {
+  min-height: 200px;
+  padding: var(--space-12) var(--space-16);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+/* A long path keeps its one line; the tab list scrolls sideways instead of the text overlapping. */
+.code-steps .tab {
+  max-width: none;
+  font-family: var(--font-code);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.code-steps .tabpanel {
+  min-width: 0;
+}
+
+.code-block {
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.code-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-8) var(--space-8) 0;
+}
+
+.code-copy {
+  max-width: 100%;
+}
+
+.code-copy .button {
+  max-width: 100%;
+  text-align: center;
+}
+
+.code-empty {
+  margin: 0;
+  padding: var(--space-16);
+  color: var(--color-text-muted);
+}
+
+/* The one place the code scrolls sideways. Lines never wrap. */
+.code-area {
+  --code-gutter: 2ch;
+  padding: var(--space-16);
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-code);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-code);
+  tab-size: 4;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.code-digits-3 {
+  --code-gutter: 3ch;
+}
+
+.code-digits-4 {
+  --code-gutter: 4ch;
+}
+
+.code-digits-5 {
+  --code-gutter: 5ch;
+}
+
+.code-digits-6 {
+  --code-gutter: 6ch;
+}
+
+/* Every line is as wide as the longest one, so a mark on a line (step mode) spans the whole width. */
+.code-lines {
+  min-width: max-content;
+}
+
+.code-line {
+  display: flex;
+}
+
+.code-line-number {
+  flex: 0 0 auto;
+  box-sizing: content-box;
+  width: var(--code-gutter);
+  padding-right: var(--space-16);
+  color: var(--color-text-muted);
+  text-align: right;
+  user-select: none;
+}
+
+/* Undoes the look of inline code (.lesson-content code), as ".lesson-content pre code" does. */
+.code-steps .code-line-text {
+  flex: 1 0 auto;
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.code-token-comment {
+  color: var(--color-code-comment);
+}
+
+.code-token-constant {
+  color: var(--color-code-constant);
+}
+
+.code-token-keyword {
+  color: var(--color-code-keyword);
+}
+
+.code-token-parameter {
+  color: var(--color-code-parameter);
+}
+
+.code-token-function {
+  color: var(--color-code-function);
+}
+
+.code-token-string {
+  color: var(--color-code-string);
+}
+
+.code-token-string-expression {
+  color: var(--color-code-string-expression);
+}
+
+.code-token-punctuation {
+  color: var(--color-code-punctuation);
+}
+
+.code-token-link {
+  color: var(--color-code-link);
+}
+
+.code-italic {
+  font-style: italic;
+}
+
+.code-bold {
+  font-weight: 700;
+}
+
+.code-underline {
+  text-decoration: underline;
+}
+
+.code-zip {
+  margin-top: var(--space-8);
+}
+
+.code-zip-hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }

@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, vi } from "vitest";
-import { LessonContent } from "../content-components/LessonContent";
+import { LessonContent, type LessonIds } from "../content-components/LessonContent";
 import type { LessonTree } from "../content-components/tree";
 
 afterEach(() => {
@@ -39,12 +39,12 @@ export function spyOnConsole() {
   };
 }
 
-export function renderTree(children: unknown[], options: { title?: string; strict?: boolean } = {}) {
+export function renderTree(children: unknown[], options: { title?: string; strict?: boolean; lesson?: LessonIds } = {}) {
   const user = userEvent.setup();
   const title = options.title ?? "Lesson title";
   const element = (nodes: unknown[]) => (
     <MemoryRouter>
-      <LessonContent tree={{ type: "root", children: nodes } as LessonTree} title={title} />
+      <LessonContent tree={{ type: "root", children: nodes } as LessonTree} title={title} lesson={options.lesson} />
     </MemoryRouter>
   );
   const view = render(options.strict ? <StrictMode>{element(children)}</StrictMode> : element(children));

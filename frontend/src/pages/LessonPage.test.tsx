@@ -6,6 +6,7 @@ import { NETWORK_ERROR_MESSAGE, UNEXPECTED_RESPONSE_MESSAGE } from "../api/apiEr
 import App from "../App";
 import { signInPath } from "../auth/paths";
 import allAssets from "../content-components/fixtures/all-assets.tree.json";
+import chapterCode from "../content-components/fixtures/chapter-code.response.json";
 import markdown from "../content-components/fixtures/markdown.tree.json";
 import welcome from "../content-components/fixtures/welcome.lesson.json";
 import { apiRoutes, deferred } from "../test/apiRoutes";
@@ -649,5 +650,54 @@ describe("errors", () => {
 
     expect(await screen.findByText("Server broke.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+  });
+});
+
+describe("code steps", () => {
+  const CODE_ROUTE = "GET /api/courses/demo/chapters/c1/code";
+  const withCode = lesson("a", {
+    tree: { type: "root", children: [heading(1, "Title of a"), component("CodeSteps", { step: "2" })] },
+  });
+
+  it.each([
+    ["a visitor on a free-preview chapter", false],
+    ["a signed-in learner", true],
+  ])("asks for the code of this lesson's course and chapter and shows the tabs for %s", async (_name, learner) => {
+    const api = routes({
+      learner,
+      lessons: { a: withCode },
+      extra: { [CODE_ROUTE]: () => jsonResponse(chapterCode) },
+    });
+    renderApp("/courses/demo/lessons/a");
+
+    expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["helper.py", "main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(api.calls(CODE_ROUTE)).toHaveLength(1);
+    expect(api.calls(CODE_ROUTE)[0].method).toBe("GET");
+  });
+
+  it("asks for the code again when another lesson with a viewer is opened", async () => {
+    const other = lesson("b", {
+      prev_lesson_id: "a",
+      tree: { type: "root", children: [heading(1, "Title of b"), component("CodeSteps", { step: "1" })] },
+    });
+    const api = routes({
+      lessons: { a: { ...withCode, next_lesson_id: "b" }, b: other },
+      extra: { [CODE_ROUTE]: () => jsonResponse(chapterCode) },
+    });
+    const { user } = renderApp("/courses/demo/lessons/a");
+    expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
+
+    await user.click(screen.getByRole("link", { name: "Next lesson" }));
+
+    expect(await screen.findByRole("tablist", { name: "Files in step 1" })).toBeTruthy();
+    expect(api.calls(CODE_ROUTE)).toHaveLength(2);
+  });
+
+  it("asks for no code for a lesson without a viewer", async () => {
+    const api = routes();
+    renderApp("/courses/demo/lessons/a");
+    expect(await screen.findByText("Body of a")).toBeTruthy();
+    expect(api.calls().filter((call) => call.path.endsWith("/code"))).toHaveLength(0);
   });
 });

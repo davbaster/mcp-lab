@@ -1,7 +1,10 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import allAssets from "./fixtures/all-assets.tree.json";
+import chapterCode from "./fixtures/chapter-code.response.json";
 import markdown from "./fixtures/markdown.tree.json";
+import { apiRoutes } from "../test/apiRoutes";
+import { jsonResponse } from "../test/mockApi";
 import { component, heading, link, paragraph, renderTree, spyOnConsole, tab, text } from "../test/renderTree";
 
 const markdownNodes = markdown.children as unknown[];
@@ -339,7 +342,7 @@ describe("nodes that cannot be shown", () => {
     expect(String(log.error.mock.calls[0][0])).toContain("Image");
   });
 
-  it.each(["Video", "Model3D", "CodeSteps"])("shows the box for %s until it is built, without an error", (name) => {
+  it.each(["Video", "Model3D"])("shows the box for %s until it is built, without an error", (name) => {
     const log = spyOnConsole();
     renderTree([component(name, { src: "/api/x.mp4", title: "t", alt: "a", poster: "/api/p.png", step: "1" })]);
     expect(screen.getByText("This content can't be shown")).toBeTruthy();
@@ -362,17 +365,39 @@ describe("nodes that cannot be shown", () => {
     expect(screen.getByText("deepest")).toBeTruthy();
   });
 
-  it("renders the sample build output with every component and still shows the text around them", () => {
+  it("renders the sample build output with every component and still shows the text around them", async () => {
+    // The sample's CodeSteps asks for step 2 and server.py; the stub's step 2 has a server.py.
+    const code = structuredClone(chapterCode);
+    code.steps[1].files[1].path = "server.py";
+    const api = apiRoutes({ "GET /api/courses/sample-course/chapters/01-first-steps/code": () => jsonResponse(code) });
     const log = spyOnConsole();
-    const { container } = renderTree(allAssetsNodes);
+    const { container } = renderTree(allAssetsNodes, { lesson: { courseId: "sample-course", chapterId: "01-first-steps" } });
 
     expect(container.querySelector("img[alt='A picture']")).toBeTruthy();
     expect(container.querySelector("img[alt='A flow']")).toBeTruthy();
     expect(container.querySelector(".callout-note")).toBeTruthy();
+    // Only the Tabs' own two tabs: the code has not arrived yet.
     expect(screen.getAllByRole("tab")).toHaveLength(2);
-    // Mermaid-only Diagram, Video, Model3D, CodeSteps and a Model3D in a tab: boxes, not crashes.
-    expect(screen.getAllByText("This content can't be shown").length).toBeGreaterThanOrEqual(6);
+    // The Mermaid-only Diagram, two Videos, a Model3D and a Model3D in a tab: boxes, not crashes.
+    expect(screen.getAllByText("This content can't be shown")).toHaveLength(5);
+    // CodeSteps is built: step 2 of the stubbed chapter, with the file named in the node selected.
+    expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "server.py", selected: true })).toBeTruthy();
+    expect(api.calls()).toHaveLength(1);
     // Only the Mermaid-only Diagram is a mistake in the lesson.
-    expect(log.error).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));
+    expect(log.warn).not.toHaveBeenCalled();
+  });
+
+  it("renders the sample build output without a lesson: CodeSteps is a box, and nothing is requested", async () => {
+    const api = apiRoutes();
+    const log = spyOnConsole();
+    renderTree(allAssetsNodes);
+
+    expect(screen.getAllByText("This content can't be shown")).toHaveLength(5);
+    expect(screen.getByText("This code step can't be shown")).toBeTruthy();
+    // The Mermaid-only Diagram and the CodeSteps that has no chapter.
+    await waitFor(() => expect(log.error).toHaveBeenCalledTimes(2));
+    expect(api.calls()).toHaveLength(0);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import globalCss from "../styles/global.css?raw";
 import css from "./content.css?raw";
 
 const rules = css
@@ -50,5 +51,72 @@ describe("content.css", () => {
 
   it("does not animate anything", () => {
     expect(css).not.toMatch(/\b(transition|animation|scroll-behavior)\b/);
+  });
+
+  it("has no raw color in the code viewer's CSS (the colors are tokens)", () => {
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(withoutComments).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/);
+  });
+});
+
+describe("content.css, the code viewer", () => {
+  it("lets the code viewer span the full content width, like a diagram, and never grow wider than it", () => {
+    expect(rule(".lesson-content > .code-steps")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+    expect(rule(".code-steps")).toMatch(/max-width:\s*100%/);
+  });
+
+  it("reserves room for the loading box with a min-height", () => {
+    expect(rule(".code-steps-loading")).toMatch(/min-height:\s*\d+px/);
+  });
+
+  it("draws the code area in the surface color, the code font, the radius, 16px padding and the code line height", () => {
+    const area = rule(".code-area");
+    expect(area).toMatch(/background:\s*var\(--color-surface\)/);
+    expect(area).toMatch(/font-family:\s*var\(--font-code\)/);
+    expect(area).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(area).toMatch(/padding:\s*var\(--space-16\)/);
+    expect(area).toMatch(/line-height:\s*var\(--line-height-code\)/);
+    expect(area).toMatch(/color:\s*var\(--color-text\)/);
+  });
+
+  it("scrolls long lines sideways inside the code area and never wraps them", () => {
+    expect(rule(".code-area")).toMatch(/overflow-x:\s*auto/);
+    expect(rule(".code-steps .code-line-text")).toMatch(/white-space:\s*pre\b/);
+    expect(rule(".code-steps .code-line-text")).not.toMatch(/white-space:\s*(normal|pre-wrap|pre-line)/);
+    expect(rule(".code-steps .tab")).toMatch(/white-space:\s*nowrap/);
+    expect(rule(".code-steps .tab")).toMatch(/max-width:\s*none/);
+  });
+
+  it("draws line numbers in the muted text color and keeps them out of a selection", () => {
+    expect(rule(".code-line-number")).toMatch(/color:\s*var\(--color-text-muted\)/);
+    expect(rule(".code-line-number")).toMatch(/user-select:\s*none/);
+  });
+
+  it("undoes the look of inline code for the code of a line", () => {
+    const line = rule(".code-steps .code-line-text");
+    expect(line).toMatch(/padding:\s*0/);
+    expect(line).toMatch(/background:\s*none/);
+    expect(line).toMatch(/font-size:\s*inherit/);
+  });
+
+  it("colors each token class from its own token", () => {
+    for (const name of ["comment", "constant", "keyword", "parameter", "function", "string", "string-expression", "punctuation", "link"]) {
+      expect(rule(`.code-token-${name}`)).toMatch(new RegExp(`color:\\s*var\\(--color-code-${name}\\)`));
+    }
+  });
+
+  it("hides text from sight but not from screen readers", () => {
+    const hidden = rule(".visually-hidden");
+    expect(hidden).toMatch(/position:\s*absolute/);
+    expect(hidden).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(hidden).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+  });
+
+  it("makes the Copy button (a .button) at least 44px high and wide", () => {
+    const button = globalCss
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .match(/\.button\s*\{([^}]*)\}/)?.[1];
+    expect(button).toMatch(/min-height:\s*44px/);
+    expect(button).toMatch(/min-width:\s*44px/);
   });
 });

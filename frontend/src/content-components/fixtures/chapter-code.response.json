@@ -1,0 +1,124 @@
+{
+  "course_id": "sample-course",
+  "chapter_id": "01-first-steps",
+  "zip": {
+    "url": "/api/courses/sample-course/chapters/01-first-steps/code.zip",
+    "file_name": "01-first-steps.zip",
+    "size": 656
+  },
+  "steps": [
+    {
+      "step": 1,
+      "files": [
+        {
+          "path": "helper.py",
+          "status": "added",
+          "content": "def helper():\n    return 1\n",
+          "changed_lines": [
+            1,
+            2
+          ]
+        },
+        {
+          "path": "main.py",
+          "status": "added",
+          "content": "from helper import helper\n\nprint(\"hello\")\nprint(helper())\n",
+          "changed_lines": [
+            1,
+            2,
+            3,
+            4
+          ]
+        },
+        {
+          "path": "settings.txt",
+          "status": "added",
+          "content": "greeting = héllo\n",
+          "changed_lines": [
+            1
+          ]
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "files": [
+        {
+          "path": "helper.py",
+          "status": "unchanged",
+          "content": "def helper():\n    return 1\n",
+          "changed_lines": []
+        },
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "from helper import helper\nfrom pkg.util import shout\n\nprint(shout(\"hello\"))\nprint(helper())\n",
+          "changed_lines": [
+            2,
+            4
+          ]
+        },
+        {
+          "path": "pkg/__init__.py",
+          "status": "added",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/util.py",
+          "status": "added",
+          "content": "def shout(text):\n    return text.upper()\n",
+          "changed_lines": [
+            1,
+            2
+          ]
+        },
+        {
+          "path": "settings.txt",
+          "status": "unchanged",
+          "content": "greeting = héllo\n",
+          "changed_lines": []
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "files": [
+        {
+          "path": "helper.py",
+          "status": "deleted",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "main.py",
+          "status": "modified",
+          "content": "from pkg.util import shout\n\nprint(shout(\"hello\"))\nprint(shout(\"done\"))\n",
+          "changed_lines": [
+            4
+          ]
+        },
+        {
+          "path": "pkg/__init__.py",
+          "status": "unchanged",
+          "content": "",
+          "changed_lines": []
+        },
+        {
+          "path": "pkg/util.py",
+          "status": "modified",
+          "content": "def shout(text):\n    return text.upper() + \"!\"\n",
+          "changed_lines": [
+            2
+          ]
+        },
+        {
+          "path": "settings.txt",
+          "status": "unchanged",
+          "content": "greeting = héllo\n",
+          "changed_lines": []
+        }
+      ]
+    }
+  ]
+}

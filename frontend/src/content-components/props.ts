@@ -44,3 +44,16 @@ export function checkTabProps(props: Props): Checked<{ label: string }> {
   const label = own(props, "label");
   return isFilled(label) ? ok({ label }) : fail("label is missing or empty");
 }
+
+const STEP_NUMBER = /^[1-9][0-9]*$/;
+
+/** `step` is a whole number of 1 or more written as a string; `file`, when given, is not empty. */
+export function checkCodeStepsProps(props: Props): Checked<{ step: number; file: string | null }> {
+  const step = own(props, "step");
+  if (typeof step !== "string" || !STEP_NUMBER.test(step) || !Number.isSafeInteger(Number(step))) {
+    return fail("step is not a whole number of 1 or more written as a string");
+  }
+  const file = own(props, "file");
+  if (file !== undefined && (typeof file !== "string" || file === "")) return fail("file is empty");
+  return ok({ step: Number(step), file: file ?? null });
+}

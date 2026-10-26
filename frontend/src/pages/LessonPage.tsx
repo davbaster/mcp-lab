@@ -159,7 +159,12 @@ export function LessonPage() {
         {loadedLesson && (
           <>
             {/* Keyed by lesson, so nothing of the last lesson's content lingers. The `h1` has no key. */}
-            <LessonContent key={`${courseId}/${loadedLesson.lessonId}`} tree={loadedLesson.tree} title={loadedLesson.title} />
+            <LessonContent
+              key={`${courseId}/${loadedLesson.lessonId}`}
+              tree={loadedLesson.tree}
+              title={loadedLesson.title}
+              lesson={{ courseId, chapterId: loadedLesson.chapterId }}
+            />
             <LessonNav courseId={courseId} lesson={loadedLesson} learner={mode === "learner"} />
           </>
         )}

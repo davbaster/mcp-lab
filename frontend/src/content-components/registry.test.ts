@@ -4,9 +4,9 @@ import { lookupComponent, registry } from "./registry";
 
 /**
  * Components that have a schema but no component yet. They map to PendingComponent. #20 removes
- * Video and Model3D, and #21 removes CodeSteps, when it builds them.
+ * Video and Model3D when it builds them.
  */
-const PENDING = ["CodeSteps", "Model3D", "Video"];
+const PENDING = ["Model3D", "Video"];
 
 const schemas = import.meta.glob("./schemas/*.schema.json", { eager: true, import: "default" });
 const schemaNames = Object.keys(schemas).map((path) => /\/([^/]+)\.schema\.json$/.exec(path)?.[1] as string);

@@ -34,6 +34,15 @@ Contrast ratios are against the background shown, computed with the WCAG formula
 | `--color-note-bg` | `#eaf1fb` | note callout background | text 13.8:1, primary label 5.4:1 |
 | `--color-danger-bg` | `#fdecec` | error message box | danger text 4.9:1 |
 | `--color-changed-line` | `#fff3c4` | changed lines in code step mode | text 14.1:1 |
+| `--color-code-comment` | `#58606e` | code: comments | 5.91:1 on surface |
+| `--color-code-constant` | `#0550ae` | code: numbers, constants, keys of values | 7.08:1 on surface |
+| `--color-code-keyword` | `#a0111f` | code: keywords, JSON and YAML keys | 7.55:1 on surface |
+| `--color-code-parameter` | `#953800` | code: function parameters | 6.89:1 on surface |
+| `--color-code-function` | `#6639ba` | code: functions, types, attributes | 6.85:1 on surface |
+| `--color-code-string` | `#116329` | code: Markdown list markers and inline code | 6.90:1 on surface |
+| `--color-code-string-expression` | `#0a3069` | code: quoted strings and tags | 11.95:1 on surface |
+| `--color-code-punctuation` | `#3f4858` | code: separators and brackets | 8.60:1 on surface |
+| `--color-code-link` | `#1f5fbf` | code: Markdown links | 5.68:1 on surface |
 
 Any new color must meet 4.5:1 for text and 3:1 for UI parts and focus indicators. Check it and add it to this table in the same change.
 
@@ -125,10 +134,11 @@ Follow the WAI-ARIA tabs pattern: `tablist`, `tab`, and `tabpanel` roles; arrow 
 ### Code
 
 - Background `--color-surface`, code font, `--radius` corners, and 16px padding.
-- Syntax highlighting uses one Shiki light theme (chosen in #21) with token colors of at least 4.5:1 on the code background.
+- Syntax highlighting uses Shiki's CSS-variables theme (chosen in #21). Each token gets a fixed class (`code-token-keyword`, ...) that sets one of the `--color-code-*` tokens above, all at least 4.5:1 on the code background (and on `--color-changed-line`). Code that is not a token uses `--color-text`. No color is set inline.
 - Line numbers in `--color-text-muted`, not selectable.
 - Changed lines in step mode: `--color-changed-line` background plus a 3px `--color-primary` bar in the line-number gutter, with screen-reader text "changed".
 - Copy buttons sit at the top right of the code block and say "Copy", then "Copied" for 2 seconds (announced with `aria-live="polite"`).
+- Code viewers (`CodeSteps`) use the full content width. Long lines scroll inside the code area and never wrap. If copying fails, the button says "Copy failed – select the code to copy it" until the learner presses it again or chooses another file.
 
 ### Media
 
