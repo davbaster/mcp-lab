@@ -108,7 +108,7 @@ export function PassedReview({
           const right = result && question.options.find((option) => option.id === result.correctOptionId);
           if (!result || !picked || !right) return null;
           return (
-            <ReviewItem key={index} number={index + 1} text={question.text} correct={result.isCorrect} answerText={picked.text}>
+            <ReviewItem key={index} number={index + 1} questionId={question.id} text={question.text} correct={result.isCorrect} answerText={picked.text}>
               <p>
                 Correct answer: <InlineText text={right.text} />
               </p>

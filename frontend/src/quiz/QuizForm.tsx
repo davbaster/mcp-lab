@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type FormEvent, type Ref } from "react";
 import { PASS_SCORE, QUESTIONS_PER_QUIZ } from "../components/ChapterCard";
+import { QuestionFeedbackButton } from "../feedback/QuestionFeedbackButton";
 import { InlineText } from "./InlineText";
 import type { Quiz } from "./quizData";
 
@@ -77,6 +78,7 @@ export function QuizForm({
                 </label>
               ))}
             </fieldset>
+            <QuestionFeedbackButton questionId={question.id} number={qi + 1} />
           </li>
         ))}
       </ol>

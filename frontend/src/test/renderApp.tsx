@@ -15,6 +15,7 @@ import { StrictMode } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, vi } from "vitest";
 import App from "../App";
+import { installDialogShim } from "./dialogShim";
 import { LocationProbe, type Visit } from "./LocationProbe";
 
 afterEach(() => {
@@ -24,6 +25,7 @@ afterEach(() => {
 
 /** `url` can also be `{ pathname, state }`, to open a history entry that carries state. */
 export function renderApp(url: string | { pathname: string; state?: unknown } = "/", options: { strict?: boolean } = {}) {
+  installDialogShim();
   const user = userEvent.setup();
   const visits: Visit[] = [];
   const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});

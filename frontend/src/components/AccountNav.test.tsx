@@ -105,9 +105,10 @@ it("signs out: visitor header, back to the course list, focus on the h1", async 
 
   expect(await within(account()).findByRole("link", { name: "Sign in" })).toBeTruthy();
   expect(within(account()).queryByText("ada_l")).toBeNull();
-  expect(currentUrl()).toBe("/");
+  // The header changes before the navigation that follows it, so wait for the effects that record it.
+  await waitFor(() => expect(currentUrl()).toBe("/"));
   expect(history.at(-1)?.type).toBe("PUSH");
-  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Courses" }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Courses" })));
   expect(api.calls("POST /api/auth/logout")).toHaveLength(1);
 });
 

@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { nextTarget, registerPath, signInPath } from "./paths";
+import { describe, expect, it } from "vitest";
+import { nextTarget, registerPath, returnTarget, signInPath } from "./paths";
 
 it("builds a sign-in link that keeps the slashes of next readable", () => {
   expect(signInPath("/courses/x")).toBe("/login?next=/courses/x");
@@ -47,4 +47,24 @@ it.each([
   ["/loginx", "/loginx"],
 ])("turns next %j into %j", (next, target) => {
   expect(nextTarget(next)).toBe(target);
+});
+
+describe("returnTarget", () => {
+  const at = (pathname: string, search = "", hash = "") => returnTarget({ pathname, search, hash });
+
+  it("is the path, query and hash of an ordinary page", () => {
+    expect(at("/courses/x/lessons/y", "?tab=2", "#top")).toBe("/courses/x/lessons/y?tab=2#top");
+    expect(at("/")).toBe("/");
+  });
+
+  it("is the page's own next value on the sign-in and register pages", () => {
+    expect(at("/login", "?next=/courses/x")).toBe("/courses/x");
+    expect(at("/register", "?next=%2Fcourses%2Fx%3Fa%3D1")).toBe("/courses/x?a=1");
+    expect(at("/Login/", "?next=/courses/x")).toBe("/courses/x");
+  });
+
+  it("is null on those pages without a next value", () => {
+    expect(at("/login")).toBeNull();
+    expect(at("/register", "?other=1")).toBeNull();
+  });
 });

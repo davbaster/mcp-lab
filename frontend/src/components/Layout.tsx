@@ -1,5 +1,7 @@
 import { useEffect, useRef, type MouseEvent } from "react";
 import { Link, Outlet, useLocation, useNavigationType } from "react-router";
+import { FeedbackButton } from "../feedback/FeedbackButton";
+import { FeedbackProvider } from "../feedback/FeedbackProvider";
 import { focusPageHeading } from "../lib/focus";
 import { AccountNav } from "./AccountNav";
 import { AuthNotice } from "./AuthNotice";
@@ -24,7 +26,7 @@ function useFocusOnRouteChange() {
   }, [location, navigationType]);
 }
 
-/** The shared page frame: skip link, header, and `main`. */
+/** The shared page frame: skip link, header, `main`, and the feedback dialog (outside `main`). */
 export function Layout() {
   const main = useRef<HTMLElement>(null);
   useFocusOnRouteChange();
@@ -36,7 +38,7 @@ export function Layout() {
   }
 
   return (
-    <>
+    <FeedbackProvider>
       <a className="skip-link" href="#main" onClick={skipToMain}>
         Skip to main content
       </a>
@@ -45,13 +47,16 @@ export function Layout() {
           <Link className="brand" to="/">
             Courses
           </Link>
-          <AccountNav />
+          <div className="header-actions">
+            <AccountNav />
+            <FeedbackButton />
+          </div>
         </div>
       </header>
       <main id="main" className="container" ref={main} tabIndex={-1}>
         <AuthNotice />
         <Outlet />
       </main>
-    </>
+    </FeedbackProvider>
   );
 }

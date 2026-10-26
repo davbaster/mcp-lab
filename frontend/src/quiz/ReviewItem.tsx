@@ -1,15 +1,18 @@
 import type { ReactNode } from "react";
+import { QuestionFeedbackButton } from "../feedback/QuestionFeedbackButton";
 import { InlineText } from "./InlineText";
 
 /** One question of a read-only review: its number and text, the verdict, the learner's own answer, and extras. */
 export function ReviewItem({
   number,
+  questionId,
   text,
   correct,
   answerText,
   children,
 }: {
   number: number;
+  questionId: string;
   text: string;
   correct: boolean;
   /** The text of the option the learner picked. */
@@ -29,6 +32,7 @@ export function ReviewItem({
         Your answer: <InlineText text={answerText} />
       </p>
       {children}
+      <QuestionFeedbackButton questionId={questionId} number={number} />
     </li>
   );
 }

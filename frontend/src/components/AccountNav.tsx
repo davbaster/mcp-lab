@@ -1,15 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { registerPath, signInPath } from "../auth/paths";
+import { Link, useLocation, useNavigate } from "react-router";
+import { registerPath, returnTarget, signInPath } from "../auth/paths";
 import { useAuth } from "../auth/useAuth";
-
-const FORM_PAGES = new Set(["/login", "/register"]);
 
 /** The right side of the header: sign-in links, or the username and "Sign out". */
 export function AccountNav() {
   const { status, username, signOut } = useAuth();
   const location = useLocation();
-  const [params] = useSearchParams();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -23,8 +20,7 @@ export function AccountNav() {
     }
   }, [signingOut]);
 
-  const onFormPage = FORM_PAGES.has(location.pathname.replace(/\/+$/, "").toLowerCase());
-  const next = onFormPage ? params.get("next") : `${location.pathname}${location.search}${location.hash}`;
+  const next = returnTarget(location);
 
   async function handleSignOut() {
     if (signingOut) return;

@@ -5,102 +5,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { NETWORK_ERROR_MESSAGE, UNEXPECTED_RESPONSE_MESSAGE } from "../api/apiError";
 import App from "../App";
 import { signInPath } from "../auth/paths";
-import { apiRoutes, deferred, type RecordedCall } from "../test/apiRoutes";
+import { apiRoutes, deferred } from "../test/apiRoutes";
 import { errorResponse, htmlResponse, jsonResponse } from "../test/mockApi";
+import { CHAPTER, COURSE, CORRECT, EXPLANATION, OPTION_ID, chapterList, grade, makeQuiz } from "../test/quizFixtures";
 import { renderApp } from "../test/renderApp";
 
-const COURSE = "demo";
-const CHAPTER = "c1";
 const URL_OF_QUIZ = `/courses/${COURSE}/chapters/${CHAPTER}/quiz`;
 const QUIZ = (course = COURSE, chapter = CHAPTER) => `GET /api/courses/${course}/chapters/${chapter}/quiz`;
 const ATTEMPT = (course = COURSE, chapter = CHAPTER) => `POST /api/courses/${course}/chapters/${chapter}/quiz/attempts`;
 const CHAPTERS = (course = COURSE) => `GET /api/courses/${course}/chapters`;
 
-const CORRECT = "CORRECT-SENTINEL-7f3a";
-const EXPLANATION = "EXPLANATION-SENTINEL-7f3a";
-const OPTION_ID = "OPTID-SENTINEL-7f3a";
-
 type Handler = NonNullable<Parameters<typeof apiRoutes>[0]>[string];
-
-interface QuizOptions {
-  /** Prefix of every option id. */
-  tag?: string;
-  /** The letters of the options, in the order the API sends them. */
-  order?: string[];
-  /** The text of the correct option (`a`) of question n. */
-  correctText?: (n: number) => string;
-  /** Extra keys the real API never sends, put on each question and option. */
-  extras?: Record<string, unknown>;
-}
-
-/** A quiz like the API's: five questions, the first with a snippet; the correct option is `a`. */
-function makeQuiz({ tag = "", order = ["c", "a", "b"], correctText = (n) => `Q${n} option a`, extras = {} }: QuizOptions = {}) {
-  return {
-    course_id: COURSE,
-    chapter_id: CHAPTER,
-    questions: [1, 2, 3, 4, 5].map((n) => ({
-      id: `q${n}`,
-      text: `Question text ${n}`,
-      snippet: n === 1 ? { language: "python", code: "def f():\n    return 1\n" } : null,
-      options: order.map((letter) => ({
-        id: `${tag}${letter}`,
-        text: letter === "a" ? correctText(n) : `Q${n} option ${letter}`,
-        ...extras,
-      })),
-      ...extras,
-    })),
-    ...extras,
-  };
-}
-
-const LESSON_OF = (questionId: string) => (questionId === "q1" || questionId === "q2" ? "l1" : "l2");
-
-/** Grades a request like the server: the correct option ends in `a`, and 4 of 5 pass. */
-function grade(call: RecordedCall, extras: Record<string, unknown> = {}, next: Record<string, unknown> = {}) {
-  const answers = (call.body as { answers: { question_id: string; option_id: string }[] }).answers;
-  const results = answers.map((a) => ({
-    question_id: a.question_id,
-    option_id: a.option_id,
-    correct_option_id: a.option_id.endsWith("a") ? a.option_id : a.option_id.replace(/.$/, "a"),
-    is_correct: a.option_id.endsWith("a"),
-    explanation: `${EXPLANATION}-${a.question_id}`,
-    lesson_id: LESSON_OF(a.question_id),
-  }));
-  const score = results.filter((r) => r.is_correct).length;
-  const base = { course_id: COURSE, chapter_id: CHAPTER, score, total: 5 };
-  if (score >= 4) {
-    return { ...base, passed: true, results, next_chapter_id: "c2", course_complete: false, ...next, ...extras };
-  }
-  const wrong = results.filter((r) => !r.is_correct).map((r) => ({ question_id: r.question_id, lesson_id: r.lesson_id }));
-  return { ...base, passed: false, wrong, ...extras };
-}
-
-const chapterList = (status: string | null = "in_progress", chapters: unknown[] | null = null) => ({
-  course_id: COURSE,
-  chapters: chapters ?? [
-    {
-      id: "c1",
-      title: "Chapter one",
-      free_preview: true,
-      status,
-      lessons: [
-        { id: "l1", title: "First lesson" },
-        { id: "l2", title: "Second lesson" },
-      ],
-    },
-    {
-      id: "c2",
-      title: "Chapter two",
-      free_preview: false,
-      status: "locked",
-      lessons: [
-        { id: "l3", title: "Third lesson" },
-        { id: "l4", title: "Fourth lesson" },
-      ],
-    },
-    { id: "c3", title: "Chapter three", free_preview: false, status: "locked", lessons: [] },
-  ],
-});
 
 interface SetupOptions {
   learner?: boolean;
@@ -307,7 +222,9 @@ describe("taking the quiz", () => {
     await user.keyboard(" ");
     expect((within(group(1)).getAllByRole("radio")[1] as HTMLInputElement).checked).toBe(true);
     expect((within(group(1)).getAllByRole("radio")[0] as HTMLInputElement).checked).toBe(false);
-    // Tab leaves the group; the arrow keys stay inside it.
+    // Tab leaves the group, to the question's own feedback button; the arrow keys stay inside it.
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Send feedback about this question (question 1)" }));
     await user.tab();
     expect(group(2).contains(document.activeElement)).toBe(true);
   });
@@ -507,7 +424,7 @@ describe("taking the quiz", () => {
       expect([...element.attributes].some((a) => a.name.startsWith("data-"))).toBe(false);
       expect(element.className.toString()).not.toMatch(/q[1-5]|option [abc]/i);
     }
-    for (const el of document.querySelectorAll("main [aria-label]")) expect(el.getAttribute("aria-label")).toMatch(/^(Quiz|Code for question \d)$/);
+    for (const el of document.querySelectorAll("main [aria-label]")) expect(el.getAttribute("aria-label")).toMatch(/^(Quiz|Code for question \d|Send feedback about this question \(question \d\))$/);
   });
 });
 
@@ -1353,7 +1270,8 @@ describe("layout hooks", () => {
     setup();
     const { user } = await loaded();
     expect(submitButton().className).toBe("button");
-    expect(document.querySelectorAll("main button.button")).toHaveLength(1);
+    // The feedback buttons of the questions are secondary.
+    expect(document.querySelectorAll("main button.button:not(.button-secondary)")).toHaveLength(1);
     await answerAll(user, 4);
     await user.click(submitButton());
     await screen.findByRole("heading", { level: 2 });

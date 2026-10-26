@@ -45,6 +45,7 @@ export function FailedReview({
             <ReviewItem
               key={index}
               number={index + 1}
+              questionId={question.id}
               text={question.text}
               correct={lessonId === undefined}
               answerText={question.options[choices[index]].text}

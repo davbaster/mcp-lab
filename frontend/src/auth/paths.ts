@@ -36,3 +36,14 @@ export function nextTarget(next: string | null | undefined): string {
   if (FORM_PAGES.has(path)) return "/";
   return next;
 }
+
+/**
+ * What the "Sign in" and "Create account" links should return to from this page: the page's own
+ * path, query and hash, except on the sign-in and register pages, which keep their own `next`
+ * (so a link there never points back at itself). Used by the header and by the feedback dialog.
+ */
+export function returnTarget(location: { pathname: string; search: string; hash: string }): string | null {
+  const onFormPage = FORM_PAGES.has(location.pathname.replace(/\/+$/, "").toLowerCase());
+  if (onFormPage) return new URLSearchParams(location.search).get("next");
+  return `${location.pathname}${location.search}${location.hash}`;
+}
