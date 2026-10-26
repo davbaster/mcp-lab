@@ -13,22 +13,24 @@ Agreed with the owner (David, `davbaster`):
 1. Foundation (#1 onward) - done
 2. Content build - done
 3. Backend - done
-4. Frontend - in progress, almost finished
-5. Course chapters (#26-#33, #60-#62)
-6. Integration tests and CI (#70-#79, #85, #87, #89, #90)
-7. Ops phases (#34-#52, #57, #64-#67, #80-#83), in the order of "Build phases" in the plan
+4. Frontend - done
+5. Course chapters (#26-#33, #61, #62)
+6. Deploy (#34, #35), observability and alerts (#37, #38), ops database roles (#39)
+7. On-call agent (#40-#52). David says this is mandatory.
+
+On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped for now but stay open: CI and integration tests (#70-#79, #85, #87, #89, #90, #95, #99), ops extras (#57, #64-#67, #80, #81, #83), course CI (#60), hardening (#96, #97, #102, #113, #114), Mermaid (#116-#118), UI follow-ups (#124-#130, #135) and Makefile targets (#98). Don't start them unless David asks.
 
 ## Where things are
 
-- **Merged:** PR #132 with #20 (Video and Model3D components plus the Content-Security-Policy) and #22 (code viewer step mode).
-- **Open PR [#134](https://github.com/davbaster/mcp-lab/pull/134):** #63 (syntax highlighting for fenced code in lessons and for quiz snippets). It passed QA and CI is green. Waiting on David's merge.
-- **Merged:** #63 (frontend phase done) and #107 (course loader edge cases, PR #136).
-- **#111 (trailing newline in route paths):** passed QA, in a PR waiting on David's merge.
-- **Next:** #108 (being groomed), then the course chapters.
+- **Merged:** everything through the frontend phase, plus #107 (course loader edge cases, PR #136).
+- **#111 (trailing newline in route paths):** passed QA, merged (PR #137).
+- **Next:** Chapter 1 and the MCP course setup (#26), then the other chapters.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## Decisions to keep
 
+- **No new tests for now (David, 2026-10-26).** New features ship without new tests. Existing tests stay, must keep passing, and must never be skipped or deleted. QA is a quick check: run the existing suites, linters and type checks, and try the feature by hand.
+- **Quiz answers (#108):** the build check is dropped. Chapter authors spread the correct answers across `a`, `b`, `c` and `d`, so always picking one letter doesn't pass. #108 stays open.
 - **Packages need David's approval** before they're added (see `AGENTS.md`). Everything in the current `package.json` and `pyproject.toml` files is approved. Recent approvals, all pinned exactly and in `frontend/` only unless noted: react-router 7.18.4 and @testing-library/user-event 14.6.7 (#17); Shiki 4.5.0 with @shikijs/langs (#21); @google/model-viewer 4.4.0 and three.js 0.183.2 (#20); @mermaid-js/mermaid-cli 12.0.0 and puppeteer 25.16.0 in `content-build/` only (#55).
 - **CSP:** `connect-src` allows `blob:` so textured 3D models load (approved by David for #20). Compressed models (Draco, KTX2, Meshopt) stay unsupported in v1; see #126.
 - **The frontend may import exactly one file from `content-build/`:** `media-config.json`, the single list of media and embed origins. The CSP generator and the Video component both read it. `content-build/tests/component-schemas.test.ts` refuses every other import from `content-build/`.
@@ -42,7 +44,7 @@ Agreed with the owner (David, `davbaster`):
 
 Filed during the build, all still open:
 
-- **#108 Keep quiz option IDs from revealing the answer. Must be fixed before any real chapter content is written.**
+- #108 quiz option IDs can reveal the answer (handled by authoring for now, see above)
 - #113 database pool under bursts, #114 trust the shared proxy for client addresses
 - #116 render Mermaid in the backend image build, #117 Mermaid as a fenced code block, #118 content-build job on Windows
 - #135 a content-build warning when a code fence or quiz snippet language won't be highlighted
