@@ -22,7 +22,9 @@ Agreed with the owner (David, `davbaster`):
 
 - **Merged:** PR #132 with #20 (Video and Model3D components plus the Content-Security-Policy) and #22 (code viewer step mode).
 - **Open PR [#134](https://github.com/davbaster/mcp-lab/pull/134):** #63 (syntax highlighting for fenced code in lessons and for quiz snippets). It passed QA and CI is green. Waiting on David's merge.
-- **After #63** the frontend phase is done and the chapters start, but only after #108 (below).
+- **Merged:** #63 (frontend phase done) and #107 (course loader edge cases, PR #136).
+- **#111 (trailing newline in route paths):** passed QA, in a PR waiting on David's merge.
+- **Next:** #108 (being groomed), then the course chapters.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## Decisions to keep
@@ -41,7 +43,7 @@ Agreed with the owner (David, `davbaster`):
 Filed during the build, all still open:
 
 - **#108 Keep quiz option IDs from revealing the answer. Must be fixed before any real chapter content is written.**
-- #107 course loader edge cases (in a PR, waiting on David's merge), #111 trailing newline in route paths, #113 database pool under bursts, #114 trust the shared proxy for client addresses
+- #113 database pool under bursts, #114 trust the shared proxy for client addresses
 - #116 render Mermaid in the backend image build, #117 Mermaid as a fenced code block, #118 content-build job on Windows
 - #135 a content-build warning when a code fence or quiz snippet language won't be highlighted
 - #124-#130, filed 2026-10-26 from the frontend work: heading anchors, pausing hidden videos, compressed 3D models, a CSP for `/api/docs`, caption language, a clipboard fallback for Copy, and an error when the ZIP download fails. These don't have the `backlog` label yet.
