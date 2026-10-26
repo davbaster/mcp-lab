@@ -1,0 +1,223 @@
+/* Styles for a rendered lesson tree. Only tokens: no raw colors (tokens.css has them all).
+   Body text size and the 72ch measure come from the lesson page (global.css, ".lesson-region"). */
+
+.lesson-content {
+  /* Long words and URLs wrap instead of widening the page. */
+  overflow-wrap: anywhere;
+  /* The text column is 72ch. A diagram may span both columns, which is the full content width. */
+  display: grid;
+  grid-template-columns: minmax(0, 72ch) minmax(0, 1fr);
+}
+
+.lesson-content > * {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.lesson-content > .diagram {
+  grid-column: 1 / -1;
+}
+
+.lesson-content h2,
+.lesson-content h3,
+.lesson-content h4,
+.lesson-content h5,
+.lesson-content h6 {
+  margin: var(--space-32) 0 var(--space-16);
+  line-height: var(--line-height-heading);
+}
+
+.lesson-content > :first-child {
+  margin-top: 0;
+}
+
+.lesson-content h2 {
+  font-size: var(--font-size-2xl);
+}
+
+.lesson-content h3 {
+  font-size: var(--font-size-xl);
+}
+
+.lesson-content h4 {
+  font-size: var(--font-size-lg);
+}
+
+.lesson-content h5,
+.lesson-content h6 {
+  font-size: var(--font-size-base);
+}
+
+.lesson-content ul,
+.lesson-content ol {
+  margin: 0 0 var(--space-16);
+  padding-left: var(--space-24);
+}
+
+.lesson-content li > p {
+  margin-bottom: var(--space-8);
+}
+
+.lesson-content li > ul,
+.lesson-content li > ol {
+  margin: var(--space-4) 0 0;
+}
+
+.lesson-content blockquote {
+  margin: 0 0 var(--space-16);
+  padding-left: var(--space-16);
+  border-left: 4px solid var(--color-border-strong);
+}
+
+.lesson-content blockquote > :last-child,
+.lesson-content li > :last-child,
+.callout > :last-child,
+.tabpanel > :last-child {
+  margin-bottom: 0;
+}
+
+.lesson-content hr {
+  width: 100%;
+  margin: var(--space-24) 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.lesson-content code {
+  padding: 0 var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  font-family: var(--font-code);
+  font-size: 0.9em;
+}
+
+/* A code block scrolls inside itself, and its lines never wrap. */
+.lesson-content pre {
+  margin: 0 0 var(--space-16);
+  padding: var(--space-16);
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  line-height: var(--line-height-code);
+  overflow-wrap: normal;
+}
+
+.lesson-content pre code {
+  padding: 0;
+  background: none;
+  font-size: var(--font-size-sm);
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* Images and diagrams */
+.lesson-image {
+  max-width: 100%;
+  height: auto;
+}
+
+.lesson-figure {
+  margin: 0 0 var(--space-16);
+}
+
+.lesson-figure .lesson-image,
+.diagram .lesson-image {
+  display: block;
+}
+
+.diagram {
+  margin: 0 0 var(--space-16);
+}
+
+.media-fallback,
+.content-unavailable {
+  margin: 0 0 var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.media-fallback-inline {
+  display: inline-block;
+  margin: 0;
+  padding: 0 var(--space-8);
+}
+
+/* Callout */
+.callout {
+  --callout-bg: var(--color-note-bg);
+  --callout-color: var(--color-primary);
+  margin: 0 0 var(--space-16);
+  padding: var(--space-12) var(--space-16);
+  border-left: 4px solid var(--callout-color);
+  border-radius: var(--radius);
+  background: var(--callout-bg);
+}
+
+.callout-tip {
+  --callout-bg: var(--color-tip-bg);
+  --callout-color: var(--color-success);
+}
+
+.callout-warning {
+  --callout-bg: var(--color-warning-bg);
+  --callout-color: var(--color-warning);
+}
+
+.callout-heading {
+  margin: 0 0 var(--space-8);
+}
+
+.callout-label {
+  color: var(--callout-color);
+  font-weight: 700;
+}
+
+.callout-title {
+  font-weight: 600;
+}
+
+/* Tabs */
+.tabs {
+  margin: 0 0 var(--space-16);
+}
+
+/* If the tabs do not fit, the list scrolls sideways inside itself, not the page. */
+.tablist {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-8) var(--space-16);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--color-surface);
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* The tab list clips what is outside it, so the focus ring is drawn inside the tab. */
+.tab:focus-visible {
+  outline-offset: -3px;
+}
+
+.tabpanel {
+  padding-top: var(--space-16);
+}

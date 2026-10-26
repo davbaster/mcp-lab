@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
-import { toApiError, UNEXPECTED_RESPONSE_MESSAGE, type ApiError } from "../api/apiError";
+import { UNEXPECTED_RESPONSE_MESSAGE, type ApiError } from "../api/apiError";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
+import { settle } from "../api/settle";
 import { registerPath, signInPath } from "../auth/paths";
 import { useAuth } from "../auth/useAuth";
 import { ChapterCard, type ChapterLearnerView } from "../components/ChapterCard";
@@ -20,17 +21,6 @@ type State =
   | { kind: "error"; key: string; message: string }
   | { kind: "notFound"; key: string }
   | { kind: "loaded"; key: string; course: CourseSummary; chapters: ChapterSummary[]; progress: CourseProgress | null };
-
-type Settled<T> = { data: T } | { failure: ApiError };
-
-async function settle<T>(request: Promise<{ data?: T; error?: unknown; response: Response }>): Promise<Settled<T>> {
-  try {
-    const { data, error, response } = await request;
-    return response.ok && data ? { data } : { failure: toApiError(error, response) };
-  } catch (thrown) {
-    return { failure: toApiError(thrown) };
-  }
-}
 
 const isNotAuthenticated = (failure: ApiError) => failure.status === 401 && failure.code === "not_authenticated";
 const isCourseNotFound = (failure: ApiError) => failure.status === 404 && failure.code === "course_not_found";
