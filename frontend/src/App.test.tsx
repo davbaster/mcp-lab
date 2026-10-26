@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { apiRoutes } from "./test/apiRoutes";
 import { renderApp } from "./test/renderApp";
@@ -74,10 +74,10 @@ it("changes the document title when the route changes", async () => {
   apiRoutes();
   const { user } = renderApp("/");
   await screen.findByText("No courses available yet.");
-  expect(document.title).toBe("Courses");
+  await waitFor(() => expect(document.title).toBe("Courses"));
 
   const account = screen.getByRole("navigation", { name: "Account" });
   await user.click(await within(account).findByRole("link", { name: "Create account" }));
 
-  expect(document.title).toBe("Create account – Courses");
+  await waitFor(() => expect(document.title).toBe("Create account – Courses"));
 });

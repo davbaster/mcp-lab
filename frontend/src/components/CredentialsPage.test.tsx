@@ -410,7 +410,8 @@ it("shows username_taken below the username field and focuses it", async () => {
   await screen.findByText("That username is taken.");
   expect(describedBy(username())).toContain("That username is taken.");
   expect(username().getAttribute("aria-invalid")).toBe("true");
-  expect(document.activeElement).toBe(username());
+  // Focus moves in an effect that runs after the error shows.
+  await waitFor(() => expect(document.activeElement).toBe(username()));
   expect(screen.queryByRole("alert")).toBeNull();
   expect(username().value).toBe("ada_l");
   expect(password().value).toBe("secret-pass");
@@ -531,7 +532,7 @@ it("sends the learner to next with the history entry replaced and focus on the n
   await screen.findByRole("heading", { level: 1, name: "Course" });
   await waitFor(() => expect(currentUrl()).toBe("/courses/x"));
   expect(history.at(-1)?.type).toBe("REPLACE");
-  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 })));
 });
 
 const nextCases: [string, string][] = [
@@ -579,7 +580,8 @@ it("goes to the course list when there is no next", async () => {
   const { currentUrl } = renderApp("/login");
 
   await screen.findByRole("heading", { level: 1, name: "Courses" });
-  expect(currentUrl()).toBe("/");
+  // The probe records the URL in an effect, which can run after the heading shows.
+  await waitFor(() => expect(currentUrl()).toBe("/"));
 });
 
 // --- the password stays out of everything ----------------------------------------------------

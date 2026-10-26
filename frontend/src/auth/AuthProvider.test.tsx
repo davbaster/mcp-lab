@@ -79,7 +79,8 @@ it("repeats /me when Try again is pressed, and a success removes the banner and 
   expect(await within(account()).findByText("ada_l")).toBeTruthy();
   expect(screen.queryByRole("alert")).toBeNull();
   expect(api.calls("GET /api/auth/me")).toHaveLength(2);
-  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
+  // Focus moves once the retry has settled, which can be after the learner shows.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 })));
 });
 
 it("keeps the banner when Try again fails again", async () => {
