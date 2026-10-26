@@ -1,5 +1,5 @@
 import { useEffect, useRef, type MouseEvent } from "react";
-import { Link, Outlet, useLocation } from "react-router";
+import { Link, Outlet, useLocation, useNavigationType } from "react-router";
 import { focusPageHeading } from "../lib/focus";
 import { AccountNav } from "./AccountNav";
 import { AuthNotice } from "./AuthNotice";
@@ -7,18 +7,21 @@ import { AuthNotice } from "./AuthNotice";
 /** After a path change, show the top of the new page and put focus on its `h1`. */
 function useFocusOnRouteChange() {
   const location = useLocation();
+  const navigationType = useNavigationType();
   const previousPath = useRef(location.pathname);
 
   useEffect(() => {
     const pathChanged = previousPath.current !== location.pathname;
     previousPath.current = location.pathname;
-    // A navigation can also ask for it (sign-out from the page it is already on).
-    const asked = (location.state as { focusHeading?: boolean } | null)?.focusHeading === true;
+    // A navigation can also ask for it (sign-out from the page it is already on). The flag stays
+    // in the history entry, so a reload or Back/Forward (POP) must not act on it again.
+    const asked =
+      navigationType !== "POP" && (location.state as { focusHeading?: boolean } | null)?.focusHeading === true;
     if (pathChanged || asked) {
       window.scrollTo(0, 0);
       focusPageHeading();
     }
-  }, [location]);
+  }, [location, navigationType]);
 }
 
 /** The shared page frame: skip link, header, and `main`. */

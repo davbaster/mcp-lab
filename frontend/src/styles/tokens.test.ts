@@ -79,3 +79,12 @@ it("no component sets a color, spacing or font size inline", () => {
     expect(source, path).not.toMatch(/style=\{\{/);
   }
 });
+
+it("the link-action style makes standalone links at least 44px high", () => {
+  const files = import.meta.glob<string>("./global.css", { query: "?raw", import: "default", eager: true });
+  const css = Object.values(files)[0];
+  const rule = css.match(/\.link-action\s*\{([^}]*)\}/)?.[1] ?? "";
+
+  expect(rule).toMatch(/min-height:\s*44px/);
+  expect(rule).toMatch(/display:\s*inline-flex/);
+});

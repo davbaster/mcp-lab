@@ -38,6 +38,7 @@ it.each(["/nope", "/courses", "/courses/a/b/c"])("shows Page not found at %s ins
   expect(screen.getByRole("heading", { level: 1, name: "Page not found" })).toBeTruthy();
   const back = screen.getByRole("link", { name: "Back to all courses" });
   expect(back.getAttribute("href")).toBe("/");
+  expect(back.classList.contains("link-action")).toBe(true);
   expect(screen.getByRole("banner")).toBeTruthy();
   const account = screen.getByRole("navigation", { name: "Account" });
   expect(await within(account).findByRole("link", { name: "Create account" })).toBeTruthy();

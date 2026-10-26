@@ -1,5 +1,6 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
+import { api } from "../api/client";
 import { NETWORK_ERROR_MESSAGE, UNEXPECTED_RESPONSE_MESSAGE } from "../api/apiError";
 import { apiRoutes, deferred } from "../test/apiRoutes";
 import { errorResponse, htmlResponse, jsonResponse } from "../test/mockApi";
@@ -158,9 +159,12 @@ it("ignores a 401 not_authenticated for a request that started before the learne
     },
     "POST /api/auth/login": () => learner(),
   });
-  const { user } = renderApp("/");
-  // The course list request is now in flight, started while nobody is signed in.
-  await within(account()).findByRole("link", { name: "Sign in" });
+  // /me has answered (401) before the held request starts, so only sign-in can make it stale.
+  const { user } = renderApp("/login");
+  await screen.findByLabelText("Username");
+  await user.click(within(screen.getByRole("banner")).getByRole("link", { name: "Courses" }));
+  await screen.findByRole("region", { name: "Course list" });
+  expect(requests).toBe(1);
   await user.click(within(account()).getByRole("link", { name: "Sign in" }));
   await user.type(await screen.findByLabelText("Username"), "ada_l");
   await user.type(screen.getByLabelText("Password"), "secret-pass");
@@ -173,6 +177,30 @@ it("ignores a 401 not_authenticated for a request that started before the learne
   await settle();
 
   expect(within(account()).getByText("ada_l")).toBeTruthy();
+});
+
+it("removes its middleware from the shared client when the provider unmounts", async () => {
+  apiRoutes({ "GET /api/courses": () => errorResponse(401, "not_authenticated", "Sign in to continue.") });
+  const { unmount } = renderApp("/");
+  await within(account()).findByRole("link", { name: "Sign in" });
+  unmount();
+  // A leftover middleware would look inside the 401 through a clone of the response.
+  const clone = vi.spyOn(Response.prototype, "clone");
+
+  await api.GET("/api/courses");
+
+  expect(clone).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["another code", () => errorResponse(401, "invalid_credentials", "Wrong login.")],
+  ["an HTML body", () => htmlResponse(401, "<html><body>Unauthorized</body></html>")],
+])("makes a 401 from /me with %s a visitor without any message", async (_name, answer) => {
+  apiRoutes({ "GET /api/auth/me": answer });
+  renderApp("/");
+
+  await within(account()).findByRole("link", { name: "Sign in" });
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 it("writes nothing to storage or cookies through a register, sign in and sign out", async () => {

@@ -8,7 +8,7 @@ export function NotFoundPage() {
     <>
       <PageHeading>Page not found</PageHeading>
       <p>
-        <Link to="/">Back to all courses</Link>
+        <Link className="link-action" to="/">Back to all courses</Link>
       </p>
     </>
   );

@@ -253,6 +253,27 @@ it("removes a field's error when that field is edited, and keeps the other", asy
   expect(screen.getByText(PASSWORD_MESSAGE)).toBeTruthy();
 });
 
+it("removes the password error when the password is edited, and keeps the username error", async () => {
+  apiRoutes();
+  const { user } = renderApp("/register");
+  await fillIn(user, "ab", "short");
+  await user.click(submitButton("register"));
+
+  await user.type(password(), "er-pass");
+
+  expect(screen.queryByText(PASSWORD_MESSAGE)).toBeNull();
+  expect(password().getAttribute("aria-invalid")).toBeNull();
+  expect(screen.getByText(USERNAME_MESSAGE)).toBeTruthy();
+});
+
+it.each(["/login", "/register"])("gives the link under the form at %s the 44px link style", async (url) => {
+  apiRoutes();
+  renderApp(url);
+
+  const link = (await screen.findByText(/^(Create one|Sign in)$/, { selector: "p a" })) as HTMLElement;
+  expect(link.classList.contains("link-action")).toBe(true);
+});
+
 // --- sign-in rules ---------------------------------------------------------------------------
 
 it("checks only that both sign-in fields are not empty", async () => {
@@ -403,6 +424,8 @@ const boxCases: [string, "login" | "register", () => Response | Promise<Response
   ["internal_error on sign in", "login", () => errorResponse(500, "internal_error", "Server broke."), "Server broke."],
   ["internal_error on register", "register", () => errorResponse(500, "internal_error", "Server broke."), "Server broke."],
   ["an unknown code", "login", () => errorResponse(418, "teapot", "I am a teapot."), "I am a teapot."],
+  ["an empty 500 on sign in", "login", () => new Response(null, { status: 500 }), UNEXPECTED_RESPONSE_MESSAGE],
+  ["an empty 500 on register", "register", () => new Response(null, { status: 500 }), UNEXPECTED_RESPONSE_MESSAGE],
   ["a 502 HTML page on sign in", "login", () => htmlResponse(502), UNEXPECTED_RESPONSE_MESSAGE],
   ["a 502 HTML page on register", "register", () => htmlResponse(502), UNEXPECTED_RESPONSE_MESSAGE],
   ["a network error on sign in", "login", () => Promise.reject(new TypeError("Failed to fetch")), NETWORK_ERROR_MESSAGE],

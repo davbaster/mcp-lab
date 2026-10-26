@@ -22,7 +22,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-export function renderApp(url = "/", options: { strict?: boolean } = {}) {
+/** `url` can also be `{ pathname, state }`, to open a history entry that carries state. */
+export function renderApp(url: string | { pathname: string; state?: unknown } = "/", options: { strict?: boolean } = {}) {
   const user = userEvent.setup();
   const visits: Visit[] = [];
   const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
@@ -41,6 +42,6 @@ export function renderApp(url = "/", options: { strict?: boolean } = {}) {
     scrollTo,
     history: visits,
     /** The current path, query and hash. */
-    currentUrl: () => visits.at(-1)?.url ?? url,
+    currentUrl: () => visits.at(-1)?.url ?? (typeof url === "string" ? url : url.pathname),
   };
 }

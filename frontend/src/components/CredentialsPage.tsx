@@ -190,11 +190,11 @@ function CredentialsForm({ mode, next }: { mode: Mode; next: string | null }) {
       <p className="form-switch">
         {mode === "login" ? (
           <>
-            No account yet? <Link to={registerPath(next)}>Create one</Link>
+            No account yet? <Link className="link-action" to={registerPath(next)}>Create one</Link>
           </>
         ) : (
           <>
-            Already have an account? <Link to={signInPath(next)}>Sign in</Link>
+            Already have an account? <Link className="link-action" to={signInPath(next)}>Sign in</Link>
           </>
         )}
       </p>

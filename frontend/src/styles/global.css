@@ -254,6 +254,14 @@ main {
   margin-top: var(--space-24);
 }
 
+/* A link that stands alone in a form or message: at least 44px high. */
+.link-action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+
 /* Course list */
 .course-list {
   list-style: none;

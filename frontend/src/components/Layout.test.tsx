@@ -114,3 +114,12 @@ it("leaves focus and scroll alone when only the query or hash changes", async ()
   expect(scrollTo).not.toHaveBeenCalled();
   expect(document.activeElement).not.toBe(screen.getByRole("heading", { level: 1 }));
 });
+
+it("leaves focus and scroll alone on a reload of an entry that still carries the sign-out flag", async () => {
+  apiRoutes();
+  const { scrollTo } = renderApp({ pathname: "/", state: { focusHeading: true } });
+  await screen.findByText("No courses available yet.");
+
+  expect(scrollTo).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(document.body);
+});
