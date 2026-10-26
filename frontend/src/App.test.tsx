@@ -13,7 +13,7 @@ it("shows a level 1 heading named Courses", async () => {
 
 const routes: [string, string, string][] = [
   ["/", "Courses", "/"],
-  ["/courses/mcp", "Course dashboard", "dashboard"],
+  ["/courses/mcp", "Course", "dashboard"],
   ["/courses/mcp/lessons/intro", "Lesson", "lesson"],
   ["/courses/mcp/chapters/ch1/quiz", "Quiz", "quiz"],
   ["/register", "Create account", "register"],
