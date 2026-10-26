@@ -1,7 +1,7 @@
 import type { ApiError } from "../api/apiError";
 import { isRecord } from "../content-components/tree";
 
-/** What the page reads of the quiz `GET`: ids, texts and the snippet's code. Nothing else. */
+/** What the page reads of the quiz `GET`: ids, texts and the snippet's code and language. Nothing else. */
 export interface QuizOption {
   id: string;
   text: string;
@@ -12,6 +12,8 @@ export interface QuizQuestion {
   text: string;
   /** The snippet's code, or null when the question has none. */
   code: string | null;
+  /** The snippet's language as written, or null when it has none; the page highlights the ones it knows. */
+  language: string | null;
   options: QuizOption[];
 }
 
@@ -31,11 +33,14 @@ function readQuestion(value: unknown): QuizQuestion | null {
   const options = value.options.map(readOption);
   if (options.length === 0 || options.some((option) => option === null)) return null;
   let code: string | null = null;
+  let language: string | null = null;
   if (value.snippet !== null && value.snippet !== undefined) {
     if (!isRecord(value.snippet) || !isString(value.snippet.code)) return null;
     code = value.snippet.code === "" ? null : value.snippet.code;
+    // A bad language never makes the quiz unusable: the snippet is plain text.
+    if (code !== null && isString(value.snippet.language) && value.snippet.language !== "") language = value.snippet.language;
   }
-  return { id: value.id, text: value.text, code, options: options as QuizOption[] };
+  return { id: value.id, text: value.text, code, language, options: options as QuizOption[] };
 }
 
 /** The quiz, checked at run time; null if the body is not a quiz with at least one answerable question. */

@@ -31,6 +31,21 @@ describe("quiz.css", () => {
     expect(rule(".quiz-snippet code")).toMatch(/white-space:\s*pre\b/);
   });
 
+  it("keeps the snippet on the surface background and the text color, and no part of it unselectable", () => {
+    expect(rule(".quiz-snippet")).toMatch(/background:\s*var\(--color-surface\)/);
+    expect(rule(".quiz-snippet")).toMatch(/color:\s*var\(--color-text\)/);
+    expect(rule(".quiz-snippet")).not.toMatch(/user-select/);
+    expect(rule(".quiz-snippet code")).not.toMatch(/user-select/);
+  });
+
+  it("shows a tab in a snippet as 4 columns, as the code viewer does", () => {
+    expect(rule(".quiz-snippet code")).toMatch(/tab-size:\s*4\b/);
+  });
+
+  it("uses no raw color", () => {
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/);
+  });
+
   it("keeps the question column shrinkable so a wide snippet cannot widen the page", () => {
     expect(rule(".quiz-questions")).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)/);
     expect(rule(".quiz-question")).toMatch(/min-width:\s*0/);

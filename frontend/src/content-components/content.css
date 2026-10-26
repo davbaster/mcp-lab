@@ -101,6 +101,7 @@
   overflow-x: auto;
   border-radius: var(--radius);
   background: var(--color-surface);
+  color: var(--color-text);
   line-height: var(--line-height-code);
   overflow-wrap: normal;
 }
@@ -109,8 +110,22 @@
   padding: 0;
   background: none;
   font-size: var(--font-size-sm);
+  white-space: pre;
+  tab-size: 4;
   overflow-wrap: normal;
   word-break: normal;
+}
+
+/* A code fence with its Copy button above it. The block is a grid item that can shrink, so a long
+   line scrolls inside the pre and never widens the lesson. The toolbar is outside the scroll container. */
+.lesson-content .code-prose {
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 var(--space-16);
+}
+
+.lesson-content .code-prose pre {
+  margin: 0;
 }
 
 /* Images and diagrams */

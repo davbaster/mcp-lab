@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router";
 import "./content.css";
+import { LessonCodeBlock } from "./CodeBlock";
 import { CodeDataProvider } from "./CodeDataProvider";
 import { LessonImage } from "./LessonImage";
 import { LogOnce } from "./LogOnce";
@@ -14,8 +15,6 @@ import { classifyLink, siteSource } from "./urls";
  * child or attribute value, so it is always text; nothing here builds HTML from it. A node that
  * is not understood is skipped (and logged), so one bad node never takes the page down.
  */
-
-const CODE_LANGUAGE = /^[A-Za-z0-9_+#.-]+$/;
 
 function skipped(type: unknown, why: string): ReactNode {
   const label = typeof type === "string" ? type.slice(0, 60) : "(none)";
@@ -81,13 +80,7 @@ function renderHeading(node: TreeNode): ReactNode {
 }
 
 function renderCode(node: TreeNode): ReactNode {
-  const lang = typeof node.lang === "string" && CODE_LANGUAGE.test(node.lang) ? node.lang : null;
-  // The `pre` can be focused, so a wide block can be scrolled with the keyboard.
-  return (
-    <pre tabIndex={0}>
-      <code className={lang ? `language-${lang}` : undefined}>{typeof node.value === "string" ? node.value : ""}</code>
-    </pre>
-  );
+  return <LessonCodeBlock code={typeof node.value === "string" ? node.value : ""} lang={typeof node.lang === "string" ? node.lang : null} />;
 }
 
 function renderLink(node: TreeNode): ReactNode {

@@ -4,6 +4,7 @@ import { splitLines } from "./codeLines";
 import {
   createHighlighter,
   highlight,
+  languageForFence,
   languageForPath,
   MAX_HIGHLIGHT_CHARS,
   MAX_HIGHLIGHT_LINE_CHARS,
@@ -44,6 +45,76 @@ describe("languageForPath", () => {
     ["a.__proto__", null],
   ])("maps %j to %j", (path, language) => {
     expect(languageForPath(path)).toBe(language);
+  });
+});
+
+describe("languageForFence", () => {
+  it.each([
+    ["python", "python"],
+    ["py", "python"],
+    ["toml", "toml"],
+    ["json", "json"],
+    ["yaml", "yaml"],
+    ["yml", "yaml"],
+    ["markdown", "markdown"],
+    ["md", "markdown"],
+    ["shellscript", "shellscript"],
+    ["shell", "shellscript"],
+    ["sh", "shellscript"],
+    ["bash", "shellscript"],
+    // Compared in lower case.
+    ["Python", "python"],
+    ["PY", "python"],
+    ["YAML", "yaml"],
+    ["Yml", "yaml"],
+    ["JSON", "json"],
+    ["Markdown", "markdown"],
+    ["ShellScript", "shellscript"],
+    ["BASH", "shellscript"],
+    // Names that look close are not languages of the table.
+    ["python3", null],
+    ["py3", null],
+    ["zsh", null],
+    ["jsonc", null],
+    ["text", null],
+    ["console", null],
+    ["diff", null],
+    ["javascript", null],
+    ["js", null],
+    ["c++", null],
+    ["c#", null],
+    ["toml2", null],
+    ["yaml ", null],
+    [" python", null],
+    // Nothing, a space, a dot.
+    ["", null],
+    ["py.txt", null],
+    [".py", null],
+    ["py thon", null],
+    // Names that are properties of every object are not languages.
+    ["__proto__", null],
+    ["constructor", null],
+    ["toString", null],
+    ["hasOwnProperty", null],
+  ])("maps %j to %j", (name, language) => {
+    expect(languageForFence(name)).toBe(language);
+  });
+
+  it.each([undefined, null])("maps %s to null", (name) => {
+    expect(languageForFence(name)).toBeNull();
+  });
+
+  it("can reach every grammar that languageForPath can return, so the two tables cannot drift apart", () => {
+    // The extensions of the table, and the sample file of each of the viewer's six languages.
+    const paths = ["a.py", "a.toml", "a.json", "a.yaml", "a.yml", "a.md", "a.sh", "a.bash", ...Object.keys(SAMPLES)];
+    const fromPaths = new Set(paths.map(languageForPath));
+    expect(fromPaths.size).toBe(6);
+    const fromFences = new Set(
+      ["python", "py", "toml", "json", "yaml", "yml", "markdown", "md", "shellscript", "shell", "sh", "bash"].map(languageForFence),
+    );
+    expect(fromPaths.has(null)).toBe(false);
+    for (const language of fromPaths) expect(fromFences.has(language)).toBe(true);
+    expect([...fromFences].sort()).toEqual([...fromPaths].sort());
   });
 });
 
