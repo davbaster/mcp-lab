@@ -238,7 +238,9 @@ describe("when the browser is needed", () => {
   it("treats a mermaid-config.json with CRLF line endings as the same config: it is a cache hit", async () => {
     const first = await buildWith();
     const config = join(temporaryFolder(), "mermaid-config.json");
-    writeFileSync(config, readFileSync(join(PART_DIR, "mermaid-config.json"), "utf8").replaceAll("\n", "\r\n"));
+    // Normalize to LF first, so a stale CRLF checkout of the committed file does not become "\r\r\n".
+    writeFileSync(config, readFileSync(join(PART_DIR, "mermaid-config.json"), "utf8").replace(/\r\n?/g, "\n").replaceAll("\n", "\r\n"));
+    expect(readFileSync(config, "utf8")).not.toContain("\r\r");
 
     const second = await buildWith({ cache: first.cache, extra: { mermaidConfigPath: config }, renderer: { ...fakeRenderer(), factory: forbiddenRenderer } });
 

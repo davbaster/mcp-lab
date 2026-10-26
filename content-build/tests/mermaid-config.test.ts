@@ -193,11 +193,25 @@ describe("the colors are the colors of the design system", () => {
 });
 
 describe("a config file with CRLF line endings (a Windows checkout without the .gitattributes rule)", () => {
+  // Normalize to LF first: a stale Windows checkout of the committed file is already CRLF, and a plain replace would make it "\r\r\n".
+  const toCrlf = (text: string) => text.replace(/\r\n?/g, "\n").replaceAll("\n", "\r\n");
   const crlf = () => {
     const path = join(temporaryFolder(), "mermaid-config.json");
-    writeFileSync(path, readFileSync(DEFAULT_MERMAID_CONFIG, "utf8").replaceAll("\n", "\r\n"));
+    writeFileSync(path, toCrlf(readFileSync(DEFAULT_MERMAID_CONFIG, "utf8")));
     return path;
   };
+
+  it("builds its CRLF copy with exactly one CR before each LF, even when the committed file is already CRLF (a stale checkout)", () => {
+    const lf = readFileSync(DEFAULT_MERMAID_CONFIG, "utf8").replace(/\r\n?/g, "\n");
+    const stale = lf.replaceAll("\n", "\r\n");
+
+    for (const input of [lf, stale]) {
+      const copy = toCrlf(input);
+      expect(copy).toBe(stale);
+      expect(copy).not.toContain("\r\r");
+      expect(copy.match(/\n/g)).toHaveLength(copy.match(/\r\n/g)?.length ?? -1);
+    }
+  });
 
   it("loads, with the same settings and the same bytes (LF), so the cache key does not depend on the line endings", () => {
     const path = crlf();
