@@ -1160,3 +1160,143 @@ describe("closing during a request", () => {
     expect((message() as HTMLTextAreaElement).value).toBe(LONG_ENOUGH);
   });
 });
+
+/** Renders the app at `url` with a "Go back" button next to it, to return to a page after leaving it. */
+function renderWithBack(url: string) {
+  const user = userEvent.setup();
+  installDialogShim();
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+  function BackButton() {
+    const navigate = useNavigate();
+    return (
+      <button type="button" onClick={() => void navigate(-1)}>
+        Go back
+      </button>
+    );
+  }
+  render(
+    <MemoryRouter initialEntries={[url]}>
+      <App />
+      <BackButton />
+    </MemoryRouter>,
+  );
+  return user;
+}
+
+describe("a dialog opened while the session was still loading", () => {
+  it.each([
+    ["the thanks", () => acceptedResponse(), "Thanks – we'll review it"],
+    ["an error", () => errorResponse(500, "internal_error", "Broke."), "Broke."],
+  ])("does not show %s again when it is opened after it was closed", async (_name, answerWith, shown) => {
+    const me = deferred<Response>();
+    setup({ "GET /api/auth/me": () => me.promise, [FEEDBACK]: () => answerWith() });
+    const { user } = renderApp("/courses/demo");
+    await user.click(headerButton());
+    expect(inDialog().getByRole("status").textContent).toBe("Loading…");
+    me.resolve(jsonResponse({ username: "ada_l" }));
+    await inDialog().findByRole("group", { name: "Category" });
+    await fillForm(user);
+    await user.click(sendButton());
+    await inDialog().findByText(shown);
+
+    await user.keyboard("{Escape}");
+    await user.click(headerButton());
+
+    expect(inDialog().queryByText(shown)).toBeNull();
+    expect(inDialog().getByRole("group", { name: "Category" })).toBeTruthy();
+    // After a success the form is empty; after an error the text is still there.
+    expect((message() as HTMLTextAreaElement).value).toBe(shown.startsWith("Thanks") ? "" : LONG_ENOUGH);
+  });
+});
+
+describe("sends by different learners and pages", () => {
+  it("lets a second learner send on the same page while the first learner's send is pending", async () => {
+    const first = deferred<Response>();
+    let calls = 0;
+    const switchTo = sessions({ [FEEDBACK]: () => (++calls === 1 ? first.promise : acceptedResponse()) });
+    const { user, currentUrl } = await openFromHeader("/courses/demo");
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await switchTo(user, currentUrl, "bob_k", "/courses/demo");
+
+    await user.click(headerButton());
+    await fillForm(user, "Suggestion", "Bob's own piece of feedback");
+    await user.click(sendButton());
+
+    await inDialog().findByText("Thanks – we'll review it");
+    expect(calls).toBe(2);
+  });
+
+  it("keeps blocking a second send of a pending page when a send from another page finishes", async () => {
+    const first = deferred<Response>();
+    let calls = 0;
+    const api = setup({ [FEEDBACK]: () => (++calls === 1 ? first.promise : acceptedResponse()) });
+    const user = renderWithBack("/courses/demo");
+    await screen.findByText("ada_l");
+    await user.click(headerButton());
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("link", { name: "Courses" }));
+    await screen.findByRole("heading", { level: 1, name: "Courses" });
+    await user.click(headerButton());
+    await fillForm(user, "Suggestion", "Feedback from the other page");
+    await user.click(sendButton());
+    await inDialog().findByText("Thanks – we'll review it");
+    await user.click(inDialog().getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Go back" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { level: 1, name: "Courses" })).toBeNull());
+
+    // The first page's send is still pending: another send from it must not go out.
+    await user.click(headerButton());
+    await fillForm(user, "Bug", "A second try on the first page");
+    act(() => {
+      fireEvent.submit(sendButton().closest("form") as HTMLFormElement);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(sent(api)).toHaveLength(2);
+    first.resolve(acceptedResponse());
+  });
+
+  it("keeps the answer of a send that finished on another page until its own page is opened", async () => {
+    const answer = deferred<Response>();
+    setup({ [FEEDBACK]: () => answer.promise });
+    const user = renderWithBack("/courses/demo");
+    await screen.findByText("ada_l");
+    await user.click(headerButton());
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("link", { name: "Courses" }));
+    await screen.findByRole("heading", { level: 1, name: "Courses" });
+    answer.resolve(acceptedResponse());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // Opening and closing the dialog here has nothing to do with the other page's answer.
+    await user.click(headerButton());
+    expect(inDialog().queryByText("Thanks – we'll review it")).toBeNull();
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("button", { name: "Go back" }));
+    await user.click(headerButton());
+
+    await inDialog().findByText("Thanks – we'll review it");
+  });
+
+  it("shows the form again, not the sign-in prompt, when it is reopened on the page whose send got a 401", async () => {
+    setup({ [FEEDBACK]: () => errorResponse(401, "other_code", "Sign in.") });
+    const { user } = await openFromHeader("/courses/demo");
+    await fillForm(user, "Suggestion");
+    await user.click(sendButton());
+    await inDialog().findByText("Sign in to send feedback");
+    // The 401 had a code that does not end the session, so the learner is still signed in.
+    expect(screen.getByText("ada_l")).toBeTruthy();
+    await user.keyboard("{Escape}");
+
+    await user.click(headerButton());
+
+    expect(inDialog().queryByText("Sign in to send feedback")).toBeNull();
+    expect((message() as HTMLTextAreaElement).value).toBe(LONG_ENOUGH);
+  });
+});

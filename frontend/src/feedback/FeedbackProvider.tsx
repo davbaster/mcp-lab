@@ -46,10 +46,10 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const headerButton = useRef<HTMLButtonElement | null>(null);
   // Set at once on the first click, before React shows the disabled button, so a double click sends
   // one request. One per page and learner: a send still in flight elsewhere does not block this one.
-  const sending = useRef<string | null>(null);
+  const sending = useRef(new Set<string>());
   const requestCount = useRef(0);
-  // The page and learner that the open dialog was opened for.
-  const openedFor = useRef<{ path: string; username: string | null } | null>(null);
+  // The page that the open dialog was opened for.
+  const openedFor = useRef<{ path: string } | null>(null);
 
   // The draft of another page or another learner is not this learner's to see.
   const draft = stored !== null && stored.path === pathname && stored.username === username ? stored : null;
@@ -61,7 +61,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const openFeedback = useCallback(
     (from: HTMLElement | null, question?: string) => {
       opener.current = from;
-      openedFor.current = { path: pathname, username };
+      openedFor.current = { path: pathname };
       // Dropped for good when it belongs to another page or another learner. While the session is
       // unknown (no username), it stays: a learner who signed in again gets it back.
       setStored((current) =>
@@ -87,8 +87,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     if (username === null) return;
     const owner = { path: pathname, username };
     const key = JSON.stringify([owner.username, owner.path]);
-    if (sending.current === key) return;
-    sending.current = key;
+    if (sending.current.has(key)) return;
+    sending.current.add(key);
     const id = ++requestCount.current;
     setRequest({ id, ...owner, kind: "sending" });
     const body = buildFeedbackRequest({ category: chosen, message: text, pathname, questionId, aboutQuestion });
@@ -108,7 +108,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     } catch (thrown) {
       finish({ kind: "error", message: toApiError(thrown).message });
     } finally {
-      if (sending.current === key) sending.current = null;
+      sending.current.delete(key);
     }
   }
 
@@ -118,13 +118,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     // What the learner has seen is done with. A send still in flight keeps going, and its outcome waits.
     // An answer for another page or learner was not shown in this dialog, so it waits too. The
     // dialog can close after the route changed (that is why it closes), so it remembers its page.
-    const shown = openedFor.current;
+    // The learner is the current one, not the one at open: the session may still have been loading then.
+    const page = openedFor.current?.path;
     setRequest((current) =>
-      current.kind === "idle" || current.kind === "sending" || current.path !== shown?.path || current.username !== shown.username
-        ? current
-        : IDLE,
+      current.kind === "idle" || current.kind === "sending" || current.path !== page || current.username !== username ? current : IDLE,
     );
-  }, []);
+  }, [username]);
 
   let view: DialogView;
   if (status === "loading") view = "loading";
