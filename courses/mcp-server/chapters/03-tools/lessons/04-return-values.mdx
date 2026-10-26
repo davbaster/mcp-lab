@@ -9,7 +9,9 @@ So far the tools return a plain `dict`. The client gets the note as a block of t
 
 <CodeSteps step="4" file="server.py" />
 
-`Note` is a `TypedDict`, from Python's standard library. It is still an ordinary dict at run time. The SDK reads the class and builds an output schema for the tool, and a client can then rely on the keys `id`, `title`, `body` and `created_at`.
+`Note` is a `TypedDict`. It is still an ordinary dict at run time. The SDK reads the class and builds an output schema for the tool, and a client can then rely on the keys `id`, `title`, `body` and `created_at`.
+
+The code imports `TypedDict` from `typing_extensions`, which is installed with `mcp`. On Python 3.10 and 3.11 the SDK refuses the one in `typing`.
 
 A result has two parts, both sent by the server:
 

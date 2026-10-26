@@ -1,6 +1,6 @@
-from typing import TypedDict
 
 from mcp.server.mcpserver import MCPServer
+from typing_extensions import TypedDict
 
 import storage
 

@@ -1,7 +1,7 @@
-from typing import TypedDict
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from typing_extensions import TypedDict
 
 import storage
 

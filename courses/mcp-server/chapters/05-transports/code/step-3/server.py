@@ -2,11 +2,11 @@ import json
 import logging
 import os
 import sys
-from typing import TypedDict
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ResourceNotFoundError, ToolError
 from mcp.types import ToolAnnotations
+from typing_extensions import TypedDict
 
 import storage
 
