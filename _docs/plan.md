@@ -8,7 +8,7 @@ One free, guided web course that teaches beginners how to build a Model Context 
 
 Separately from the course content, the repo also contains an internal **on-call MCP server** (`oncall-mcp/`) that the human and LLM on-call engineers use to monitor and fix this app. See [Operations: on-call MCP server](#operations-on-call-mcp-server). Learners never see it.
 
-Throughout the course, learners follow along building a **personal-notes MCP server**. They start with a FastMCP "hello" tool and finish with CRUD tools, resources, prompts, and both transports. The web app shows the code but never runs it. Learners can type it into their own machine if they want, but nothing is checked or graded there.
+Throughout the course, learners follow along building a **personal-notes MCP server**. They start with an `MCPServer` "hello" tool and finish with CRUD tools, resources, prompts, and both transports. The web app shows the code but never runs it. Learners can type it into their own machine if they want, but nothing is checked or graded there.
 
 **Audience:** developers who know basic Python (functions, type hints, `pip`/`uv`) and have never used MCP. A readiness checklist is the first lesson of Chapter 1 ("Before you start"), and [CS50's Introduction to Programming with Python](https://cs50.harvard.edu/python/) is recommended but not required.
 
@@ -51,7 +51,7 @@ Throughout the course, learners follow along building a **personal-notes MCP ser
 
 ## Curriculum
 
-The course has 6 chapters, each with about 4–6 short lessons. It targets the official Python SDK (`mcp` package, `mcp.server.fastmcp.FastMCP`) and the current MCP specification.
+The course has 6 chapters, each with about 4–6 short lessons. It targets the official Python SDK (`mcp` package, `mcp.server.mcpserver.MCPServer`; `mcp` 2.x renamed FastMCP to MCPServer) and the current MCP specification.
 
 ### Chapter 1 — What is MCP?
 
@@ -75,15 +75,15 @@ Quiz:
 
 Lessons:
 1. Setup: Python 3.10+, `uv init notes-server`, `uv add "mcp[cli]"`.
-2. `server.py`: `mcp = FastMCP("notes")`, an `add(a: int, b: int)` tool, and `mcp.run()`.
-3. How FastMCP turns a function into a tool: the name comes from the function, the schema from the type hints, and the description from the docstring.
+2. `server.py`: `mcp = MCPServer("notes")`, an `add(a: int, b: int)` tool, and `mcp.run()`.
+3. How MCPServer turns a function into a tool: the name comes from the function, the schema from the type hints, and the description from the docstring.
 4. Inspecting the server: `mcp dev server.py` opens the MCP Inspector, where learners walk through `tools/list` and `tools/call`.
 5. Reading the raw JSON-RPC traffic in the Inspector.
 
 Quiz:
 1. Which command adds the Python MCP SDK with its CLI tools to a uv project? **`uv add "mcp[cli]"`** · `pip install fastmcp-cli` · `uv tool install inspector`
 2. *(snippet: `@mcp.tool()` on `def add(a: int, b: int) -> int`)* Under what name do clients see this tool? **`add`** · `tool_1` · `mcp.add`
-3. Where does FastMCP get a tool's input schema? **From the function's type hints** · From a separate JSON file · From the return value
+3. Where does MCPServer get a tool's input schema? **From the function's type hints** · From a separate JSON file · From the return value
 4. What does `mcp dev server.py` do? **Runs the server and opens the MCP Inspector to test it** · Deploys the server · Generates a client
 5. What transport does `mcp.run()` use when no argument is given? **stdio** · Streamable HTTP · WebSocket
 
@@ -268,7 +268,7 @@ An internal MCP server, `oncall-mcp/` in this repo, gives on-call engineers one 
 
 ### Server design
 
-- Python and FastMCP, in the same style the course teaches.
+- Python and MCPServer (formerly FastMCP), in the same style the course teaches.
 - **Core plus adapters.** The core holds the tools, resources, prompts, redaction, audit log, and auth. Adapters hide the data sources behind small interfaces: `HealthAdapter`, `MetricsAdapter` (Prometheus), `LogsAdapter` (Loki), `DeploymentsAdapter` (`ops.deployments` + git), and `IssueTracker` (GitHub). Adapters for this app live in `oncall-mcp/adapters/course_app/`. Fake adapters with fixture data are used for tests and local development, and make the core reusable in other projects.
 - **Transport:** Streamable HTTP, bound to the internal Docker network. It is not exposed publicly; humans reach it through an SSH tunnel. Every caller has its own bearer token (one per human, one for the LLM engineer, and a short-lived one per agent session), and the token's identity is written to the audit log. Each token has a caller kind (`human` or `llm`), allowed deployments, and allowed tools, all enforced by the server. Only hashes of tokens are stored.
 - **One server for all deployments.** A single `oncall-mcp` covers every deployment on the VM, in both shared and isolated modes. Tools and resources accept optional `deployment` and `course` filters. A caller's token can be limited to specific deployments, and the server enforces that limit on every call, so isolated deployments stay isolated during on-call work too. With one shared deployment, the filters can be omitted.

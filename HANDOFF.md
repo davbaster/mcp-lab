@@ -24,12 +24,13 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 
 - **Merged:** everything through the frontend phase, plus #107 (course loader edge cases, PR #136).
 - **#111 (trailing newline in route paths):** passed QA, merged (PR #137).
-- **Next:** Chapter 2 (#27, in progress), then the other chapters.
+- **Next:** #26 and #27 are in PR #138, waiting on David's merge. Then Chapter 3 (#28, #29) and the other chapters.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## Decisions to keep
 
 - **No new tests for now (David, 2026-10-26).** New features ship without new tests. Existing tests stay, must keep passing, and must never be skipped or deleted. QA is a quick check: run the existing suites, linters and type checks, and try the feature by hand.
+- **Course code pins `mcp[cli]==2.3.0`** (#27). In `mcp` 2.x, FastMCP was renamed `MCPServer` (`from mcp.server.mcpserver import MCPServer`); `mcp.server.fastmcp` no longer exists. Use `MCPServer` in all chapters and in `oncall-mcp/`. Quiz questions allow only 2 or 3 options, so correct answers are spread across a, b and c.
 - **Quiz answers (#108):** the build check is dropped. Chapter authors spread the correct answers across `a`, `b`, `c` and `d`, so always picking one letter doesn't pass. #108 stays open.
 - **Packages need David's approval** before they're added (see `AGENTS.md`). Everything in the current `package.json` and `pyproject.toml` files is approved. Recent approvals, all pinned exactly and in `frontend/` only unless noted: react-router 7.18.4 and @testing-library/user-event 14.6.7 (#17); Shiki 4.5.0 with @shikijs/langs (#21); @google/model-viewer 4.4.0 and three.js 0.183.2 (#20); @mermaid-js/mermaid-cli 12.0.0 and puppeteer 25.16.0 in `content-build/` only (#55).
 - **CSP:** `connect-src` allows `blob:` so textured 3D models load (approved by David for #20). Compressed models (Draco, KTX2, Meshopt) stay unsupported in v1; see #126.
