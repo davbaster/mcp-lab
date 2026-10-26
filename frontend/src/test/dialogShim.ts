@@ -3,7 +3,7 @@
  * This gives tests just enough of the native behaviour to open and close a dialog:
  *
  *   showModal()  sets `open`
- *   close()      removes `open` and fires `close`
+ *   close()      removes `open` at once and fires `close` in a later task, as browsers queue it
  *   Escape       fires a cancelable `cancel`, then closes unless it was prevented
  *
  * It does not make the page behind the dialog inert and does not trap Tab: that is the browser's
@@ -18,7 +18,9 @@ function closeDialog(dialog: HTMLDialogElement): void {
   dialog.removeAttribute("open");
   const index = modals.indexOf(dialog);
   if (index !== -1) modals.splice(index, 1);
-  dialog.dispatchEvent(new Event("close"));
+  // A browser queues the `close` event as a task, so code that reacts to it runs after whatever
+  // follows the `close()` call (for example a focus move by the code that called it).
+  setTimeout(() => dialog.dispatchEvent(new Event("close")), 0);
 }
 
 function onKeyDown(event: KeyboardEvent): void {

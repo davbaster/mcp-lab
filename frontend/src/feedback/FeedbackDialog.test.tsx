@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { MemoryRouter, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +8,7 @@ import { api } from "../api/client";
 import { signInPath } from "../auth/paths";
 import { apiRoutes, deferred, type RecordedCall } from "../test/apiRoutes";
 import { installDialogShim } from "../test/dialogShim";
-import { acceptedResponse, errorResponse, htmlResponse, jsonResponse, mockNetworkError } from "../test/mockApi";
+import { acceptedResponse, errorResponse, htmlResponse, jsonResponse, mockFetch } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
 
 const FEEDBACK = "POST /api/feedback";
@@ -45,6 +45,47 @@ async function fillForm(user: UserEvent, category = "Bug", text = LONG_ENOUGH) {
   await user.click(radio(category));
   await user.click(message());
   await user.paste(text);
+}
+
+/**
+ * jsdom keeps focus on a button that has just been disabled (and cannot blur it), a browser does not.
+ * Put focus on Cancel instead, so that "focus goes back to Send" can only come from the code under test.
+ */
+function leaveFocus() {
+  const cancel = inDialog().getByRole("button", { name: "Cancel" });
+  cancel.focus();
+  expect(document.activeElement).toBe(cancel);
+}
+
+async function signInAs(user: UserEvent, username: string) {
+  await user.type(await screen.findByLabelText("Username"), username);
+  await user.type(screen.getByLabelText("Password"), "a-password");
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+}
+
+/** Two sessions in turn on one page: `who` is the signed-in learner, and a call to /api/health ends the session. */
+function sessions(overrides: Record<string, Handler> = {}) {
+  let who: string | null = "ada_l";
+  setup({
+    ...overrides,
+    "GET /api/auth/me": () => (who ? jsonResponse({ username: who }) : errorResponse(401, "not_authenticated", "Sign in.")),
+    "GET /api/health": () => {
+      who = null;
+      return errorResponse(401, "not_authenticated", "Sign in.");
+    },
+    "POST /api/auth/login": (call) => {
+      who = (call.body as { username: string }).username;
+      return jsonResponse({ username: who });
+    },
+  });
+  /** The session ends, and `username` signs in on the same page. */
+  return async (user: UserEvent, currentUrl: () => string, username: string, url: string) => {
+    await api.GET("/api/health");
+    await user.click(await within(screen.getByRole("banner")).findByRole("link", { name: "Sign in" }));
+    await signInAs(user, username);
+    await waitFor(() => expect(currentUrl()).toBe(url));
+    await screen.findByText(username);
+  };
 }
 
 function sent(api: ReturnType<typeof apiRoutes>): RecordedCall[] {
@@ -192,9 +233,12 @@ describe("the dialog", () => {
     await user.click(inDialog().getByRole("link", { name: "Sign in" }));
 
     await waitFor(() => expect(currentUrl()).toBe(signInPath("/courses/demo")));
-    await waitFor(() => expect(dialogElement().open).toBe(false));
-    expect(queryDialog()).toBeNull();
+    // The browser tells the page that the dialog closed in a later task; focus must not move after that.
+    await waitFor(() => expect(queryDialog()).toBeNull());
+    expect(dialogElement().open).toBe(false);
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Sign in" })));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Sign in" }));
   });
 
   it("closes when the learner goes Back", async () => {
@@ -630,6 +674,112 @@ describe("sending", () => {
   });
 });
 
+describe("sending twice at once", () => {
+  it("sends one request when Send is submitted twice before React has shown Sending…", async () => {
+    const answer = deferred<Response>();
+    const api = setup({ [FEEDBACK]: () => answer.promise });
+    const { user } = await openFromHeader();
+    await fillForm(user);
+    const form = sendButton().closest("form") as HTMLFormElement;
+
+    // Both submits run with the same render, so only the provider's own guard can stop the second.
+    act(() => {
+      fireEvent.submit(form);
+      fireEvent.submit(form);
+    });
+
+    await waitFor(() => expect(sent(api)).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(sent(api)).toHaveLength(1);
+    answer.resolve(acceptedResponse());
+    await inDialog().findByText("Thanks – we'll review it");
+  });
+});
+
+describe("an answer that arrives after the learner moved on", () => {
+  const ANSWERS: [string, () => Response][] = [
+    ["a success", () => acceptedResponse()],
+    ["a 429", () => errorResponse(429, "feedback_limit_reached", "That is enough for today.")],
+    ["a 401", () => errorResponse(401, "other_code", "Sign in.")],
+  ];
+
+  it.each(ANSWERS)("does not show %s from the first page on the next page, and keeps that page's draft", async (_name, answerWith) => {
+    const answer = deferred<Response>();
+    const api = setup({ [FEEDBACK]: () => answer.promise });
+    const { user } = await openFromHeader("/courses/demo");
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("link", { name: "Courses" }));
+    await screen.findByRole("heading", { level: 1, name: "Courses" });
+
+    await user.click(headerButton());
+    // The send from the other page is not this page's: nothing is pending here.
+    expect(sendButton().textContent).toBe("Send");
+    expect((sendButton() as HTMLButtonElement).disabled).toBe(false);
+    await user.click(radio("Suggestion"));
+    await user.click(message());
+    await user.paste("A draft written on this page");
+    answer.resolve(answerWith());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(sent(api)).toHaveLength(1);
+    expect(inDialog().queryByText("Thanks – we'll review it")).toBeNull();
+    expect(inDialog().queryByRole("alert")).toBeNull();
+    expect(inDialog().queryByText("Sign in to send feedback")).toBeNull();
+    expect((message() as HTMLTextAreaElement).value).toBe("A draft written on this page");
+    expect((radio("Suggestion") as HTMLInputElement).checked).toBe(true);
+    // Nor does it show up when the dialog is opened again here.
+    await user.keyboard("{Escape}");
+    await user.click(headerButton());
+    expect(inDialog().queryByText("Thanks – we'll review it")).toBeNull();
+    expect(inDialog().queryByRole("alert")).toBeNull();
+    expect((message() as HTMLTextAreaElement).value).toBe("A draft written on this page");
+  });
+
+  it("lets the learner send from the next page while the first send is still pending", async () => {
+    const first = deferred<Response>();
+    let calls = 0;
+    const api = setup({ [FEEDBACK]: () => (++calls === 1 ? first.promise : acceptedResponse()) });
+    const { user } = await openFromHeader("/courses/demo");
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("link", { name: "Courses" }));
+    await screen.findByRole("heading", { level: 1, name: "Courses" });
+
+    await user.click(headerButton());
+    await fillForm(user, "Suggestion", "A second piece of feedback");
+    await user.click(sendButton());
+
+    await inDialog().findByText("Thanks – we'll review it");
+    expect(sent(api)).toHaveLength(2);
+    // The first answer does not take the thanks away, or turn it into an error.
+    first.resolve(errorResponse(500, "internal_error", "Broke."));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(inDialog().getByText("Thanks – we'll review it")).toBeTruthy();
+    expect(inDialog().queryByRole("alert")).toBeNull();
+  });
+
+  it("does not show the answer for one learner to the next learner on the same page", async () => {
+    const answer = deferred<Response>();
+    const switchTo = sessions({ [FEEDBACK]: () => answer.promise });
+    const { user, currentUrl } = await openFromHeader("/courses/demo");
+    await fillForm(user);
+    await user.click(sendButton());
+    await user.keyboard("{Escape}");
+    await switchTo(user, currentUrl, "bob_k", "/courses/demo");
+
+    await user.click(headerButton());
+    expect(sendButton().textContent).toBe("Send");
+    answer.resolve(acceptedResponse());
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(inDialog().queryByText("Thanks – we'll review it")).toBeNull();
+    expect(inDialog().getByRole("group", { name: "Category" })).toBeTruthy();
+  });
+});
+
 describe("after a send", () => {
   it("thanks the learner on a 202 with no body, with focus on the message, and shows nothing more", async () => {
     setup();
@@ -678,11 +828,14 @@ describe("after a send", () => {
 
   it("shows the server's message word for word on a 429, keeps the draft, and puts focus on Send", async () => {
     const limit = "You have sent 5 items today. Try again after 00:00 UTC (2026-03-05T00:00:00Z).";
-    setup({ [FEEDBACK]: () => errorResponse(429, "feedback_limit_reached", limit) });
+    const answer = deferred<Response>();
+    setup({ [FEEDBACK]: () => answer.promise });
     const { user } = await openFromHeader();
     await fillForm(user, "Confusing explanation");
 
     await user.click(sendButton());
+    leaveFocus();
+    answer.resolve(errorResponse(429, "feedback_limit_reached", limit));
 
     const alert = await inDialog().findByRole("alert");
     expect(alert.textContent).toBe(limit);
@@ -756,9 +909,15 @@ describe("after a send", () => {
     const api = setup();
     const { user } = await openFromHeader();
     await fillForm(user);
-    mockNetworkError();
+    const offline = deferred<void>();
+    mockFetch(async () => {
+      await offline.promise;
+      throw new TypeError("Failed to fetch");
+    });
 
     await user.click(sendButton());
+    leaveFocus();
+    offline.resolve();
 
     expect((await inDialog().findByRole("alert")).textContent).toBe(NETWORK_ERROR_MESSAGE);
     expect((message() as HTMLTextAreaElement).value).toBe(LONG_ENOUGH);
@@ -792,12 +951,6 @@ describe("a 401", () => {
     expect(inDialog().queryByRole("textbox")).toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(inDialog().getByRole("link", { name: "Sign in" })));
   });
-
-  async function signInAs(user: UserEvent, username: string) {
-    await user.type(await screen.findByLabelText("Username"), username);
-    await user.type(screen.getByLabelText("Password"), "a-password");
-    await user.click(screen.getByRole("button", { name: "Sign in" }));
-  }
 
   it("gives the same learner the draft back after signing in and returning to the same page", async () => {
     let session = true;
@@ -841,6 +994,24 @@ describe("a 401", () => {
     await waitFor(() => expect(currentUrl()).toBe("/courses/demo"));
     await screen.findByText("bob_k");
 
+    await user.click(headerButton());
+
+    expect((message() as HTMLTextAreaElement).value).toBe("");
+    expect((radio("Content error") as HTMLInputElement).checked).toBe(false);
+  });
+
+  it("does not give the first learner's draft back after a second learner opened the form and the first signed in again", async () => {
+    const switchTo = sessions();
+    const { user, currentUrl } = await openFromHeader("/courses/demo");
+    await fillForm(user, "Content error");
+    await user.keyboard("{Escape}");
+
+    await switchTo(user, currentUrl, "bob_k", "/courses/demo");
+    await user.click(headerButton());
+    // The second learner only looks at the form, and writes nothing.
+    expect((message() as HTMLTextAreaElement).value).toBe("");
+    await user.keyboard("{Escape}");
+    await switchTo(user, currentUrl, "ada_l", "/courses/demo");
     await user.click(headerButton());
 
     expect((message() as HTMLTextAreaElement).value).toBe("");

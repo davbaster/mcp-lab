@@ -160,6 +160,13 @@ describe("buildFeedbackRequest", () => {
     expect(buildFeedbackRequest(input()).context.viewport).toEqual({ width: 390, height: 1 });
   });
 
+  it("caps a very large viewport at the server's 20000, so it cannot cause a 422", () => {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(20000.9);
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(Number.MAX_SAFE_INTEGER);
+
+    expect(buildFeedbackRequest(input()).context.viewport).toEqual({ width: 20000, height: 20000 });
+  });
+
   it("sends the viewport as 1 when the browser reports a value that is not a number", () => {
     vi.spyOn(window, "innerWidth", "get").mockReturnValue(Number.NaN);
     vi.spyOn(window, "innerHeight", "get").mockReturnValue(-5);

@@ -30,8 +30,9 @@ describe("feedback.css: the dialog", () => {
   it("fills the screen below 480px", () => {
     const base = declarations(".feedback-dialog");
 
-    expect(base).toMatch(/width:\s*100%/);
-    expect(base).toMatch(/height:\s*100%/);
+    // Anchored: `width` must not match inside `max-width`, nor `height` inside `max-height`.
+    expect(base).toMatch(/(?<![-\w])width:\s*100%/);
+    expect(base).toMatch(/(?<![-\w])height:\s*100%/);
     expect(base).toMatch(/max-width:\s*100%/);
     expect(base).toMatch(/max-height:\s*100%/);
     expect(base).toMatch(/border-radius:\s*0/);

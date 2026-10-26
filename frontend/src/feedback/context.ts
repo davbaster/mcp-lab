@@ -57,9 +57,12 @@ export function routeIds(pathname: string): RouteIds {
   return none;
 }
 
-/** Whole pixels, at least 1 (the server's minimum), whatever the browser reports. */
+/** The server's range for a viewport side. */
+export const MAX_VIEWPORT = 20000;
+
+/** Whole pixels from 1 to 20000 (the server's range), whatever the browser reports. */
 function pixels(value: number): number {
-  return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
+  return Number.isFinite(value) ? Math.min(MAX_VIEWPORT, Math.max(1, Math.floor(value))) : 1;
 }
 
 /** The build's version, or "dev" when the build variable is not set or empty. */

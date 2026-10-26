@@ -16,13 +16,17 @@ interface Draft {
   message: string;
 }
 
-/** Where the last send stands. It lives here, not in the dialog, so closing the dialog does not lose it. */
-type Request =
-  | { kind: "idle" }
+/**
+ * Where the last send stands, and whose it is: the page and the learner it was sent from. It lives
+ * here, not in the dialog, so closing the dialog does not lose it. An answer that arrives after the
+ * learner moved to another page, or another learner signed in, is not theirs to see.
+ */
+type Outcome =
   | { kind: "sending" }
   | { kind: "sent" }
   | { kind: "error"; message: string }
   | { kind: "unauthorized" };
+type Request = { kind: "idle" } | ({ id: number; path: string; username: string } & Outcome);
 
 const IDLE: Request = { kind: "idle" };
 
@@ -40,17 +44,24 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<Request>(IDLE);
   const opener = useRef<HTMLElement | null>(null);
   const headerButton = useRef<HTMLButtonElement | null>(null);
-  // Set at once on the first click, before React shows the disabled button, so a double click sends one request.
-  const sending = useRef(false);
+  // Set at once on the first click, before React shows the disabled button, so a double click sends
+  // one request. One per page and learner: a send still in flight elsewhere does not block this one.
+  const sending = useRef<string | null>(null);
+  const requestCount = useRef(0);
+  // The page and learner that the open dialog was opened for.
+  const openedFor = useRef<{ path: string; username: string | null } | null>(null);
 
   // The draft of another page or another learner is not this learner's to see.
   const draft = stored !== null && stored.path === pathname && stored.username === username ? stored : null;
+  // The send that is shown: only one from this page by this learner.
+  const mine = request.kind !== "idle" && request.path === pathname && request.username === username ? request : IDLE;
   const category = draft?.category ?? null;
   const message = draft?.message ?? "";
 
   const openFeedback = useCallback(
     (from: HTMLElement | null, question?: string) => {
       opener.current = from;
+      openedFor.current = { path: pathname, username };
       // Dropped for good when it belongs to another page or another learner. While the session is
       // unknown (no username), it stays: a learner who signed in again gets it back.
       setStored((current) =>
@@ -59,7 +70,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       setQuestionId(question ?? null);
       setAboutQuestion(question !== undefined);
       // A sign-in prompt is old once the dialog is reopened; a pending or finished send is not.
-      setRequest((current) => (current.kind === "unauthorized" ? IDLE : current));
+      setRequest((current) => (current.kind === "unauthorized" && current.path === pathname ? IDLE : current));
       setOpen(true);
     },
     [pathname, username],
@@ -73,24 +84,31 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   }
 
   async function send(chosen: FeedbackCategory, text: string) {
-    if (sending.current || username === null) return;
-    sending.current = true;
-    setRequest({ kind: "sending" });
+    if (username === null) return;
+    const owner = { path: pathname, username };
+    const key = JSON.stringify([owner.username, owner.path]);
+    if (sending.current === key) return;
+    sending.current = key;
+    const id = ++requestCount.current;
+    setRequest({ id, ...owner, kind: "sending" });
     const body = buildFeedbackRequest({ category: chosen, message: text, pathname, questionId, aboutQuestion });
+    // The answer replaces this send's own entry, and nothing newer.
+    const finish = (outcome: Outcome) => setRequest((current) => (current.kind !== "idle" && current.id === id ? { id, ...owner, ...outcome } : current));
     try {
       // The 202 has no body, so this does not use `settle`: only `response.ok` says it worked.
       const { error, response } = await api.POST("/api/feedback", { body });
       if (response.ok) {
-        setStored(null);
-        setRequest({ kind: "sent" });
+        // What was sent is no longer a draft, wherever the learner is now. Another page's draft stays.
+        setStored((current) => (current !== null && current.path === owner.path && current.username === owner.username ? null : current));
+        finish({ kind: "sent" });
       } else {
         const failure = toApiError(error, response);
-        setRequest(failure.status === 401 ? { kind: "unauthorized" } : { kind: "error", message: failure.message });
+        finish(failure.status === 401 ? { kind: "unauthorized" } : { kind: "error", message: failure.message });
       }
     } catch (thrown) {
-      setRequest({ kind: "error", message: toApiError(thrown).message });
+      finish({ kind: "error", message: toApiError(thrown).message });
     } finally {
-      sending.current = false;
+      if (sending.current === key) sending.current = null;
     }
   }
 
@@ -98,13 +116,20 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     setOpen(false);
     setQuestionId(null);
     // What the learner has seen is done with. A send still in flight keeps going, and its outcome waits.
-    setRequest((current) => (current.kind === "sending" ? current : IDLE));
+    // An answer for another page or learner was not shown in this dialog, so it waits too. The
+    // dialog can close after the route changed (that is why it closes), so it remembers its page.
+    const shown = openedFor.current;
+    setRequest((current) =>
+      current.kind === "idle" || current.kind === "sending" || current.path !== shown?.path || current.username !== shown.username
+        ? current
+        : IDLE,
+    );
   }, []);
 
   let view: DialogView;
   if (status === "loading") view = "loading";
-  else if (status === "visitor" || request.kind === "unauthorized") view = "signIn";
-  else if (request.kind === "sent") view = "thanks";
+  else if (status === "visitor" || mine.kind === "unauthorized") view = "signIn";
+  else if (mine.kind === "sent") view = "thanks";
   else view = "form";
 
   return (
@@ -121,8 +146,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
           message,
           // The box only exists for a dialog opened from a quiz question.
           aboutQuestion: questionId === null ? null : aboutQuestion,
-          sending: request.kind === "sending",
-          failure: request.kind === "error" ? request.message : null,
+          sending: mine.kind === "sending",
+          failure: mine.kind === "error" ? mine.message : null,
           onCategory: (next) => changeDraft({ category: next }),
           onMessage: (next) => changeDraft({ message: next }),
           onAboutQuestion: setAboutQuestion,

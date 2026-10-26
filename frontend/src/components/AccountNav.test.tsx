@@ -122,8 +122,9 @@ it("signs out and focuses the h1 even when already on the course list", async ()
   await user.click(await within(account()).findByRole("button", { name: "Sign out" }));
 
   expect(await within(account()).findByRole("link", { name: "Sign in" })).toBeTruthy();
-  expect(currentUrl()).toBe("/");
-  expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Courses" }));
+  // The header changes before the effects that record the URL and move focus, so wait for them.
+  await waitFor(() => expect(currentUrl()).toBe("/"));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: "Courses" })));
 });
 
 it("disables the button and says Signing out… while the request runs, and sends one request for two clicks", async () => {
