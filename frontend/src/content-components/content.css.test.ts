@@ -1,0 +1,54 @@
+import { describe, expect, it } from "vitest";
+import css from "./content.css?raw";
+
+const rules = css
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .split("}")
+  .map((chunk) => chunk.split("{"))
+  .filter((parts) => parts.length === 2)
+  .map(([selectors, body]) => ({ selectors: selectors.split(",").map((selector) => selector.trim()), body }));
+
+/** The declarations of every rule that lists `selector`. jsdom has no layout, so these are read from the CSS. */
+function rule(selector: string): string {
+  return rules
+    .filter((r) => r.selectors.includes(selector))
+    .map((r) => r.body)
+    .join("\n");
+}
+
+describe("content.css", () => {
+  it("makes tabs at least 44px high and wide, bold and underlined 3px in the primary color when selected", () => {
+    expect(rule(".tab")).toMatch(/min-height:\s*44px/);
+    expect(rule(".tab")).toMatch(/min-width:\s*44px/);
+    expect(rule('.tab[aria-selected="true"]')).toMatch(/font-weight:\s*700/);
+    expect(rule('.tab[aria-selected="true"]')).toMatch(/border-bottom-color:\s*var\(--color-primary\)/);
+    expect(rule(".tab")).toMatch(/border-bottom:\s*3px solid/);
+  });
+
+  it("lets the tab list and code blocks scroll inside themselves", () => {
+    expect(rule(".tablist")).toMatch(/overflow-x:\s*auto/);
+    expect(rule(".lesson-content pre")).toMatch(/overflow-x:\s*auto/);
+  });
+
+  it("keeps the text column at 72ch and lets only a diagram span the full width", () => {
+    expect(rule(".lesson-content")).toMatch(/grid-template-columns:\s*minmax\(0,\s*72ch\)\s+minmax\(0,\s*1fr\)/);
+    expect(rule(".lesson-content > *")).toMatch(/grid-column:\s*1\b/);
+    expect(rule(".lesson-content > .diagram")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+  });
+
+  it("scales images down and keeps their proportions", () => {
+    expect(rule(".lesson-image")).toMatch(/max-width:\s*100%/);
+    expect(rule(".lesson-image")).toMatch(/height:\s*auto/);
+  });
+
+  it("gives each callout a 4px left border in its label color, on the background token", () => {
+    expect(rule(".callout")).toMatch(/border-left:\s*4px solid var\(--callout-color\)/);
+    expect(rule(".callout-tip")).toMatch(/--callout-bg:\s*var\(--color-tip-bg\)[^]*--callout-color:\s*var\(--color-success\)/);
+    expect(rule(".callout-warning")).toMatch(/--callout-bg:\s*var\(--color-warning-bg\)[^]*--callout-color:\s*var\(--color-warning\)/);
+    expect(rule(".callout")).toMatch(/--callout-bg:\s*var\(--color-note-bg\)[^]*--callout-color:\s*var\(--color-primary\)/);
+  });
+
+  it("does not animate anything", () => {
+    expect(css).not.toMatch(/\b(transition|animation|scroll-behavior)\b/);
+  });
+});

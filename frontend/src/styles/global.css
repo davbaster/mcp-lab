@@ -389,3 +389,26 @@ main {
   flex-wrap: wrap;
   gap: var(--space-4) var(--space-24);
 }
+
+/* Lesson page. The rendered lesson is styled in content-components/content.css. */
+.lesson-region {
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-body);
+}
+
+@media (min-width: 768px) {
+  .lesson-region {
+    font-size: var(--font-size-lg);
+  }
+}
+
+.lesson-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-8) var(--space-16);
+  max-width: 72ch;
+  margin-top: var(--space-32);
+  padding-top: var(--space-24);
+  border-top: 1px solid var(--color-border);
+}
