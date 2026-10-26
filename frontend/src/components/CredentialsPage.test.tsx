@@ -528,7 +528,7 @@ it("sends the learner to next with the history entry replaced and focus on the n
 
   await user.click(submitButton("login"));
 
-  await screen.findByRole("heading", { level: 1, name: "Course dashboard" });
+  await screen.findByRole("heading", { level: 1, name: "Course" });
   await waitFor(() => expect(currentUrl()).toBe("/courses/x"));
   expect(history.at(-1)?.type).toBe("REPLACE");
   expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1 }));
