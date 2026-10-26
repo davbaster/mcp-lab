@@ -285,6 +285,14 @@ describe("nodes that cannot be shown", () => {
     expect(log.error).toHaveBeenCalledTimes(1);
   });
 
+  it("logs once under StrictMode, which runs effects twice", () => {
+    const log = spyOnConsole();
+    renderTree([{ type: "table", children: [] }, component("Fancy"), component("Image", {})], { strict: true });
+
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.error).toHaveBeenCalledTimes(2);
+  });
+
   it("skips a node that is not an object, in a paragraph, without crashing", () => {
     const log = spyOnConsole();
     renderTree([{ type: "paragraph", children: ["raw string", null, 3, text("kept")] }, { type: "list" }]);

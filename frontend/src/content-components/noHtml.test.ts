@@ -22,6 +22,17 @@ const snippets: [string, string][] = [
   ["insertAdjacentHTML", "export function f(el: HTMLElement) { el.insertAdjacentHTML('beforeend', 'x'); }"],
   ["document.write", "export function f() { document.write('x'); }"],
   ["document.writeln", "export function f() { document.writeln('x'); }"],
+  ["window.document.write", "export function f() { window.document.write('x'); }"],
+  ["globalThis.document.write", "export function f() { globalThis.document.write('x'); }"],
+  ["a computed document['write']", "export function f() { document['write']('x'); }"],
+  ["a template-literal document[`write`]", "export function f() { document[`write`]('x'); }"],
+  ["a template-literal el[`innerHTML`]", "export function f(el: HTMLElement) { el[`innerHTML`] = 'x'; }"],
+  ["a quoted el['innerHTML']", "export const f = (el: HTMLElement) => el['innerHTML'];"],
+  ["setHTMLUnsafe", "export function f(el: HTMLElement) { (el as any).setHTMLUnsafe('x'); }"],
+  ["parseHTMLUnsafe", "export const f = () => (Document as any).parseHTMLUnsafe('x');"],
+  ["createContextualFragment", "export const f = (r: Range) => r.createContextualFragment('x');"],
+  ["new DOMParser", "export const f = () => new DOMParser().parseFromString('x', 'text/html');"],
+  ["new window.DOMParser", "export const f = () => new window.DOMParser();"],
   ["a destructured innerHTML", "export const f = (el: HTMLElement) => { const { innerHTML } = el; return innerHTML; };"],
 ];
 

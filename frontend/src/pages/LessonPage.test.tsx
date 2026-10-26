@@ -420,6 +420,24 @@ describe("a quick move and the history", () => {
 });
 
 describe("saving the last lesson", () => {
+  it("does not save lesson a again when the learner goes Back to it before lesson b has answered", async () => {
+    const slow = deferred<Response>();
+    const api = routes({ learner: true, extra: { [lessonRoute("b")]: () => slow.promise } });
+    const { user } = renderWithHistory("/courses/demo/lessons/a");
+    await screen.findByText("Body of a");
+    await waitFor(() => expect(api.calls(PUT)).toHaveLength(1));
+
+    await user.click(screen.getByRole("button", { name: "jump to b" }));
+    await user.click(screen.getByRole("button", { name: "history back" }));
+    expect(await screen.findByText("Body of a")).toBeTruthy();
+    await act(async () => {
+      slow.resolve(jsonResponse(chapterOfThree.b));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+
+    expect(api.calls(PUT).map((call) => call.body)).toEqual([{ lesson_id: "a" }]);
+  });
+
   const lastLessonCalls = (api: ReturnType<typeof routes>) => api.calls(PUT);
 
   it("sends one PUT with the lesson id of the response for a learner", async () => {

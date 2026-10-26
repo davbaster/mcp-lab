@@ -30,10 +30,14 @@ function clean(url: string): string {
 /** `/x` but not `//x`, and not `/\x` (a browser reads a backslash as a slash). */
 const SITE_PATH = /^\/(?![/\\])/;
 /** The API is behind the same origin, but the router has no route for it. */
-const API_PATH = /^\/api(?:[/?#]|$)/i;
+// A backslash counts as a slash: a browser reads `/api\x` as `/api/x`.
+const API_PATH = /^\/api(?:[/\\?#]|$)/i;
 const SCHEME = /^([A-Za-z][A-Za-z0-9+.-]*):/;
 
 function sitePath(path: string): LinkTarget {
+  // A path built from a parsed URL is checked like one that was written: `http://own-origin//evil.com`
+  // parses to the path `//evil.com`, which a browser would read as another site.
+  if (!SITE_PATH.test(path)) return TEXT;
   return API_PATH.test(path) ? { kind: "plain", href: path } : { kind: "app", to: path };
 }
 
@@ -41,7 +45,7 @@ export function classifyLink(url: unknown): LinkTarget {
   if (typeof url !== "string") return TEXT;
   const value = clean(url);
   if (value === "") return TEXT;
-  if (SITE_PATH.test(value)) return sitePath(value);
+  if (value.startsWith("/")) return sitePath(value);
   if (value.startsWith("#") || value.startsWith("?")) return { kind: "plain", href: value };
 
   const scheme = SCHEME.exec(value)?.[1].toLowerCase();

@@ -40,16 +40,33 @@ const restrictedSyntax = [
 // lesson page, nothing may turn a string into markup. Built-in rules only (no plugin): this is
 // react/no-danger plus the DOM calls that do the same thing.
 const NO_HTML = "Author text is rendered as text only. Do not build HTML from it.";
-const HTML_NAMES = "/^(dangerouslySetInnerHTML|innerHTML|outerHTML|insertAdjacentHTML)$/";
+const HTML_NAMES =
+  "/^(dangerouslySetInnerHTML|innerHTML|outerHTML|insertAdjacentHTML|setHTMLUnsafe|parseHTMLUnsafe|createContextualFragment)$/";
+const WRITE_NAMES = "/^(write|writeln)$/";
+// document.write, window.document.write and globalThis.document.write
+const documentObjects = ["object.name='document'", "object.property.name='document'"];
 const noHtmlSyntax = [
   { selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']", message: `${NO_HTML} Do not use dangerouslySetInnerHTML.` },
   // { dangerouslySetInnerHTML: ... }, { innerHTML } = el, { "innerHTML": ... }
   { selector: `Property[key.name=${HTML_NAMES}]`, message: `${NO_HTML} Do not use this property.` },
   { selector: `Property[key.value=${HTML_NAMES}]`, message: `${NO_HTML} Do not use this property.` },
-  // el.innerHTML, el["innerHTML"], el.insertAdjacentHTML(...)
+  // el.innerHTML, el["innerHTML"], el[`innerHTML`], el.insertAdjacentHTML(...)
   { selector: `MemberExpression[property.name=${HTML_NAMES}][computed=false]`, message: `${NO_HTML} Do not use this property.` },
   { selector: `MemberExpression[property.value=${HTML_NAMES}][computed=true]`, message: `${NO_HTML} Do not use this property.` },
-  { selector: "MemberExpression[object.name='document'][property.name=/^(write|writeln)$/]", message: `${NO_HTML} Do not use document.write.` },
+  {
+    selector: `MemberExpression[computed=true][property.type='TemplateLiteral'][property.quasis.0.value.cooked=${HTML_NAMES}]`,
+    message: `${NO_HTML} Do not use this property.`,
+  },
+  ...documentObjects.flatMap((object) => [
+    { selector: `MemberExpression[${object}][computed=false][property.name=${WRITE_NAMES}]`, message: `${NO_HTML} Do not use document.write.` },
+    { selector: `MemberExpression[${object}][computed=true][property.value=${WRITE_NAMES}]`, message: `${NO_HTML} Do not use document.write.` },
+    {
+      selector: `MemberExpression[${object}][computed=true][property.type='TemplateLiteral'][property.quasis.0.value.cooked=${WRITE_NAMES}]`,
+      message: `${NO_HTML} Do not use document.write.`,
+    },
+  ]),
+  { selector: "NewExpression[callee.name='DOMParser']", message: `${NO_HTML} Do not parse HTML with DOMParser.` },
+  { selector: "NewExpression[callee.property.name='DOMParser']", message: `${NO_HTML} Do not parse HTML with DOMParser.` },
 ];
 
 const httpLibraries = ["axios", "ky", "got", "superagent", "node-fetch", "cross-fetch", "ofetch"];

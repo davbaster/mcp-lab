@@ -45,6 +45,7 @@ describe("plain links", () => {
     ["/api/courses/c/assets/file.pdf", "/api/courses/c/assets/file.pdf"],
     ["/API/x", "/API/x"],
     ["/api", "/api"],
+    ["/api\\courses\\c\\assets\\f.pdf", "/api\\courses\\c\\assets\\f.pdf"],
     [`${origin}/api/courses/c/assets/f.pdf`, "/api/courses/c/assets/f.pdf"],
     ["mailto:ada@example.com", "mailto:ada@example.com"],
     ["MAILTO:ada@example.com", "MAILTO:ada@example.com"],
@@ -96,12 +97,19 @@ describe("links that are only text", () => {
     "ftp://example.com/x",
     "//evil.example/x",
     "/\\evil.example/x",
+    `${origin}//evil.example`,
+    `${origin}//evil.example/x?y#z`,
+    `${origin}/\\evil.example`,
+    `${origin}/\t/evil.example`,
+    `${origin}/\n/evil.example`,
+    `${origin}\\\\evil.example`,
     "\\\\evil.example\\x",
     "",
     "   ",
   ])("shows only the text for %j", (url) => {
     const { container } = renderLink(url);
     expect(container.querySelector("a")).toBeNull();
+    expect(container.querySelector("[href]")).toBeNull();
     expect(container.querySelector("p")?.textContent).toBe("the link");
   });
 
@@ -128,6 +136,13 @@ describe("classifyLink and siteSource", () => {
   it("never returns the cleaned-away characters in an href", () => {
     expect(classifyLink("  /courses/\tx\n")).toEqual({ kind: "app", to: "/courses/x" });
   });
+
+  it.each(["//evil.example", "/\\evil.example", "/\t/evil.example"])(
+    "treats a same-origin url whose path is %j as text",
+    (path) => {
+      expect(classifyLink(`${origin}${path}`)).toEqual({ kind: "text" });
+    },
+  );
 
   it("treats an unparseable http url as text", () => {
     expect(classifyLink("http://")).toEqual({ kind: "text" });
