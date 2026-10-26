@@ -94,7 +94,7 @@ Chapter status is a small label with text, never color alone:
 | in progress | "In progress" | `--color-primary` |
 | passed | "Passed" | `--color-success` |
 
-Quiz results use "Correct" (`--color-success`) and "Incorrect" (`--color-danger`). Code step files use "New", "Changed", and "Deleted".
+Quiz results use "Correct" (`--color-success`) and "Incorrect" (`--color-danger`). Code step files use "New" (`--color-success`), "Changed" (`--color-primary`), and "Deleted" (`--color-danger`), as text inside the file tab next to the path, each at least 4.5:1 on `--color-bg` and `--color-surface`.
 
 ### Forms
 
@@ -137,6 +137,7 @@ Follow the WAI-ARIA tabs pattern: `tablist`, `tab`, and `tabpanel` roles; arrow 
 - Syntax highlighting uses Shiki's CSS-variables theme (chosen in #21). Each token gets a fixed class (`code-token-keyword`, ...) that sets one of the `--color-code-*` tokens above, all at least 4.5:1 on the code background (and on `--color-changed-line`). Code that is not a token uses `--color-text`. No color is set inline.
 - Line numbers in `--color-text-muted`, not selectable.
 - Changed lines in step mode: `--color-changed-line` background plus a 3px `--color-primary` bar in the line-number gutter, with screen-reader text "changed".
+- Step mode: above the tabs, "Step N of M" with the line of changes (or "First step: every file is new.") in one `role="status"` element, and the secondary buttons "Previous step" and "Next step" in the same row. The first step marks no line. A file that only lost lines shows the note "Lines were removed from this file in this step." above its code. The ZIP hint names the last step until the last step is shown.
 - Copy buttons sit at the top right of the code block and say "Copy", then "Copied" for 2 seconds (announced with `aria-live="polite"`).
 - Code viewers (`CodeSteps`) use the full content width. Long lines scroll inside the code area and never wrap. If copying fails, the button says "Copy failed – select the code to copy it" until the learner presses it again or chooses another file.
 

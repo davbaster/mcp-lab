@@ -14,7 +14,7 @@ export interface CodeFile {
   path: string;
   status: CodeFileStatus;
   content: string;
-  /** Line numbers of the new version, from 1. Step mode (#22) uses it; the single-step viewer does not. */
+  /** Line numbers of the new version, from 1. Step mode (#22) marks these lines on every step after the first. */
   changedLines: number[];
 }
 

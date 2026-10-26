@@ -72,3 +72,27 @@ export function siteSource(url: unknown): string | null {
   if (!SITE_PATH.test(url) || /[\u0000- \u007f]/.test(url)) return null;
   return url;
 }
+
+/**
+ * An absolute `https` URL for a video, a caption file or a poster on another site, or null.
+ * It is parsed with `new URL` and the result is what a page uses, never the raw text. Spaces,
+ * control characters, backslashes and credentials (`user@host`) are refused, as in the content
+ * build (`media-url.ts`); so are `http:`, `javascript:`, `data:`, `//host/x` and relative paths.
+ */
+export function httpsUrl(value: unknown): URL | null {
+  if (typeof value !== "string" || /[\s\p{Cc}\\]/u.test(value)) return null;
+  const authority = /^https:\/\/([^/?#]*)/i.exec(value)?.[1];
+  if (authority === undefined || authority.includes("@")) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  return url.protocol === "https:" && url.username === "" && url.password === "" ? url : null;
+}
+
+/** A path on this site (`siteSource`), or the `href` of an `https` URL (`httpsUrl`), else null. */
+export function siteOrHttpsSource(value: unknown): string | null {
+  return siteSource(value) ?? httpsUrl(value)?.href ?? null;
+}

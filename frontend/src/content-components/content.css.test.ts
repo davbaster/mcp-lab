@@ -120,3 +120,80 @@ describe("content.css, the code viewer", () => {
     expect(button).toMatch(/min-width:\s*44px/);
   });
 });
+
+describe("content.css, step mode", () => {
+  it("draws a changed line on --color-changed-line, with a 3px --color-primary bar in the gutter that is a border", () => {
+    expect(rule(".code-line-changed")).toMatch(/background:\s*var\(--color-changed-line\)/);
+    const bar = rule(".code-line-changed .code-line-number");
+    expect(bar).toMatch(/border-left:\s*3px solid var\(--color-primary\)/);
+    // The bar is a border and not a background, so forced colors keep it.
+    expect(bar).not.toMatch(/background/);
+    expect(rule(".code-line-changed")).not.toMatch(/border/);
+  });
+
+  it("gives every gutter the room of the bar, so the numbers line up with and without it", () => {
+    expect(rule(".code-line-number")).toMatch(/padding-left:\s*3px/);
+    expect(rule(".code-line-changed .code-line-number")).toMatch(/padding-left:\s*0/);
+  });
+
+  it("hides the changed text from sight but not from screen readers, and keeps it out of a selection", () => {
+    expect(rule(".code-line-flag")).toMatch(/user-select:\s*none/);
+    expect(rule(".code-line-flag")).not.toMatch(/display:\s*none|visibility:\s*hidden/);
+    expect(rule(".visually-hidden")).toMatch(/clip-path:\s*inset\(50%\)/);
+  });
+
+  it("lays the step bar out as one row that wraps", () => {
+    const bar = rule(".code-step-bar");
+    expect(bar).toMatch(/display:\s*flex/);
+    expect(bar).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(".code-step-buttons")).toMatch(/display:\s*flex/);
+  });
+
+  it("colors the labels New, Changed and Deleted from the success, primary and danger tokens", () => {
+    expect(rule(".file-label-added")).toMatch(/color:\s*var\(--color-success\)/);
+    expect(rule(".file-label-modified")).toMatch(/color:\s*var\(--color-primary\)/);
+    expect(rule(".file-label-deleted")).toMatch(/color:\s*var\(--color-danger\)/);
+  });
+});
+
+describe("content.css, videos and 3D models", () => {
+  it("gives the frame a 16:9 ratio that never grows wider than the content", () => {
+    const frame = rule(".media-frame");
+    expect(frame).toMatch(/aspect-ratio:\s*16\s*\/\s*9/);
+    expect(frame).toMatch(/width:\s*100%/);
+    expect(frame).toMatch(/max-width:\s*100%/);
+    expect(rule(".video")).toMatch(/max-width:\s*100%/);
+    expect(rule(".model3d")).toMatch(/max-width:\s*100%/);
+  });
+
+  it("lets a video and a model span the full content width, like a diagram", () => {
+    expect(rule(".lesson-content > .video")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+    expect(rule(".lesson-content > .model3d")).toMatch(/grid-column:\s*1\s*\/\s*-1/);
+  });
+
+  it("fills the frame with the video, the iframe, the viewer and the poster", () => {
+    expect(rule(".media-frame video")).toMatch(/width:\s*100%[^]*height:\s*100%/);
+    expect(rule(".media-frame iframe")).toMatch(/width:\s*100%[^]*height:\s*100%/);
+    expect(rule(".model-viewer")).toMatch(/position:\s*absolute[^]*inset:\s*0/);
+    expect(rule(".model-poster")).toMatch(/object-fit:\s*contain/);
+  });
+
+  it("draws the frame and the poster from tokens only", () => {
+    expect(rule(".media-frame")).toMatch(/background:\s*var\(--color-surface\)/);
+    expect(rule(".media-frame")).toMatch(/border-radius:\s*var\(--radius\)/);
+    expect(rule(".model-poster")).toMatch(/background:\s*var\(--color-surface\)/);
+    expect(rule(".model-note")).toMatch(/color:\s*var\(--color-text-muted\)/);
+  });
+
+  it("draws the design system's focus ring on the viewer, inside the frame", () => {
+    const ring = rule(".model-viewer:focus-within");
+    expect(ring).toMatch(/outline:\s*3px solid var\(--color-primary\)/);
+    expect(ring).toMatch(/outline-offset:\s*-3px/);
+  });
+
+  it("keeps the load button inside the frame, and the Load 3D model button is a .button (44px high and wide)", () => {
+    expect(rule(".model-load")).toMatch(/position:\s*absolute/);
+    expect(rule(".model-load")).toMatch(/max-width:\s*calc\(100%/);
+    expect(rule(".model-load")).not.toMatch(/\b(width|height):\s*\d+px/);
+  });
+});

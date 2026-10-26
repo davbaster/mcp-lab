@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useCodeSource, type CodeFile, type CodeSource } from "./codeData";
+import { useCodeSource, type CodeSource } from "./codeData";
 import { CodeViewer } from "./CodeViewer";
 import { Unavailable } from "./Unavailable";
 import { checkCodeStepsProps } from "./props";
@@ -15,7 +15,7 @@ function CodeUnavailable({ name, problem }: { name: string; problem: string }) {
 /**
  * The `CodeSteps` component. It checks its props, then reads the lesson's chapter code (one
  * request for all the viewers of a lesson; see `CodeDataProvider`) and shows the files of the
- * step named in `step`.
+ * step named in `step`, from which the learner can move to the other steps of the chapter.
  */
 export function CodeStepsBlock({ name, props }: ContentComponentProps) {
   const checked = checkCodeStepsProps(props);
@@ -59,14 +59,21 @@ function LoadedSteps({ name, step, file, source }: { name: string; step: number;
       </div>
     );
   } else {
-    const found = state.code.steps.find((candidate) => candidate.step === step);
-    // Files that were removed in this step are not shown here (step mode, #22, adds them).
-    const files: CodeFile[] = found ? found.files.filter((candidate) => candidate.status !== "deleted") : [];
+    const start = state.code.steps.findIndex((candidate) => candidate.step === step);
+    // The step named in the prop is where the viewer starts; it has to be there and hold a file.
     content =
-      files.length === 0 ? (
+      start < 0 || state.code.steps[start].files.length === 0 ? (
         <CodeUnavailable name={name} problem={`step ${step} is not in the chapter's code, or it has no file to show`} />
       ) : (
-        <CodeViewer name={name} step={step} file={file} files={files} zipUrl={state.code.zip.url} zipFileName={state.code.zip.fileName} />
+        <CodeViewer
+          key={JSON.stringify([step, file])}
+          name={name}
+          steps={state.code.steps}
+          start={start}
+          file={file}
+          zipUrl={state.code.zip.url}
+          zipFileName={state.code.zip.fileName}
+        />
       );
   }
 

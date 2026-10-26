@@ -3,8 +3,9 @@ import { CalloutBlock } from "./CalloutBlock";
 import { CodeStepsBlock } from "./CodeStepsBlock";
 import { DiagramBlock } from "./DiagramBlock";
 import { ImageBlock } from "./LessonImage";
-import { PendingComponent } from "./PendingComponent";
+import { Model3DBlock } from "./Model3DBlock";
 import { TabsBlock } from "./TabsBlock";
+import { VideoBlock } from "./VideoBlock";
 import type { ContentComponentProps } from "./tree";
 
 export type ContentComponent = ComponentType<ContentComponentProps>;
@@ -14,16 +15,16 @@ export type ContentComponent = ComponentType<ContentComponentProps>;
  * in code and is never built from lesson data. `Tab` is not here: it is part of `Tabs`
  * (`x-nested` in `Tabs.schema.json`), so a `Tab` outside `Tabs` is an unknown component.
  *
- * `Video` and `Model3D` show the "can't be shown" box until #20 builds them; `registry.test.ts`
- * lists them as pending.
+ * A component that has a schema but is not built yet maps to `PendingComponent`, and
+ * `registry.test.ts` lists it as pending.
  */
 export const registry = {
   Image: ImageBlock,
   Callout: CalloutBlock,
   Tabs: TabsBlock,
   Diagram: DiagramBlock,
-  Video: PendingComponent,
-  Model3D: PendingComponent,
+  Video: VideoBlock,
+  Model3D: Model3DBlock,
   CodeSteps: CodeStepsBlock,
 } satisfies Record<string, ContentComponent>;
 

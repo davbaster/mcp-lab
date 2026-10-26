@@ -24,6 +24,17 @@ function read(name: string): Schema {
   return JSON.parse(readFileSync(join(REAL_SCHEMAS, `${name}.schema.json`), "utf8")) as Schema;
 }
 
+/**
+ * What a frontend source file imports from content-build, other than `media-config.json`. That file is
+ * data, not code: it is the one list of media origins, which the frontend reads (the embed rules) and
+ * generates its Content-Security-Policy from, so it is allowed. Any other import is refused.
+ */
+function contentBuildImports(source: string): string[] {
+  return [...source.matchAll(/from\s+["']([^"']*content-build[^"']*)["']/g)]
+    .map((match) => match[1] ?? "")
+    .filter((specifier) => !/^(\.\.\/)+content-build\/media-config\.json$/.test(specifier));
+}
+
 describe("the real schema folder", () => {
   it("holds exactly the seven schemas of the plan's component table, and nothing else", () => {
     expect(readdirSync(REAL_SCHEMAS).sort()).toEqual(FILES);
@@ -150,11 +161,32 @@ describe("the real schema folder", () => {
         entry.isDirectory() ? files(join(folder, entry.name)) : [join(folder, entry.name)],
       );
     for (const file of files(frontend).filter((f) => /\.(ts|tsx)$/.test(f))) {
-      expect(readFileSync(file, "utf8"), file).not.toMatch(/from\s+["'][^"']*content-build/);
+      expect(contentBuildImports(readFileSync(file, "utf8")), file).toEqual([]);
     }
     for (const file of files(join(PART_DIR, "src"))) {
       expect(readFileSync(file, "utf8"), file).not.toMatch(/from\s+["'][^"']*frontend/);
     }
+  });
+});
+
+describe("the frontend's imports from content-build", () => {
+  it("allows only media-config.json, by a relative path", () => {
+    expect(contentBuildImports('import config from "../../../content-build/media-config.json";')).toEqual([]);
+    expect(contentBuildImports('import { embeds } from "../../../content-build/media-config.json";')).toEqual([]);
+  });
+
+  it.each([
+    'import { loadMediaConfig } from "../../content-build/src/media-config.ts";',
+    'import schema from "../../content-build/schemas/media-config.schema.json";',
+    'import config from "../../content-build/media-config.json.bak";',
+    'import config from "../../content-build/media-config.jsonx";',
+    'import config from "../../content-build/fixtures/media-config.json";',
+    'import config from "../../other/content-build/media-config.json";',
+    'import config from "content-build/media-config.json";',
+    "import config from '../content-build/media-config.json?raw';",
+    'export { x } from "../../content-build/src/index.ts";',
+  ])("still refuses %s", (line) => {
+    expect(contentBuildImports(line)).toHaveLength(1);
   });
 });
 

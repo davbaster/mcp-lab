@@ -10,6 +10,7 @@ import chapterCode from "../content-components/fixtures/chapter-code.response.js
 import markdown from "../content-components/fixtures/markdown.tree.json";
 import welcome from "../content-components/fixtures/welcome.lesson.json";
 import { apiRoutes, deferred } from "../test/apiRoutes";
+import { stubWebgl } from "../test/device";
 import { errorResponse, htmlResponse, jsonResponse } from "../test/mockApi";
 import { renderApp } from "../test/renderApp";
 import { component, heading, paragraph, spyOnConsole, tab, text } from "../test/renderTree";
@@ -110,11 +111,16 @@ describe("loading and the loaded lesson", () => {
 
   it("renders a copy of the real build's output, with the components it has built", async () => {
     const log = spyOnConsole();
+    stubWebgl([]);
     routes({ lessons: { a: lesson("a", { tree: allAssets }) } });
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findAllByRole("tab")).toHaveLength(2);
     expect(document.querySelector("img[alt='A picture']")).toBeTruthy();
+    expect(document.querySelector("video")).toBeTruthy();
+    expect(document.querySelector("iframe")).toBeTruthy();
+    // This test browser has no WebGL, so each model shows its poster and says so.
+    expect(screen.getAllByText("3D view is not available on this device")).toHaveLength(2);
     expect(document.querySelector(".callout-note")).toBeTruthy();
     await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));
   });
@@ -671,9 +677,31 @@ describe("code steps", () => {
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
-    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["helper.py", "main.py", "pkg/__init__.py", "pkg/util.py", "settings.txt"]);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["helper.py", "main.py Changed", "pkg/__init__.py New", "pkg/util.py New", "settings.txt"]);
     expect(api.calls(CODE_ROUTE)).toHaveLength(1);
     expect(api.calls(CODE_ROUTE)[0].method).toBe("GET");
+  });
+
+  it("moves between steps without a new request for the lesson or the code, and without remounting the page", async () => {
+    const api = routes({
+      lessons: { a: withCode },
+      extra: { [CODE_ROUTE]: () => jsonResponse(chapterCode) },
+    });
+    const { user } = renderApp("/courses/demo/lessons/a");
+    expect(await screen.findByRole("tablist", { name: "Files in step 2" })).toBeTruthy();
+    const title = screen.getByRole("heading", { level: 1, name: "Title of a" });
+    const calls = api.calls().length;
+
+    await user.click(screen.getByRole("button", { name: "Next step" }));
+    expect(await screen.findByRole("tablist", { name: "Files in step 3" })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Previous step" }));
+    await user.click(screen.getByRole("button", { name: "Previous step" }));
+    expect(await screen.findByRole("tablist", { name: "Files in step 1" })).toBeTruthy();
+
+    expect(api.calls()).toHaveLength(calls);
+    expect(api.calls(lessonRoute("a"))).toHaveLength(1);
+    expect(api.calls(CODE_ROUTE)).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Title of a" })).toBe(title);
   });
 
   it("asks for the code again when another lesson with a viewer is opened", async () => {

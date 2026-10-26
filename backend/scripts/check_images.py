@@ -142,7 +142,7 @@ def main() -> int:
     try:
         require_docker()
         build(backend_image, "-f", "backend/Dockerfile", "--build-arg", f"COURSES_DIR={FIXTURE_COURSES}", ".")
-        build(frontend_image, "frontend")
+        build(frontend_image, "-f", "frontend/Dockerfile", ".")
 
         listing = run_script(backend_image, containers[0], LISTING_SCRIPT)
         backend_search = run_script(backend_image, containers[1], SEARCH_SCRIPT)

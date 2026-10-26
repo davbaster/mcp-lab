@@ -86,14 +86,15 @@ def test_backend_image_holds_the_build_output_and_tells_the_app_where_it_is():
     assert dockerfile.rstrip().splitlines()[-1].startswith("CMD ")
 
 
-def test_compose_builds_the_backend_from_the_repo_root_and_the_frontend_from_its_folder():
+def test_compose_builds_both_images_from_the_repo_root():
     compose = (ROOT / "compose.yaml").read_text()
     backend = compose.split("  backend:\n", 1)[1].split("\n  frontend:\n", 1)[0]
     frontend = compose.split("  frontend:\n", 1)[1].split("\n  caddy:\n", 1)[0]
 
     assert re.search(r"^    build:\n(?:      #.*\n)*      context: \.\n      dockerfile: backend/Dockerfile$", backend, re.MULTILINE)
-    assert re.search(r"^    build:\n      context: \./frontend$", frontend, re.MULTILINE)
-    assert "dockerfile" not in frontend
+    assert re.search(
+        r"^    build:\n(?:      #.*\n)*      context: \.\n      dockerfile: frontend/Dockerfile$", frontend, re.MULTILINE
+    )
 
 
 def _dockerignore_rules(path):
@@ -126,7 +127,19 @@ def test_backend_dockerignore_is_an_allowlist_next_to_the_dockerfile():
     assert "build" not in allowed and "frontend" not in allowed
 
 
-def test_frontend_image_copies_nothing_from_outside_its_folder_and_ignores_course_output():
+def test_frontend_dockerignore_is_an_allowlist_next_to_the_dockerfile():
+    assert not (ROOT / "frontend" / ".dockerignore").exists()  # it no longer applies: the context is the repo root
+    rules = _dockerignore_rules(ROOT / "frontend" / "Dockerfile.dockerignore")
+
+    assert rules[0] == "*"
+    # The app, and the one list of media origins that its Content-Security-Policy is built from. Nothing else.
+    assert [rule[1:] for rule in rules if rule.startswith("!")] == ["frontend", "content-build/media-config.json"]
+    # Course build output must never end up in the frontend image, wherever it is.
+    assert "**/build" in rules and "**/private" in rules and "**/node_modules" in rules
+    assert rules.index("**/build") > rules.index("!frontend")  # a later line wins
+
+
+def test_frontend_image_copies_only_its_folder_and_the_media_config_and_ignores_course_output():
     dockerfile = (ROOT / "frontend" / "Dockerfile").read_text()
     sources = [
         source
@@ -136,10 +149,13 @@ def test_frontend_image_copies_nothing_from_outside_its_folder_and_ignores_cours
 
     assert sources
     for source in sources:
-        assert not source.startswith(("..", "/")), source
+        assert source == "content-build/media-config.json" or source.split("/")[0] == "frontend", source
     assert "courses" not in dockerfile and "course-build" not in dockerfile
-    rules = _dockerignore_rules(ROOT / "frontend" / ".dockerignore")
-    assert "**/build" in rules and "**/private" in rules
+    # The build stage makes the CSP from that file, and the runtime stage gets only the result.
+    assert "RUN node scripts/csp.mjs ../content-build/media-config.json csp.conf" in dockerfile
+    assert "COPY --from=build /app/frontend/csp.conf /etc/nginx/csp.conf" in dockerfile
+    runtime = dockerfile.split("FROM nginx")[1]
+    assert "content-build" not in runtime
 
 
 def test_compose_does_not_publish_postgres_and_keeps_the_db_network_internal():

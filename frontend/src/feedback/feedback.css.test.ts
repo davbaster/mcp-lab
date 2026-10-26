@@ -78,12 +78,12 @@ describe("frontend/Dockerfile", () => {
     expect(build).toMatch(/^ENV VITE_APP_VERSION=\$VITE_APP_VERSION$/m);
   });
 
-  it("sets it after COPY . . and before the build, so the npm ci layer stays cached", () => {
+  it("sets it after COPY frontend ./ and before the build, so the npm ci layer stays cached", () => {
     const lines = dockerfile.split("\n");
     const at = (pattern: RegExp) => lines.findIndex((line) => pattern.test(line));
 
-    expect(at(/^RUN npm ci$/)).toBeLessThan(at(/^COPY \. \.$/));
-    expect(at(/^COPY \. \.$/)).toBeLessThan(at(/^ARG VITE_APP_VERSION=dev$/));
+    expect(at(/^RUN npm ci$/)).toBeLessThan(at(/^COPY frontend \.\/$/));
+    expect(at(/^COPY frontend \.\/$/)).toBeLessThan(at(/^ARG VITE_APP_VERSION=dev$/));
     expect(at(/^ARG VITE_APP_VERSION=dev$/)).toBeLessThan(at(/^ENV VITE_APP_VERSION=/));
     expect(at(/^ENV VITE_APP_VERSION=/)).toBeLessThan(at(/^RUN npm run build$/));
   });

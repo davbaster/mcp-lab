@@ -67,7 +67,10 @@ services:
   frontend:
     image: mcp-lab-frontend:local
     build:
-      context: ./frontend
+      # The repo root: the image also reads content-build/media-config.json, the list of media origins
+      # that its Content-Security-Policy is built from.
+      context: .
+      dockerfile: frontend/Dockerfile
     networks:
       - web
     healthcheck:
