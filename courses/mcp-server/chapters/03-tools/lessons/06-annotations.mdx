@@ -11,12 +11,10 @@ Some tools only read, and some destroy data. Annotations let a tool say so, and 
 
 Pass `annotations=ToolAnnotations(...)` to `@mcp.tool()`. The class comes from `mcp.types`, and its fields are written in snake_case in Python:
 
-| Python field | Sent to clients as | Used on |
-|---|---|---|
-| `read_only_hint=True` | `readOnlyHint` | `list_notes`, `get_note` |
-| `destructive_hint=True` | `destructiveHint` | `delete_note` |
-| `idempotent_hint` | `idempotentHint` | not used here |
-| `open_world_hint` | `openWorldHint` | not used here |
+- `read_only_hint=True` is sent to clients as `readOnlyHint`. It is used on `list_notes` and `get_note`.
+- `destructive_hint=True` is sent as `destructiveHint`. It is used on `delete_note`.
+- `idempotent_hint` is sent as `idempotentHint`. It is not used here.
+- `open_world_hint` is sent as `openWorldHint`. It is not used here.
 
 `delete_note` also sets `read_only_hint=False`, because the destructive hint only means something for a tool that is not read-only. `create_note` and `update_note` have no annotations, so clients treat them as ordinary writes.
 
