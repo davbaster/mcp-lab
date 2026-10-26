@@ -1,0 +1,36 @@
+---
+title: Testing your server
+order: 3
+---
+
+# Testing your server
+
+Until now you tested the server by hand, with the Inspector or a client. Step 3 adds an automated test suite that checks every tool in a second. Run it with:
+
+```shell
+uv run pytest
+```
+
+The step adds `pytest` as a development dependency in `pyproject.toml`. It also adds a small `[tool.pytest.ini_options]` section. `pythonpath = ["."]` lets the tests import `server` and `storage`, and `filterwarnings` hides the logging deprecation warning from lesson 1.
+
+## A fixture for the server
+
+The server tests are `async`. The `anyio` package, which `mcp` already installs, ships a pytest plugin for that. A test file marks itself with `pytestmark = pytest.mark.anyio`, and the `anyio_backend` fixture picks asyncio.
+
+<CodeSteps step="3" file="tests/conftest.py" />
+
+The `client` fixture starts the server in the same process, with no subprocess and no network. `Client(server.mcp)` runs the lifespan and then talks to the server through memory. The fixture switches to a temporary folder first, so the tests create their `notes.db` there and never touch yours. `tmp_path` is a new empty folder for every test.
+
+## Testing through the protocol
+
+<CodeSteps step="3" file="tests/test_server.py" />
+
+These tests call the server the way a real client does: `list_tools()`, `call_tool()` and `read_resource()`. One difference from ordinary Python is that a tool that raises `ToolError` does not raise in the test. `call_tool` returns a result with `is_error` set to true and the message in `content[0].text`. A missing resource does raise, as an `MCPError`.
+
+## Testing storage
+
+<CodeSteps step="3" file="tests/test_storage.py" />
+
+The storage functions need no server. They get a connection to a temporary database, and each test checks one behavior.
+
+Write a test whenever you fix a bug or add a tool. Run them before you hand the server to anyone.

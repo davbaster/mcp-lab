@@ -1,0 +1,42 @@
+---
+title: Safe inputs
+order: 5
+---
+
+# Safe inputs
+
+The model chooses the arguments of every tool call. A model can be wrong, and it can be misled by text it read in a web page or a note. So treat tool arguments as untrusted input, like data from a web form. Step 5 applies three rules.
+
+<CodeSteps step="5" file="server.py" />
+
+## 1. Validate IDs
+
+`check_id` rejects a `note_id` below 1 with a clear `ToolError`, and `get_note`, `update_note` and `delete_note` call it first. The type hint already makes sure that `note_id` is an integer. The function adds the rule that the number must make sense.
+
+## 2. Constrain paths
+
+`export_notes` writes a file whose name comes from the model. If it used the name as given, a call such as `export_notes("../../.ssh/config")` would write outside the data folder. This is path traversal. An absolute path like `/etc/cron.d/job` is the same problem, and so is a symlink inside the data folder that points somewhere else.
+
+`safe_path` stops all three in two steps. First `(data_dir / name).resolve()` builds the real path: it removes `..`, follows symlinks, and lets an absolute name replace the folder. Then `path.is_relative_to(data_dir)` checks that the result is still inside the data folder. Order matters. If you checked the text of the name instead, a symlink would get past you. `import_notes` uses `safe_path` too.
+
+## 3. Parameterize SQL
+
+Every query in `storage.py` passes values separately from the SQL text:
+
+```python
+conn.execute("SELECT id, title, body, created_at FROM notes WHERE id = ?", (note_id,))
+```
+
+Never build SQL by joining strings. This version lets a value change the query itself:
+
+```python
+conn.execute(f"SELECT * FROM notes WHERE title = '{title}'")
+```
+
+With a title such as `x' OR '1'='1`, that query returns every note.
+
+## Test the rules
+
+<CodeSteps step="5" file="tests/test_paths.py" />
+
+These tests try `../x.json`, an absolute path and a symlink on both tools, and check that a good export can be imported again. A safety rule without a test tends to break the next time someone edits the code.

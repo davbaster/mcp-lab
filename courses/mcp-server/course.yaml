@@ -12,5 +12,7 @@ chapters:
     title: Resources and prompts
   - id: 05-transports
     title: Transports and connecting real clients
+  - id: 06-shipping
+    title: "Context, testing, and shipping"
 free_preview:
   - 01-what-is-mcp

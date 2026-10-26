@@ -5,7 +5,8 @@
     "02-first-server",
     "03-tools",
     "04-resources-prompts",
-    "05-transports"
+    "05-transports",
+    "06-shipping"
   ],
   "lessons": [
     "01-before-you-start",
@@ -36,7 +37,13 @@
     "03-claude-desktop",
     "04-streamable-http",
     "05-choosing-a-transport",
-    "06-local-http-safety"
+    "06-local-http-safety",
+    "01-the-context-object",
+    "02-lifespan",
+    "03-testing",
+    "04-configuration-and-secrets",
+    "05-safe-inputs",
+    "06-shipping"
   ],
   "questions": [
     "what-is-mcp-1",
@@ -63,6 +70,11 @@
     "transports-2",
     "transports-3",
     "transports-4",
-    "transports-5"
+    "transports-5",
+    "shipping-1",
+    "shipping-2",
+    "shipping-3",
+    "shipping-4",
+    "shipping-5"
   ]
 }

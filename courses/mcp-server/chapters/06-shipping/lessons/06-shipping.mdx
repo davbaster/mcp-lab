@@ -1,0 +1,44 @@
+---
+title: Shipping your server
+order: 6
+---
+
+# Shipping your server
+
+Your server works on your machine. Shipping it means that someone else can install it, run it and connect it to a client without asking you anything. Step 6 prepares the project for that.
+
+<CodeSteps step="6" file="pyproject.toml" />
+
+The project file says what the server is and what it needs. It has a name, a version and a description, and `requires-python = ">=3.10"`. `mcp[cli]==2.3.0` is pinned to an exact version, so that everyone runs the code you tested. The `pytest` pin sits in the `dev` group, which `uv sync` installs and a production install can skip.
+
+To try it as a newcomer would, copy the project to a new folder and run:
+
+```shell
+uv sync
+uv run server.py
+```
+
+`uv sync` creates the environment, and `uv run server.py` starts the server over stdio. If you share the project, include the `uv.lock` file that `uv` creates, so the dependencies of dependencies are pinned as well.
+
+## The README
+
+<CodeSteps step="6" file="README.md" />
+
+A README answers the questions a user has, in order: what it is, how to install it, how to run it, which settings it reads, and how to connect a client. The most useful part is the ready-to-paste config block. The user replaces the paths and restarts the client.
+
+## What you built
+
+- **Chapter 1:** the protocol and its primitives: hosts, clients, servers, and the messages between them.
+- **Chapter 2:** your first server, from an empty folder to a tool that a client can call.
+- **Chapter 3:** a notes server with five tools, clear docstrings, typed results, `ToolError` and annotations.
+- **Chapter 4:** resources and a prompt, so that clients can read notes and reuse a prompt.
+- **Chapter 5:** the stdio and Streamable HTTP transports, and a connection to a real client.
+- **Chapter 6:** context for logs and progress, a lifespan, tests, configuration, safe inputs and a project that is ready to share.
+
+## Where to learn more
+
+- The MCP site, with guides and the full documentation: [modelcontextprotocol.io](https://modelcontextprotocol.io)
+- The protocol specification: [modelcontextprotocol.io/specification](https://modelcontextprotocol.io/specification)
+- The Python SDK, with its source and examples: [github.com/modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk)
+
+You have finished the course. Take the quiz to complete this chapter.
