@@ -31,7 +31,7 @@ describe("buildCsp, for a fixture allowlist", () => {
       ["img-src", "'self' data: blob: https://cdn-one.test https://cdn-two.test:8443"],
       ["media-src", "'self' https://cdn-one.test https://cdn-two.test:8443"],
       ["frame-src", "https://player-one.test https://player-two.test"],
-      ["connect-src", "'self'"],
+      ["connect-src", "'self' blob:"],
       ["object-src", "'none'"],
       ["base-uri", "'self'"],
       ["form-action", "'self'"],
@@ -44,7 +44,7 @@ describe("buildCsp, for a fixture allowlist", () => {
       "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data: blob: https://cdn-one.test https://cdn-two.test:8443; " +
         "media-src 'self' https://cdn-one.test https://cdn-two.test:8443; " +
-        "frame-src https://player-one.test https://player-two.test; connect-src 'self'; object-src 'none'; " +
+        "frame-src https://player-one.test https://player-two.test; connect-src 'self' blob:; object-src 'none'; " +
         "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     );
   });
@@ -81,6 +81,9 @@ describe("buildCsp, for a fixture allowlist", () => {
     expect(csp).not.toContain("'wasm-unsafe-eval'");
     expect(csp).not.toContain("*");
     expect(csp).not.toMatch(/(^|\s)https?:(\s|;|$)/);
+    // The only scheme source besides data: (images) is blob: (images, and connect-src for embedded model textures).
+    expect(directives(csp).filter(([, sources]) => /(^|\s)(data|blob):/.test(sources)).map(([name]) => name)).toEqual(["img-src", "connect-src"]);
+    expect(csp).not.toMatch(/(^|\s)(ws|wss|filesystem|mediastream):/);
     // 'unsafe-inline' is only for styles; scripts stay 'self'.
     expect(directives(csp).filter(([, sources]) => sources.includes("'unsafe-inline'"))).toEqual([["style-src", "'self' 'unsafe-inline'"]]);
   });
@@ -264,6 +267,7 @@ describe("the committed config and nginx.conf", () => {
     expect(found["media-src"]).toBe(["'self'", ...realConfig.mediaOrigins].join(" "));
     expect(found["frame-src"]).toBe(realConfig.embeds.map((embed) => embed.origin).join(" "));
     expect(csp).not.toMatch(/unsafe-eval|\*/);
+    expect(found["connect-src"]).toBe("'self' blob:");
   });
 
   it("leave no origin written by hand in nginx.conf or in the frontend scripts", () => {

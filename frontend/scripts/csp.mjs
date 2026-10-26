@@ -67,7 +67,8 @@ export function buildCsp(config) {
     ["media-src 'self'", ...media].join(" "),
     // An empty `frame-src` is not a way to block frames, so no embed means 'none'.
     ["frame-src", ...(embeds.length > 0 ? embeds : ["'none'"])].join(" "),
-    "connect-src 'self'",
+    // blob: is for models with an embedded texture: three.js reads the texture through fetch() of a blob: URL.
+    "connect-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
