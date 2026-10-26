@@ -1,0 +1,35 @@
+---
+title: Choosing a primitive
+order: 5
+---
+
+# Choosing a primitive
+
+When you add a feature to a server, ask one question first: who should decide when it is used? The answer picks the primitive.
+
+- **The model decides: a tool.** Use a tool for an action, or for anything the model should fetch only when it needs it. In the notes server: `create_note`, `update_note`, `delete_note`.
+- **The application decides: a resource.** Use a resource for read-only context that has an address. In the notes server: `notes://index` and `notes://{note_id}`.
+- **The user decides: a prompt.** Use a prompt for a request the user starts on purpose. In the notes server: `summarize_note`.
+
+<Diagram
+  alt="Three controllers and what each one uses: the model calls tools, the application reads resources, and the user picks prompts."
+  source="flowchart LR
+    M[Model] --> T[Tools]
+    A[Application] --> R[Resources]
+    U[User] --> P[Prompts]"
+/>
+
+Some quick checks help with the edge cases.
+
+- If it changes anything, it must be a tool. Resources are for reading only.
+- If the same information is needed in almost every conversation, a resource saves the model a round trip.
+- If the user would want to click it, a prompt gives them a menu entry. A tool they cannot click would be hidden from them.
+- The same data can use more than one door. `list_notes` and `notes://index` show the same titles, so the model can ask for them and the application can attach them.
+
+<Callout type="tip" title="When in doubt, start with a tool">
+
+Many clients support tools before they support resources and prompts. A feature written as a tool is available in more places. Add a resource or prompt when the control really belongs to the application or the user.
+
+</Callout>
+
+You now have a server with all three primitives. Take the quiz to finish the chapter.

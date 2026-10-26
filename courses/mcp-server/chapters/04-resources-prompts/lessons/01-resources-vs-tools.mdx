@@ -1,0 +1,26 @@
+---
+title: Resources vs tools
+order: 1
+---
+
+# Resources vs tools
+
+Your notes server has tools: the model calls them to create, read, change and delete notes. MCP has two more primitives, and the difference between the three is who decides when they are used.
+
+- **Tools** are controlled by the model. The model reads the descriptions, decides a tool is useful, and calls it with arguments. A tool can do things: write to the database, delete a note.
+- **Resources** are controlled by the application. A resource is data with an address, such as `notes://index`. The host application decides which resources to read and how to put them in front of the model. Reading a resource does not change anything.
+- **Prompts** are controlled by the user. A prompt is a ready-made request that the user picks on purpose, for example from a menu.
+
+You met this idea in Chapter 1, in the lesson about server primitives. Now you will build the other two.
+
+Why not make everything a tool? A tool call costs the model a decision and a round trip, and the model may forget to make it. If you know a note list is useful context, a resource lets the application offer it directly, without waiting for the model to ask.
+
+A resource also has a MIME type, which tells the client how to read it: `application/json` for data, `text/plain` for text. A client finds resources with `resources/list` and reads one with `resources/read`.
+
+<Callout type="note" title="Same data, different door">
+
+`list_notes` (a tool) and `notes://index` (a resource, next lesson) can return the same information. What differs is who is expected to open the door: the model for a tool, the application for a resource.
+
+</Callout>
+
+In the next lesson you add your first resource to the notes server.

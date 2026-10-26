@@ -24,7 +24,7 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 
 - **Merged:** everything through the frontend phase, plus #107 (course loader edge cases, PR #136).
 - **#111 (trailing newline in route paths):** passed QA, merged (PR #137).
-- **Next:** #26, #27, #28 and #29 are in PR #138, waiting on David's merge. Then #30 and the other chapters.
+- **Next:** #26-#30 and #61 are in PR #138, waiting on David's merge. Then #31 and #62 (Chapter 5).
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## Decisions to keep

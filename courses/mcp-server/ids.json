@@ -3,7 +3,8 @@
   "chapters": [
     "01-what-is-mcp",
     "02-first-server",
-    "03-tools"
+    "03-tools",
+    "04-resources-prompts"
   ],
   "lessons": [
     "01-before-you-start",
@@ -23,7 +24,12 @@
     "03-docstrings",
     "04-return-values",
     "05-errors",
-    "06-annotations"
+    "06-annotations",
+    "01-resources-vs-tools",
+    "02-static-resource",
+    "03-resource-template",
+    "04-prompts",
+    "05-choosing-primitive"
   ],
   "questions": [
     "what-is-mcp-1",
@@ -40,6 +46,11 @@
     "tools-2",
     "tools-3",
     "tools-4",
-    "tools-5"
+    "tools-5",
+    "resources-1",
+    "resources-2",
+    "resources-3",
+    "resources-4",
+    "resources-5"
   ]
 }

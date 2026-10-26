@@ -8,5 +8,7 @@ chapters:
     title: Your first server
   - id: 03-tools
     title: "Building tools: the notes CRUD"
+  - id: 04-resources-prompts
+    title: Resources and prompts
 free_preview:
   - 01-what-is-mcp
