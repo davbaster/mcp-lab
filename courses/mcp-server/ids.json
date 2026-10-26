@@ -1,0 +1,22 @@
+{
+  "course_id": "mcp-server",
+  "chapters": [
+    "01-what-is-mcp"
+  ],
+  "lessons": [
+    "01-before-you-start",
+    "02-the-problem-mcp-solves",
+    "03-hosts-clients-servers",
+    "04-server-primitives",
+    "05-messages",
+    "06-lifecycle",
+    "07-transports"
+  ],
+  "questions": [
+    "what-is-mcp-1",
+    "what-is-mcp-2",
+    "what-is-mcp-3",
+    "what-is-mcp-4",
+    "what-is-mcp-5"
+  ]
+}

@@ -1,0 +1,8 @@
+id: mcp-server
+title: Build an MCP Server
+description: Learn what the Model Context Protocol is and build your own MCP server in Python, one step at a time.
+chapters:
+  - id: 01-what-is-mcp
+    title: What is MCP?
+free_preview:
+  - 01-what-is-mcp
