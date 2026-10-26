@@ -62,7 +62,7 @@ describe("loading and the loaded lesson", () => {
     renderApp("/courses/demo/lessons/a");
 
     expect(h1().textContent).toBe("Lesson");
-    expect(document.title).toBe("Lesson – Courses");
+    await waitFor(() => expect(document.title).toBe("Lesson – Courses"));
     await waitFor(() => expect(screen.getByRole("status").textContent).toBe("Loading…"));
     pending.resolve(jsonResponse(chapterOfThree.a));
     expect(await screen.findByText("Body of a")).toBeTruthy();
@@ -73,7 +73,7 @@ describe("loading and the loaded lesson", () => {
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findByRole("heading", { level: 1, name: "Title of a" })).toBeTruthy();
-    expect(document.title).toBe("Title of a – Courses");
+    await waitFor(() => expect(document.title).toBe("Title of a – Courses"));
     expect(screen.getByText("Body of a")).toBeTruthy();
     expect(screen.queryByRole("status")).toBeNull();
   });
@@ -115,7 +115,7 @@ describe("loading and the loaded lesson", () => {
     expect(await screen.findAllByRole("tab")).toHaveLength(2);
     expect(document.querySelector("img[alt='A picture']")).toBeTruthy();
     expect(document.querySelector(".callout-note")).toBeTruthy();
-    expect(log.error).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(log.error).toHaveBeenCalledTimes(1));
   });
 
   it("renders a copy of the Markdown golden tree", async () => {
@@ -307,8 +307,8 @@ describe("moving between lessons", () => {
     expect(scrollTo).toHaveBeenCalledWith(0, 0);
     expect(h1()).toBe(heading_);
     expect(h1().textContent).toBe("Title of b");
-    expect(document.activeElement).toBe(h1());
-    expect(document.title).toBe("Title of b – Courses");
+    await waitFor(() => expect(document.activeElement).toBe(h1()));
+    await waitFor(() => expect(document.title).toBe("Title of b – Courses"));
   });
 
   it("shows Loading… and the title Lesson between two lessons, keeping the h1", async () => {
@@ -549,7 +549,7 @@ describe("errors", () => {
 
     expect(await screen.findByText("Sign in to read this lesson")).toBeTruthy();
     expect(h1().textContent).toBe("Lesson");
-    expect(document.title).toBe("Lesson – Courses");
+    await waitFor(() => expect(document.title).toBe("Lesson – Courses"));
     const signIn = within(screen.getByRole("region", { name: "Lesson" })).getByRole("link", { name: "Sign in" });
     expect(signIn.getAttribute("href")).toBe(signInPath("/courses/demo/lessons/a?x=1"));
     expect(screen.queryByRole("navigation", { name: "Lesson navigation" })).toBeNull();
@@ -575,7 +575,7 @@ describe("errors", () => {
     expect(await screen.findByText("This chapter is locked. Pass the previous chapter's quiz to unlock it.")).toBeTruthy();
     expect(screen.queryByText(/Finish the earlier chapters/)).toBeNull();
     expect(h1().textContent).toBe("Lesson");
-    expect(document.title).toBe("Lesson – Courses");
+    await waitFor(() => expect(document.title).toBe("Lesson – Courses"));
     expect(href(screen.getByRole("link", { name: "Back to course" }))).toBe("/courses/demo");
   });
 
@@ -584,7 +584,7 @@ describe("errors", () => {
     renderApp("/courses/demo/lessons/a");
 
     expect(await screen.findByRole("heading", { level: 1, name: "Lesson not found" })).toBeTruthy();
-    expect(document.title).toBe("Lesson not found – Courses");
+    await waitFor(() => expect(document.title).toBe("Lesson not found – Courses"));
     expect(href(screen.getByRole("link", { name: "Back to course" }))).toBe("/courses/demo");
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
@@ -614,7 +614,7 @@ describe("errors", () => {
     expect(within(alert).getByText(message)).toBeTruthy();
     expect(within(alert).getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(h1().textContent).toBe("Lesson");
-    expect(document.title).toBe("Lesson – Courses");
+    await waitFor(() => expect(document.title).toBe("Lesson – Courses"));
     expect(screen.queryByRole("navigation", { name: "Lesson navigation" })).toBeNull();
   });
 
