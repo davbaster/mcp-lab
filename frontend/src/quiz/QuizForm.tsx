@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type FormEvent, type Ref } from "react";
 import { PASS_SCORE, QUESTIONS_PER_QUIZ } from "../components/ChapterCard";
+import { CodeBlock } from "../content-components/CodeBlock";
 import { QuestionFeedbackButton } from "../feedback/QuestionFeedbackButton";
 import { InlineText } from "./InlineText";
 import type { Quiz } from "./quizData";
@@ -60,9 +61,7 @@ export function QuizForm({
                 <span className="quiz-question-number">Question {qi + 1}</span> <InlineText text={question.text} />
               </legend>
               {question.code !== null && (
-                <pre className="quiz-snippet" tabIndex={0} role="region" aria-label={`Code for question ${qi + 1}`}>
-                  <code>{question.code}</code>
-                </pre>
+                <CodeBlock code={question.code} language={question.language} label={`Code for question ${qi + 1}`} className="quiz-snippet" />
               )}
               {question.options.map((option, oi) => (
                 <label key={oi} className="quiz-option">

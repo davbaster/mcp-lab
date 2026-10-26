@@ -1,22 +1,15 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Tokens } from "./CodeBlock";
+import { CopyButton } from "./CopyButton";
 import { splitLines } from "./codeLines";
 import { changeSummary, chooseFile, fileLabel, FILE_REMOVED_NOTE, FIRST_STEP_NOTE, LINES_REMOVED_NOTE, markedLines, NO_CHANGES_NOTE } from "./codeChanges";
 import type { CodeFile, CodeStep } from "./codeData";
-import { highlight, languageForPath, MAX_HIGHLIGHT_CHARS, type HighlightedLines } from "./highlighter";
+import { languageForPath } from "./highlighter";
 import { LogOnce } from "./LogOnce";
 import { tabForKey } from "./tabKeys";
 import { siteSource } from "./urls";
-
-/** How long "Copied" stays. */
-const COPIED_MS = 2000;
-
-type CopyState = "idle" | "copied" | "failed";
-
-const COPY_TEXT: Record<CopyState, string> = {
-  idle: "Copy",
-  copied: "Copied",
-  failed: "Copy failed – select the code to copy it",
-};
+import { useCopy } from "./useCopy";
+import { useHighlighted } from "./useHighlighted";
 
 interface CodeViewerProps {
   name: string;
@@ -42,13 +35,10 @@ export function CodeViewer({ name, steps, start, file, zipUrl, zipFileName }: Co
   // The `file` prop applies at the start only, and only to a file that is there and not deleted.
   const [propMissed] = useState(() => file !== null && !steps[start].files.some((candidate) => candidate.path === file && candidate.status !== "deleted"));
   const [where, setWhere] = useState<Position>(() => ({ index: start, selected: chooseFile(steps[start].files, propMissed ? null : file) }));
-  const [copy, setCopy] = useState<CopyState>("idle");
+  const clipboard = useCopy();
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const stepButtons = useRef<{ previous: HTMLButtonElement | null; next: HTMLButtonElement | null }>({ previous: null, next: null });
   const pressed = useRef<"previous" | "next" | null>(null);
-  const timer = useRef<number | null>(null);
-  // Which press of Copy (or which file) an answer from the clipboard belongs to.
-  const attempt = useRef(0);
 
   const lastIndex = steps.length - 1;
   const index = Math.min(where.index, lastIndex);
@@ -61,19 +51,6 @@ export function CodeViewer({ name, steps, start, file, zipUrl, zipFileName }: Co
   const lastFile = files.length - 1;
   const zip = siteSource(zipUrl);
 
-  function stopTimer() {
-    if (timer.current !== null) window.clearTimeout(timer.current);
-    timer.current = null;
-  }
-
-  useEffect(
-    () => () => {
-      attempt.current += 1;
-      stopTimer();
-    },
-    [],
-  );
-
   // A step button that the press just disabled would drop the keyboard focus, so it goes to the other one.
   useEffect(() => {
     const button = pressed.current;
@@ -83,11 +60,7 @@ export function CodeViewer({ name, steps, start, file, zipUrl, zipFileName }: Co
   }, [index]);
 
   /** A new file (or a new step) starts with "Copy", and the old timer or clipboard answer must not change it. */
-  function resetCopy() {
-    attempt.current += 1;
-    stopTimer();
-    setCopy("idle");
-  }
+  const resetCopy = clipboard.reset;
 
   function select(position: number, focus: boolean) {
     if (position !== active) resetCopy();
@@ -109,27 +82,6 @@ export function CodeViewer({ name, steps, start, file, zipUrl, zipFileName }: Co
     if (next === null) return;
     event.preventDefault();
     select(next, true);
-  }
-
-  async function copyFile() {
-    if (current === undefined) return;
-    stopTimer();
-    const mine = ++attempt.current;
-    let result: CopyState = "copied";
-    try {
-      // The text comes from the API data, not from the page. `navigator.clipboard` is missing on an insecure page.
-      await navigator.clipboard.writeText(current.content);
-    } catch {
-      result = "failed";
-    }
-    if (mine !== attempt.current) return;
-    setCopy(result);
-    if (result === "copied") {
-      timer.current = window.setTimeout(() => {
-        timer.current = null;
-        setCopy("idle");
-      }, COPIED_MS);
-    }
   }
 
   const changes = firstStep ? FIRST_STEP_NOTE : (changeSummary(files) ?? NO_CHANGES_NOTE);
@@ -214,19 +166,8 @@ export function CodeViewer({ name, steps, start, file, zipUrl, zipFileName }: Co
                 {!firstStep && current.status === "modified" && current.changedLines.length === 0 && <p className="code-note">{LINES_REMOVED_NOTE}</p>}
                 <div className="code-block">
                   <div className="code-toolbar">
-                    {/* The live region is in the page before the first press, so a change is announced. */}
-                    <span className="code-copy" aria-live="polite">
-                      <button type="button" className="button button-secondary" onClick={() => void copyFile()}>
-                        {COPY_TEXT[copy]}
-                        {/* The file's name is for screen readers, so two viewers' buttons can be told apart. */}
-                        {copy !== "failed" && (
-                          <>
-                            {" "}
-                            <span className="visually-hidden">{current.path}</span>
-                          </>
-                        )}
-                      </button>
-                    </span>
+                    {/* The text comes from the API data, not from the page. The file's name is for screen readers. */}
+                    <CopyButton state={clipboard.state} hint={current.path} onCopy={() => void clipboard.copy(current.content)} />
                   </div>
                   {current.content === "" ? (
                     <p className="code-empty">This file is empty</p>
@@ -263,20 +204,7 @@ function CodeArea({ file, firstStep }: { file: CodeFile; firstStep: boolean }) {
   const lines = useMemo(() => splitLines(content), [content]);
   const marked = useMemo(() => markedLines(file, lines.length, firstStep), [file, lines.length, firstStep]);
   const language = languageForPath(path);
-  const [highlighted, setHighlighted] = useState<{ content: string; lines: HighlightedLines } | null>(null);
-
-  useEffect(() => {
-    if (language === null || content.length > MAX_HIGHLIGHT_CHARS) return;
-    let current = true;
-    void highlight(content, language).then((result) => {
-      if (current && result !== null) setHighlighted({ content, lines: result });
-    });
-    return () => {
-      current = false;
-    };
-  }, [content, language]);
-
-  const colored = highlighted !== null && highlighted.content === content && highlighted.lines.length === lines.length ? highlighted.lines : null;
+  const colored = useHighlighted(content, language);
   const digits = Math.min(String(lines.length).length, 6);
 
   return (
@@ -293,15 +221,7 @@ function CodeArea({ file, firstStep }: { file: CodeFile; firstStep: boolean }) {
               line.text + line.end
             ) : (
               <>
-                {colored[index].map((token, position) =>
-                  token.className === null ? (
-                    token.text
-                  ) : (
-                    <span key={position} className={token.className}>
-                      {token.text}
-                    </span>
-                  ),
-                )}
+                <Tokens tokens={colored[index]} />
                 {line.end}
               </>
             )}

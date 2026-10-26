@@ -197,3 +197,42 @@ describe("content.css, videos and 3D models", () => {
     expect(rule(".model-load")).not.toMatch(/\b(width|height):\s*\d+px/);
   });
 });
+
+describe("content.css, code fences in lessons", () => {
+  it("lets a block and its pre scroll sideways inside themselves and never wrap", () => {
+    expect(rule(".lesson-content pre")).toMatch(/overflow-x:\s*auto/);
+    expect(rule(".lesson-content pre")).toMatch(/background:\s*var\(--color-surface\)/);
+    expect(rule(".lesson-content pre code")).toMatch(/white-space:\s*pre\b/);
+    expect(rule(".lesson-content pre code")).not.toMatch(/white-space:\s*(normal|pre-wrap|pre-line)/);
+  });
+
+  it("makes the block with its Copy button a shrinkable grid item that is never wider than the column", () => {
+    expect(rule(".lesson-content > *")).toMatch(/min-width:\s*0/);
+    expect(rule(".lesson-content .code-prose")).toMatch(/min-width:\s*0/);
+    expect(rule(".lesson-content .code-prose")).toMatch(/max-width:\s*100%/);
+    expect(rule(".lesson-content .code-prose pre")).toMatch(/margin:\s*0\b/);
+  });
+
+  it("keeps the Copy button's toolbar outside the scroll container, so it does not scroll with a long line", () => {
+    expect(rule(".code-toolbar")).toMatch(/display:\s*flex/);
+    expect(rule(".code-toolbar")).toMatch(/justify-content:\s*flex-end/);
+    expect(rule(".code-toolbar")).not.toMatch(/position:\s*(absolute|fixed|sticky)/);
+    expect(rule(".lesson-content .code-prose")).not.toMatch(/overflow/);
+  });
+
+  it("draws default text in the text color and makes no part of a block unselectable", () => {
+    expect(rule(".lesson-content pre")).toMatch(/color:\s*var\(--color-text\)/);
+    for (const selector of [".lesson-content pre", ".lesson-content pre code", ".lesson-content .code-prose", ".code-token-keyword", ".code-italic"]) {
+      expect(rule(selector)).not.toMatch(/user-select/);
+    }
+  });
+
+  it("lets the token classes set color, font style, weight and decoration only, so the colors cannot change the size", () => {
+    for (const name of ["comment", "constant", "keyword", "parameter", "function", "string", "string-expression", "punctuation", "link"]) {
+      expect(rule(`.code-token-${name}`).trim()).toMatch(/^color:\s*var\(--color-code-[a-z-]+\);$/);
+    }
+    expect(rule(".code-italic").trim()).toMatch(/^font-style:\s*italic;$/);
+    expect(rule(".code-bold").trim()).toMatch(/^font-weight:\s*700;$/);
+    expect(rule(".code-underline").trim()).toMatch(/^text-decoration:\s*underline;$/);
+  });
+});

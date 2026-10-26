@@ -55,6 +55,7 @@
   overflow-x: auto;
   border-radius: var(--radius);
   background: var(--color-surface);
+  color: var(--color-text);
   font-family: var(--font-code);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-code);

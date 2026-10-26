@@ -4,6 +4,7 @@
  * reach a place they do not belong (see "Security and privacy tests" in _docs/testing-guidelines.md).
  */
 import type { RecordedCall } from "./apiRoutes";
+import { jsonResponse } from "./mockApi";
 
 export const COURSE = "demo";
 export const CHAPTER = "c1";
@@ -92,3 +93,15 @@ export const chapterList = (status: string | null = "in_progress", chapters: unk
   ],
 });
 
+
+export const QUIZ_URL = `/courses/${COURSE}/chapters/${CHAPTER}/quiz`;
+
+/** The routes the quiz page asks for, for a learner who is signed in and answers with `quiz`. */
+export function quizRoutes(quiz: unknown = makeQuiz()) {
+  return {
+    "GET /api/auth/me": () => jsonResponse({ username: "ada_l" }),
+    [`GET /api/courses/${COURSE}/chapters/${CHAPTER}/quiz`]: () => jsonResponse(quiz),
+    [`GET /api/courses/${COURSE}/progress`]: () => jsonResponse({ course_id: COURSE, course_complete: false, chapters: [] }),
+    [`GET /api/courses/${COURSE}/chapters`]: () => jsonResponse(chapterList("in_progress")),
+  };
+}

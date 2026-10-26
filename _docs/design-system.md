@@ -138,6 +138,7 @@ Follow the WAI-ARIA tabs pattern: `tablist`, `tab`, and `tabpanel` roles; arrow 
 - Line numbers in `--color-text-muted`, not selectable.
 - Changed lines in step mode: `--color-changed-line` background plus a 3px `--color-primary` bar in the line-number gutter, with screen-reader text "changed".
 - Step mode: above the tabs, "Step N of M" with the line of changes (or "First step: every file is new.") in one `role="status"` element, and the secondary buttons "Previous step" and "Next step" in the same row. The first step marks no line. A file that only lost lines shows the note "Lines were removed from this file in this step." above its code. The ZIP hint names the last step until the last step is shown.
+- Code fences in lessons and quiz snippets use the same classes and colors as the code viewer, for the languages the viewer highlights; others stay plain text. A lesson fence has a Copy button above it, at the top right; a quiz snippet has none.
 - Copy buttons sit at the top right of the code block and say "Copy", then "Copied" for 2 seconds (announced with `aria-live="polite"`).
 - Code viewers (`CodeSteps`) use the full content width. Long lines scroll inside the code area and never wrap. If copying fails, the button says "Copy failed – select the code to copy it" until the learner presses it again or chooses another file.
 

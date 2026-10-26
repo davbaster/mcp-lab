@@ -1,6 +1,6 @@
 /**
  * Syntax highlighting with Shiki, loaded only when a code viewer needs it (#21; #63 uses the same
- * function for code blocks in lesson prose). Nothing from Shiki is imported at the top of this
+ * function for code blocks in lesson prose and quiz snippets). Nothing from Shiki is imported at the top of this
  * file: the core, the JavaScript regex engine (never the WASM one) and each grammar are separate
  * `import()` calls, so a lesson without code pays nothing, and a viewer only loads the grammars of
  * the files it shows. The grammar table is a fixed object of explicit calls; a computed
@@ -49,6 +49,28 @@ export function languageForPath(path: string): Language | null {
   const dot = name.lastIndexOf(".");
   if (dot <= 0) return null;
   return EXTENSIONS.get(name.slice(dot + 1).toLowerCase()) ?? null;
+}
+
+/** Language names as a fence (` ```python `) or a quiz snippet writes them, compared in lower case. */
+const FENCE_NAMES: ReadonlyMap<string, Language> = new Map([
+  ["python", "python"],
+  ["py", "python"],
+  ["toml", "toml"],
+  ["json", "json"],
+  ["yaml", "yaml"],
+  ["yml", "yaml"],
+  ["markdown", "markdown"],
+  ["md", "markdown"],
+  ["shellscript", "shellscript"],
+  ["shell", "shellscript"],
+  ["sh", "shellscript"],
+  ["bash", "shellscript"],
+]);
+
+/** The grammar for a language name written in a code fence or a quiz snippet, or null (plain text). */
+export function languageForFence(name: string | null | undefined): Language | null {
+  if (typeof name !== "string") return null;
+  return FENCE_NAMES.get(name.toLowerCase()) ?? null;
 }
 
 /** A piece of a line. `className` is the token's classes, or null for default text. */

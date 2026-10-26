@@ -115,6 +115,7 @@ See the [MCP specification](https://modelcontextprotocol.io/) for more.
 **You may write**
 
 - Markdown: headings, paragraphs, *emphasis*, **strong text**, `inline code`, links, images, ordered and unordered lists (also nested), block quotes, horizontal rules, hard line breaks (two spaces or a backslash at the end of a line), and fenced code blocks with an optional language (` ```python `).
+  The app colors fences (and quiz snippets) in `python`/`py`, `toml`, `json`, `yaml`/`yml`, `markdown`/`md`, and `shell`/`shellscript`/`sh`/`bash` (any letter case); a fence with no language, or any other language, is shown as plain text, and the build does not warn about it.
 - These components, each with the props below. Put the opening tag and the closing tag on their own lines, with a blank line before and after what is between them. A component that takes no children is written as one self-closing tag on its own line.
 
   | Component | Props | Children |

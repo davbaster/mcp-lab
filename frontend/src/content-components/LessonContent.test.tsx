@@ -101,6 +101,28 @@ describe("Markdown nodes", () => {
     expect(blocks[1].textContent).toBe("no language here");
   });
 
+  it("gives each fenced block a Copy button before its pre, as a region named by its language", () => {
+    const { container } = renderTree(markdownNodes);
+    const buttons = screen.getAllByRole("button", { name: /^Copy/ });
+    expect(buttons.map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim())).toEqual(["Copy python code", "Copy code"]);
+    const [python, bare] = find(container, "pre");
+    expect(screen.getByRole("region", { name: "python code block" })).toBe(python);
+    expect(screen.getByRole("region", { name: "Code block" })).toBe(bare);
+    expect(buttons[0].compareDocumentPosition(python) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(python.contains(buttons[0])).toBe(false);
+  });
+
+  it("puts a fenced block in a Callout and in a Tab through the same renderer, with its Copy button", () => {
+    const { container } = renderTree([
+      component("Callout", { type: "tip" }, [{ type: "code", lang: "bash", value: "ls -la" }]),
+      component("Tabs", {}, [tab("One", { type: "code", lang: "json", value: "{}" })]),
+    ]);
+    expect(find(container, ".callout pre")).toHaveLength(1);
+    expect(find(container, "[role=tabpanel] pre")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Copy bash code" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy json code" })).toBeTruthy();
+  });
+
   it.each(["c++", "C#", "objective-c", "x.y_z", "py3"])("accepts the code language %s", (lang) => {
     const { container } = renderTree([{ type: "code", lang, value: "x" }]);
     expect(container.querySelector("code")?.className).toBe(`language-${lang}`);
