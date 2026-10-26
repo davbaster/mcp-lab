@@ -4,6 +4,8 @@ Where the work stands, for anyone picking it up without access to the original C
 
 Read [`AGENTS.md`](AGENTS.md) first. It has the layout, commands and rules. [`_docs/plan.md`](_docs/plan.md) is the scope, and [`_docs/process.md`](_docs/process.md) is how each task is run (PM grooms, engineer builds, QA passes or fails, then the issue is closed). This file only holds the state and decisions that the repo doesn't.
 
+Then read the newest file in [`_docs/log/`](_docs/log/). Append an entry there after each finished piece of work, decision, or task switch, using the format described in `AGENTS.md`.
+
 ## Phase order
 
 Agreed with the owner (David, `davbaster`):

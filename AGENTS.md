@@ -11,6 +11,8 @@ A web app for guided courses. v1 ships one course, "Build an MCP Server" (Python
 
 ## Documents
 
+- `HANDOFF.md` - current state, open work, and decisions made so far
+- `_docs/log/` - the session log. At the start of a session, read the newest file. Append an entry to today's file (`_docs/log/YYYY-MM-DD.md`, create it if missing) after each finished piece of work, each decision, and each task switch. Every entry has four headings: What was done, Decisions made (and why), Open threads, Errors. Keep entries factual.
 - `_docs/process.md` - how work is organized
 - Before writing tests, read `_docs/testing-guidelines.md`
 - For anything touching the UI, read `_docs/design-system.md`
