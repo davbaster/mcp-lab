@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router";
 import "./content.css";
+import { CodeDataProvider } from "./CodeDataProvider";
 import { LessonImage } from "./LessonImage";
 import { LogOnce } from "./LogOnce";
 import { Unavailable } from "./Unavailable";
@@ -145,11 +146,25 @@ function startsWithTitle(tree: LessonTree, title: string): boolean {
   return first?.type === "heading" && first.depth === 1 && textOf(first).trim() === title.trim();
 }
 
+/** The course and chapter a lesson belongs to, which `CodeSteps` needs to ask for the chapter's code. */
+export interface LessonIds {
+  courseId: string;
+  chapterId: string;
+}
+
 /**
  * The lesson body. `title` is the lesson title the page shows as its `h1`: a leading `# Title`
- * line that repeats it is not rendered again.
+ * line that repeats it is not rendered again. `lesson` gives the IDs for `CodeSteps`; without it
+ * a `CodeSteps` cannot be shown and sends no request.
  */
-export function LessonContent({ tree, title }: { tree: LessonTree; title: string }) {
+export function LessonContent({ tree, title, lesson }: { tree: LessonTree; title: string; lesson?: LessonIds }) {
   const nodes = startsWithTitle(tree, title) ? tree.children.slice(1) : tree.children;
-  return <div className="lesson-content">{renderNodes(nodes)}</div>;
+  const content = <div className="lesson-content">{renderNodes(nodes)}</div>;
+  if (!lesson) return content;
+  // Keyed, so the code of one chapter is never shown for another.
+  return (
+    <CodeDataProvider key={`${lesson.courseId}/${lesson.chapterId}`} courseId={lesson.courseId} chapterId={lesson.chapterId}>
+      {content}
+    </CodeDataProvider>
+  );
 }

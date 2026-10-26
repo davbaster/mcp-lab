@@ -2,6 +2,7 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
 import { LogOnce } from "./LogOnce";
 import { Unavailable } from "./Unavailable";
 import { checkTabProps } from "./props";
+import { tabForKey } from "./tabKeys";
 import { childNodes, isRecord, type ContentComponentProps } from "./tree";
 
 interface TabData {
@@ -46,24 +47,8 @@ export function TabsBlock({ name, nodes, renderNodes }: ContentComponentProps) {
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-    let next: number;
-    switch (event.key) {
-      case "ArrowRight":
-        next = active === last ? 0 : active + 1;
-        break;
-      case "ArrowLeft":
-        next = active === 0 ? last : active - 1;
-        break;
-      case "Home":
-        next = 0;
-        break;
-      case "End":
-        next = last;
-        break;
-      default:
-        return; // Up and Down Arrow, and every other key, do nothing here.
-    }
+    const next = tabForKey(event, active, last);
+    if (next === null) return;
     event.preventDefault();
     select(next, true);
   }

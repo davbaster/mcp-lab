@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { CalloutBlock } from "./CalloutBlock";
+import { CodeStepsBlock } from "./CodeStepsBlock";
 import { DiagramBlock } from "./DiagramBlock";
 import { ImageBlock } from "./LessonImage";
 import { PendingComponent } from "./PendingComponent";
@@ -13,8 +14,8 @@ export type ContentComponent = ComponentType<ContentComponentProps>;
  * in code and is never built from lesson data. `Tab` is not here: it is part of `Tabs`
  * (`x-nested` in `Tabs.schema.json`), so a `Tab` outside `Tabs` is an unknown component.
  *
- * `Video`, `Model3D` and `CodeSteps` show the "can't be shown" box until #20 and #21 build them;
- * `registry.test.ts` lists them as pending.
+ * `Video` and `Model3D` show the "can't be shown" box until #20 builds them; `registry.test.ts`
+ * lists them as pending.
  */
 export const registry = {
   Image: ImageBlock,
@@ -23,7 +24,7 @@ export const registry = {
   Diagram: DiagramBlock,
   Video: PendingComponent,
   Model3D: PendingComponent,
-  CodeSteps: PendingComponent,
+  CodeSteps: CodeStepsBlock,
 } satisfies Record<string, ContentComponent>;
 
 /** The component for a name from lesson data, or undefined. `__proto__` and `toString` are not names. */
