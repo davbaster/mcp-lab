@@ -99,6 +99,21 @@ export async function realRenderer(options: Parameters<typeof createMermaidRende
   return createMermaidRenderer(loadMermaidConfig(), options);
 }
 
+/**
+ * Whether this platform's real-Chromium SVG bytes are the reference the goldens were made with. Linux is the reference; Windows
+ * measures text in the bundled font slightly differently (up to about 0.4 px), so only there the tests that compare those bytes
+ * with the goldens are skipped. Everything else (safety, structure, same-machine determinism, the cache) runs everywhere.
+ */
+export function diagramBytesAreReference(platform: NodeJS.Platform = process.platform): boolean {
+  return platform !== "win32";
+}
+
+/** True on the platform whose bytes the goldens hold (`diagramBytesAreReference()`); for `it.skipIf(!...)` and `it.runIf(...)`. */
+export const COMPARES_WITH_GOLDEN = diagramBytesAreReference();
+
+/** The reason shown for a test that is skipped because the platform is not the reference. */
+export const NOT_REFERENCE_PLATFORM = "Linux is the reference for diagram bytes; Windows measures text in the bundled font slightly differently (see content-build/README.md)";
+
 /** The first place where two texts differ, with some text around it from each, or "" when they are the same. For failure messages that show the real difference. */
 export function firstDifference(actual: string, expected: string): string {
   if (actual === expected) return "";

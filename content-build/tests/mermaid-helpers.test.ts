@@ -1,7 +1,7 @@
 // The helpers that make a failed golden test name the files that differ.
 
 import { describe, expect, it } from "vitest";
-import { differences, firstDifference } from "./mermaid-helpers.ts";
+import { COMPARES_WITH_GOLDEN, NOT_REFERENCE_PLATFORM, differences, diagramBytesAreReference, firstDifference } from "./mermaid-helpers.ts";
 
 const svg = (title: string, body: string) => Buffer.from(`<svg><title id="diagram-title">${title}</title>${body}</svg>`);
 
@@ -53,5 +53,28 @@ describe("differences", () => {
     expect(found.map((line) => line.split(":")[0])).toEqual(["missing", "extra", "compare public/diagram-1111111111111111.svg with public/diagram-2222222222222222.svg (title \"A graph\")"]);
     expect(found[2]).toContain('height=\\"19\\"');
     expect(found[2]).toContain('height=\\"20\\"');
+  });
+});
+
+describe("diagramBytesAreReference (which platform compares diagram bytes with the goldens)", () => {
+  const platforms: NodeJS.Platform[] = ["aix", "android", "darwin", "freebsd", "haiku", "linux", "openbsd", "sunos", "win32", "cygwin", "netbsd"];
+
+  it("is false for win32 and true for every other platform", () => {
+    expect(platforms.filter((platform) => !diagramBytesAreReference(platform))).toEqual(["win32"]);
+    expect(platforms.filter((platform) => diagramBytesAreReference(platform)).sort()).toEqual(platforms.filter((platform) => platform !== "win32").sort());
+  });
+
+  it("is true on Linux, the reference", () => {
+    expect(diagramBytesAreReference("linux")).toBe(true);
+  });
+
+  it("uses the platform of this process when none is given, and the constant agrees", () => {
+    expect(diagramBytesAreReference()).toBe(process.platform !== "win32");
+    expect(COMPARES_WITH_GOLDEN).toBe(diagramBytesAreReference(process.platform));
+  });
+
+  it("has a skip reason that names Linux as the reference and the README", () => {
+    expect(NOT_REFERENCE_PLATFORM).toContain("Linux is the reference");
+    expect(NOT_REFERENCE_PLATFORM).toContain("README");
   });
 });

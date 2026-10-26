@@ -15,7 +15,7 @@ import { DiagramRenderError, chromiumBuild } from "../src/mermaid-render.ts";
 import { svgProblems } from "../src/svg.ts";
 import { VALID_COURSES, filesOf, newBuildFolder, runBuild } from "./build-support.ts";
 import { temporaryFolder } from "./helpers.ts";
-import { BROWSER_TEST_TIMEOUT_MS, MERMAID_GOLDEN, TYPES_LESSON, lesson, mermaidCourses, firstDifference, realRenderer, typesLessonUses } from "./mermaid-helpers.ts";
+import { BROWSER_TEST_TIMEOUT_MS, COMPARES_WITH_GOLDEN, MERMAID_GOLDEN, NOT_REFERENCE_PLATFORM, TYPES_LESSON, lesson, mermaidCourses, firstDifference, realRenderer, typesLessonUses } from "./mermaid-helpers.ts";
 
 const REPEATS = "chapters/02-more-diagrams/lessons/01-repeats.mdx";
 const NO_DIAGRAM = lesson("No diagram here.");
@@ -62,7 +62,17 @@ describe("the same source gives the same bytes (all supported types)", () => {
     expect(TYPED.map(({ type }) => type).sort()).toEqual(["classDiagram", "erDiagram", "flowchart", "graph", "pie", "sequenceDiagram", "stateDiagram", "stateDiagram-v2"]);
   });
 
-  it.each(TYPED.map(({ type }) => type))("%s: twice in one browser, in the reverse order, and in a new browser gives byte-identical SVG that equals the golden file", (type) => {
+  it.each(TYPED.map(({ type }) => type))("%s: twice in one browser, in the reverse order, and in a new browser gives byte-identical SVG that passes the SVG rules", (type) => {
+    const forward = renders.forward.get(type) ?? "";
+
+    expect(forward).toMatch(/^<svg\b/);
+    expect(svgProblems(forward)).toEqual([]);
+    expect(firstDifference(renders.reverse.get(type) ?? "", forward)).toBe("");
+    expect(firstDifference(renders.fresh.get(type) ?? "", forward)).toBe("");
+  });
+
+  // Skipped on Windows only, one test per type: the goldens are the Linux bytes (NOT_REFERENCE_PLATFORM says why).
+  it.skipIf(!COMPARES_WITH_GOLDEN).each(TYPED.map(({ type }) => type))(`%s: the three renders equal the golden file byte for byte (not run on Windows: ${NOT_REFERENCE_PLATFORM})`, (type) => {
     const golden = readFileSync(join(MERMAID_GOLDEN, "renderer", `${type}.svg`), "utf8");
 
     expect(firstDifference(renders.forward.get(type) ?? "", golden)).toBe("");
@@ -192,7 +202,9 @@ describe("how the real browser is started", () => {
     try {
       const golden = readFileSync(join(MERMAID_GOLDEN, "renderer", "graph.svg"), "utf8");
       const graph = TYPED.find(({ type }) => type === "graph")?.source as string;
-      expect(firstDifference(await renderer.render(graph), golden)).toBe("");
+      const before = await renderer.render(graph);
+      // Only the comparison with the Linux bytes depends on the platform; the test then compares with the same machine's own bytes.
+      if (COMPARES_WITH_GOLDEN) expect(firstDifference(before, golden)).toBe("");
       browsers[0]?.process()?.kill("SIGKILL");
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -200,7 +212,9 @@ describe("how the real browser is started", () => {
 
       expect((error as DiagramRenderError).kind).toBe("crash");
       expect((error as DiagramRenderError).message).toBe("the browser crashed while it drew this diagram; run the build again");
-      expect(firstDifference(await renderer.render(graph), golden)).toBe("");
+      const after = await renderer.render(graph);
+      expect(firstDifference(after, before)).toBe("");
+      if (COMPARES_WITH_GOLDEN) expect(firstDifference(after, golden)).toBe("");
       expect(browsers).toHaveLength(2);
     } finally {
       await renderer.close();

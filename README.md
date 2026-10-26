@@ -418,7 +418,7 @@ A diagram is `<Diagram alt="..." source="..." />` with Mermaid text. The build d
 - MDX removes the spaces at the start of every line of the prop, so indentation cannot carry meaning.
 - The supported types are `flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`, `erDiagram`, and `pie`. The first word of the first line that is not blank and not a `%%` comment is the type.
 
-The rules for authors are in [`courses/README.md`](courses/README.md#diagrams). The settings, the cache, the browser flags, the Linux libraries the browser needs, the two tiers of tests, how to upgrade Mermaid or Chromium and regenerate the golden SVGs, and the Windows note are in [`content-build/README.md`](content-build/README.md#diagrams).
+The rules for authors are in [`courses/README.md`](courses/README.md#diagrams). The settings, the cache, the browser flags, the Linux libraries the browser needs, the two tiers of tests, how to upgrade Mermaid or Chromium and regenerate the golden SVGs, why Linux is the reference platform for diagram bytes, and the Windows note are in [`content-build/README.md`](content-build/README.md#diagrams).
 
 The checks on the drawn SVG are one layer. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `Content-Security-Policy: script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox` (#58). The browser has no network and runs with its sandbox on, except that `--no-sandbox` is added when the build runs as root or when `MERMAID_NO_SANDBOX=1` is set (Ubuntu 24.04 can block the sandbox for a normal user). That is acceptable because the page holds only Mermaid and lesson text from this repo, offline.
 

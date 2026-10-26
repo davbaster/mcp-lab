@@ -4,13 +4,13 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { treeErrors } from "../src/lesson-tree.ts";
 import type { LessonTree } from "../src/lesson-tree.ts";
 import { svgProblems } from "../src/svg.ts";
 import { filesOf, foldersOf, newBuildFolder, runBuild } from "./build-support.ts";
 import { PART_DIR, SLOW_PROCESS_TIMEOUT_MS, temporaryFolder } from "./helpers.ts";
-import { BROWSER_TEST_TIMEOUT_MS, MERMAID_COURSES, MERMAID_GOLDEN, differences } from "./mermaid-helpers.ts";
+import { BROWSER_TEST_TIMEOUT_MS, COMPARES_WITH_GOLDEN, MERMAID_COURSES, MERMAID_GOLDEN, NOT_REFERENCE_PLATFORM, differences } from "./mermaid-helpers.ts";
 
 const BUILD_GOLDEN = join(MERMAID_GOLDEN, "build");
 const TYPES = ["classDiagram", "erDiagram", "flowchart", "graph", "pie", "sequenceDiagram", "stateDiagram", "stateDiagram-v2"];
@@ -87,8 +87,42 @@ describe("the golden SVGs are safe", () => {
   });
 });
 
-describe("the real build of the fixture gives the golden bytes (tier 2)", () => {
-  it("writes exactly the files of fixtures/expected-mermaid/build, byte for byte, with an empty cache", async () => {
+/** The files of one real build: the names, the SVGs, and the lesson trees, whatever the platform's text measures. */
+function expectBuildIsSound(build: Map<string, Buffer>) {
+  const paths = [...build.keys()];
+  const svgs = paths.filter((path) => /^public\/assets\/mermaid-course\/diagram-[0-9a-f]{16}\.svg$/.test(path));
+
+  expect(svgs).toHaveLength(10);
+  expect(paths).toContain("assets-map/mermaid-course.json");
+  for (const path of svgs) {
+    const svg = (build.get(path) as Buffer).toString("utf8");
+    expect(svgProblems(svg), path).toEqual([]);
+    expect(svg, path).toMatch(/^<svg\b[^>]* role="img"/);
+    expect(svg, path).toMatch(/<title id="diagram-title">[^<]+<\/title>/);
+    expect(svg, path).toContain("<text");
+  }
+  for (const id of ["01-types", "01-repeats"]) {
+    const tree = (JSON.parse((build.get(`private/lessons/mermaid-course/${id}.json`) as Buffer).toString("utf8")) as { tree: LessonTree }).tree;
+    expect(treeErrors(tree), id).toEqual([]);
+  }
+}
+
+describe("the real build of the fixture (tier 2)", () => {
+  it("builds with an empty cache: exit 0, no error output, ten sound SVGs, valid lesson trees, and the same files and folders as the golden build", async () => {
+    const build = newBuildFolder();
+
+    const { code, stderr } = await runBuild([MERMAID_COURSES, build], { cacheDir: join(temporaryFolder(), "cache") });
+
+    expect(stderr).toBe("");
+    expect(code).toBe(0);
+    expectBuildIsSound(filesOf(build));
+    // The folders and the names of the files that do not hold an SVG are the same on every platform.
+    const names = (files: Map<string, Buffer>) => [...files.keys()].filter((path) => !path.endsWith(".svg")).sort();
+    expect(names(filesOf(build))).toEqual(names(filesOf(BUILD_GOLDEN)));
+    expect([...filesOf(build).keys()].filter((path) => path.endsWith(".svg"))).toHaveLength([...filesOf(BUILD_GOLDEN).keys()].filter((path) => path.endsWith(".svg")).length);
+  }, BROWSER_TEST_TIMEOUT_MS);
+
+  it.skipIf(!COMPARES_WITH_GOLDEN)(`writes exactly the files of fixtures/expected-mermaid/build, byte for byte, with an empty cache (not run on Windows: ${NOT_REFERENCE_PLATFORM})`, async () => {
     const build = newBuildFolder();
 
     const { code, stderr } = await runBuild([MERMAID_COURSES, build], { cacheDir: join(temporaryFolder(), "cache") });
@@ -99,27 +133,43 @@ describe("the real build of the fixture gives the golden bytes (tier 2)", () => 
     expect(foldersOf(build)).toEqual(foldersOf(BUILD_GOLDEN));
   }, BROWSER_TEST_TIMEOUT_MS);
 
-  it("gives byte-identical files from two working folders, into two build folders, with two caches, and a warm cache gives the same bytes again", () => {
-    const run = (cache: string) => {
+  describe("two working folders, two caches, and a warm cache", () => {
+    // The files are read in beforeAll: the temporary folders of the tests are removed after each test.
+    type Run = { status: number | null; stderr: string; files: Map<string, Buffer>; folders: string[] };
+    const runs: Record<"one" | "two" | "warm", Run> = {} as Record<"one" | "two" | "warm", Run>;
+    function run(cache: string): Run {
       const build = newBuildFolder();
       const result = spawnSync(process.execPath, [join(PART_DIR, "src", "build.ts"), MERMAID_COURSES, build], {
         cwd: temporaryFolder(),
         encoding: "utf8",
         env: { ...process.env, MERMAID_CACHE_DIR: cache },
       });
-      return { build, ...result };
-    };
-    const cache = join(temporaryFolder(), "cache");
-
-    const [one, two] = [run(cache), run(join(temporaryFolder(), "cache"))];
-    const warm = run(cache);
-
-    for (const result of [one, two, warm]) {
-      expect(result.stderr).toBe("");
-      expect(result.status).toBe(0);
+      return { status: result.status, stderr: result.stderr, files: filesOf(build), folders: foldersOf(build) };
     }
-    expect(differences(filesOf(two.build), filesOf(one.build))).toEqual([]);
-    expect(differences(filesOf(warm.build), filesOf(one.build))).toEqual([]);
-    expect(differences(filesOf(one.build), filesOf(BUILD_GOLDEN))).toEqual([]);
-  }, BROWSER_TEST_TIMEOUT_MS + 2 * SLOW_PROCESS_TIMEOUT_MS);
+
+    beforeAll(() => {
+      const cache = join(temporaryFolder(), "cache");
+      runs.one = run(cache);
+      runs.two = run(join(temporaryFolder(), "cache"));
+      runs.warm = run(cache);
+    }, BROWSER_TEST_TIMEOUT_MS + 2 * SLOW_PROCESS_TIMEOUT_MS);
+
+    it("builds three times with exit 0 and no error output, and each build is sound", () => {
+      for (const result of [runs.one, runs.two, runs.warm]) {
+        expect(result.stderr).toBe("");
+        expect(result.status).toBe(0);
+        expectBuildIsSound(result.files);
+      }
+    });
+
+    it("gives byte-identical files from two working folders into two build folders with two caches, and a warm cache gives the same bytes again (on this machine)", () => {
+      expect(differences(runs.two.files, runs.one.files)).toEqual([]);
+      expect(differences(runs.warm.files, runs.one.files)).toEqual([]);
+      expect(runs.two.folders).toEqual(runs.one.folders);
+    });
+
+    it.skipIf(!COMPARES_WITH_GOLDEN)(`gives the golden bytes from a working folder of its own (not run on Windows: ${NOT_REFERENCE_PLATFORM})`, () => {
+      expect(differences(runs.one.files, filesOf(BUILD_GOLDEN))).toEqual([]);
+    });
+  });
 });
