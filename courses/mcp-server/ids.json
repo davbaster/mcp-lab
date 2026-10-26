@@ -2,7 +2,8 @@
   "course_id": "mcp-server",
   "chapters": [
     "01-what-is-mcp",
-    "02-first-server"
+    "02-first-server",
+    "03-tools"
   ],
   "lessons": [
     "01-before-you-start",
@@ -16,7 +17,13 @@
     "02-server-py",
     "03-function-to-tool",
     "04-inspecting-the-server",
-    "05-raw-json-rpc"
+    "05-raw-json-rpc",
+    "01-storage",
+    "02-crud-tools",
+    "03-docstrings",
+    "04-return-values",
+    "05-errors",
+    "06-annotations"
   ],
   "questions": [
     "what-is-mcp-1",
@@ -28,6 +35,11 @@
     "first-server-2",
     "first-server-3",
     "first-server-4",
-    "first-server-5"
+    "first-server-5",
+    "tools-1",
+    "tools-2",
+    "tools-3",
+    "tools-4",
+    "tools-5"
   ]
 }

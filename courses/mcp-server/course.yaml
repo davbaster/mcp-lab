@@ -6,5 +6,7 @@ chapters:
     title: What is MCP?
   - id: 02-first-server
     title: Your first server
+  - id: 03-tools
+    title: "Building tools: the notes CRUD"
 free_preview:
   - 01-what-is-mcp

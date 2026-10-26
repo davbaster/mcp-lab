@@ -1,0 +1,31 @@
+---
+title: Tool annotations
+order: 6
+---
+
+# Tool annotations
+
+Some tools only read, and some destroy data. Annotations let a tool say so, and a client can use that to decide when to ask the user for confirmation. Step 6 adds them.
+
+<CodeSteps step="6" file="server.py" />
+
+Pass `annotations=ToolAnnotations(...)` to `@mcp.tool()`. The class comes from `mcp.types`, and its fields are written in snake_case in Python:
+
+| Python field | Sent to clients as | Used on |
+|---|---|---|
+| `read_only_hint=True` | `readOnlyHint` | `list_notes`, `get_note` |
+| `destructive_hint=True` | `destructiveHint` | `delete_note` |
+| `idempotent_hint` | `idempotentHint` | not used here |
+| `open_world_hint` | `openWorldHint` | not used here |
+
+`delete_note` also sets `read_only_hint=False`, because the destructive hint only means something for a tool that is not read-only. `create_note` and `update_note` have no annotations, so clients treat them as ordinary writes.
+
+In `tools/list`, `list_notes` now carries `"annotations": {"readOnlyHint": true}`, and `delete_note` carries `{"readOnlyHint": false, "destructiveHint": true}`.
+
+<Callout type="warning" title="Hints, not enforcement">
+
+Annotations are hints for clients. The server does not stop a read-only tool from writing, and a client does not have to trust them. They improve the experience; they are not security. Real protection belongs in your own code.
+
+</Callout>
+
+You now have a complete notes server. Chapter 4 adds resources and prompts.
