@@ -18,6 +18,19 @@ export type Language = "python" | "toml" | "json" | "yaml" | "markdown" | "shell
 /** Files over this many characters are shown as plain text, so the page does not freeze. */
 export const MAX_HIGHLIGHT_CHARS = 100_000;
 
+/**
+ * A file with a line longer than this is shown as plain text. The size limit above does not bound
+ * the time: Shiki's work on one line grows with the square of its length for some grammars, and a
+ * single 100,000-character line (a long YAML value, a TOML `"""`, backticks in shell) blocked the
+ * main thread for 16 to 39 seconds, while 100,000 characters in ordinary lines take about 200 ms.
+ * Measured with the JS engine, the worst grammar (shell, backslashes) needs about 30 ms for a
+ * 2,000-character line and 185 ms for 5,000. At this cap a file is bounded by the 50 such lines
+ * that fit in the size limit, about 1.5 s even for the worst input, and real code lines are far
+ * shorter than 2,000 characters. Shiki's own default (`tokenizeMaxLineLength`, 20,000) is too
+ * high: it would still allow seconds per line.
+ */
+export const MAX_HIGHLIGHT_LINE_CHARS = 2_000;
+
 /** The file extension (lower case) of the last path segment; a name that only starts with a dot has none. */
 const EXTENSIONS: ReadonlyMap<string, Language> = new Map([
   ["py", "python"],
@@ -138,7 +151,8 @@ export function createHighlighter(deps: HighlighterModules) {
   }
 
   /**
-   * The text as tokens, line by line, or null when it should stay plain text: it is too long, the
+   * The text as tokens, line by line, or null when it should stay plain text: it is too long (in
+   * all, or in one line, which would take too long to tokenize), the
    * highlighter or the grammar could not be loaded or threw, or the tokens do not add up to the
    * text (so highlighting can never change what a learner reads or copies). Never rejects. It
    * logs only a `console.warn` with an error name, never the text.
@@ -146,6 +160,11 @@ export function createHighlighter(deps: HighlighterModules) {
   async function highlight(text: string, language: Language): Promise<HighlightedLines | null> {
     if (text.length > MAX_HIGHLIGHT_CHARS) return null;
     if (text === "") return [];
+    // Checked before anything is loaded. A line is what `splitLines` calls one: up to a `\n`.
+    if (text.split("\n").some((line) => line.length > MAX_HIGHLIGHT_LINE_CHARS)) {
+      console.warn(`Code highlighting skipped: a line is longer than ${MAX_HIGHLIGHT_LINE_CHARS} characters; the code is shown as plain text.`);
+      return null;
+    }
     try {
       const instance = await getHighlighter();
       // The grammar only for the language that is asked for, and only once.

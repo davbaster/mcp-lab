@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { SAMPLES } from "./codeSamples";
 import { splitLines } from "./codeLines";
-import { createHighlighter, highlight, languageForPath, MAX_HIGHLIGHT_CHARS, type HighlighterModules } from "./highlighter";
+import {
+  createHighlighter,
+  highlight,
+  languageForPath,
+  MAX_HIGHLIGHT_CHARS,
+  MAX_HIGHLIGHT_LINE_CHARS,
+  type HighlighterModules,
+} from "./highlighter";
 
 describe("languageForPath", () => {
   it.each([
@@ -113,6 +120,29 @@ describe("loading on demand", () => {
     expect(modules.core).not.toHaveBeenCalled();
   });
 
+  it("does not load anything, and warns once without the text, for a line over the line cap", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { modules } = fakeModules();
+    const { highlight: run } = createHighlighter(modules);
+    const line = "SECRET-CONTENT".repeat(Math.ceil((MAX_HIGHLIGHT_LINE_CHARS + 1) / 14)).slice(0, MAX_HIGHLIGHT_LINE_CHARS + 1);
+
+    expect(await run(`short\n${line}\nshort\n`, "python")).toBeNull();
+
+    expect(modules.core).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).not.toContain("SECRET");
+    vi.restoreAllMocks();
+  });
+
+  it("highlights a line of exactly the line cap and files of many such lines", async () => {
+    const { modules, created } = fakeModules();
+    const { highlight: run } = createHighlighter(modules);
+    const line = "x".repeat(MAX_HIGHLIGHT_LINE_CHARS);
+    expect(await run(`${line}\n`, "python")).not.toBeNull();
+    expect(await run(`${line}\n${line}\n${line}`, "python")).not.toBeNull();
+    expect(created).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps the text plain, warns once and does not log an error when the core cannot be loaded", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -222,6 +252,68 @@ describe("the real highlighter", () => {
     expect(await highlight(exact, "toml")).not.toBeNull();
     expect(await highlight(exact + "x", "toml")).toBeNull();
   }, 30_000);
+
+  it("highlights a line of exactly the line cap and shows one character more as plain text", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const exact = `key: ${"a".repeat(MAX_HIGHLIGHT_LINE_CHARS - 5)}\n`.replace(/\n$/, "");
+    expect(exact).toHaveLength(MAX_HIGHLIGHT_LINE_CHARS);
+
+    const lines = await highlight(`${exact}\nnext: 1\n`, "yaml");
+    expect(lines).not.toBeNull();
+    expect(lines![0].map((token) => token.text).join("")).toBe(exact);
+    expect(warn).not.toHaveBeenCalled();
+
+    expect(await highlight(`${exact}x\nnext: 1\n`, "yaml")).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it("counts a line up to a newline, so many short lines are not a long line", async () => {
+    const lines = await highlight("a = 1\n".repeat(MAX_HIGHLIGHT_LINE_CHARS), "toml");
+    expect(lines).toHaveLength(MAX_HIGHLIGHT_LINE_CHARS);
+  });
+
+  describe("input that makes Shiki slow", () => {
+    // One 100,000-character line took 16 to 39 seconds in these grammars before the line cap.
+    const base64 = "QUJD".repeat(25_000);
+    const pathological: [string, "yaml" | "toml" | "shellscript", string][] = [
+      ["a long YAML value", "yaml", `key: ${base64.slice(0, 97_000)}\n`],
+      ["a TOML multi-line string start", "toml", `"""${"a".repeat(99_000)}\n`],
+      ["a long TOML bare key", "toml", `${"a".repeat(99_000)} = 1\n`],
+      ["shell backticks", "shellscript", `${"`".repeat(99_000)}\n`],
+      ["shell backslashes", "shellscript", `${"\\".repeat(99_000)}\n`],
+    ];
+
+    it.each(pathological)("returns at once, as plain text, for %s on one line", async (_name, language, text) => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(text.length).toBeLessThanOrEqual(MAX_HIGHLIGHT_CHARS);
+      const started = performance.now();
+      expect(await highlight(text, language)).toBeNull();
+      expect(performance.now() - started).toBeLessThan(200);
+      vi.restoreAllMocks();
+    });
+
+    it.each(pathological)("stays fast for %s cut to the line cap", async (_name, language, text) => {
+      await highlight("a\n", language === "toml" ? "toml" : language); // loads the grammar, outside the timing
+      const atCap = text.slice(0, MAX_HIGHLIGHT_LINE_CHARS);
+      const started = performance.now();
+      const lines = await highlight(`${atCap}\n`, language);
+      expect(performance.now() - started).toBeLessThan(2000);
+      expect(lines === null || lines[0].map((token) => token.text).join("") === atCap).toBe(true);
+    });
+
+    it("stays bounded for a file made of the slowest lines the cap allows", async () => {
+      await highlight("a\n", "shellscript");
+      const slowLine = `${"\\".repeat(MAX_HIGHLIGHT_LINE_CHARS - 1)}x`; // the slowest shape measured
+      const text = `${slowLine}\n`.repeat(Math.floor(MAX_HIGHLIGHT_CHARS / (MAX_HIGHLIGHT_LINE_CHARS + 1)));
+      expect(text.length).toBeLessThanOrEqual(MAX_HIGHLIGHT_CHARS);
+      const started = performance.now();
+      await highlight(text, "shellscript");
+      // About 1.5 s when measured (against 24 s for one 100,000-character line before the cap); the
+      // bound is loose so a slow machine does not fail the test.
+      expect(performance.now() - started).toBeLessThan(10_000);
+    }, 30_000);
+  });
 
   it("keeps a lone carriage return inside its line, so no line is added", async () => {
     const lines = await highlight("a = 1\rb = 2\n", "toml");
