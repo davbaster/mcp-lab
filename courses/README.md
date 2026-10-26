@@ -121,7 +121,7 @@ See the [MCP specification](https://modelcontextprotocol.io/) for more.
   |---|---|---|
   | `Video` | `src`, `title`; optional `captions`, `poster` | none |
   | `Model3D` | `src`, `alt`, `poster` | none |
-  | `Diagram` | `alt`, and exactly one of `src` (a URL) or `source` (Mermaid text) | none |
+  | `Diagram` | `alt`, and exactly one of `src` (a URL) or `source` (Mermaid text, see [Diagrams](../content-build/README.md#diagrams)) | none |
   | `Image` | `src`, `alt` | none |
   | `Callout` | `type` (`tip`, `warning`, or `note`); optional `title` | Markdown and components |
   | `Tabs` | none | two or more `Tab` |
@@ -144,6 +144,30 @@ See the [MCP specification](https://modelcontextprotocol.io/) for more.
 - Tables, strikethrough, task lists, and footnotes are not part of the format: they are not parsed and stay plain text. Ask for them in an issue if a course needs them.
 
 A tag that is not closed, or closed by another tag, is a parse error: the build reports the first one and stops checking that lesson (the other lessons are still checked). To try a lesson, run `npm run compile -- <lesson.mdx>` in `content-build/`, which prints the tree or the problems. The tree format, the schemas, and how to add a component are in [`content-build/README.md`](../content-build/README.md#lessons).
+
+## Diagrams
+
+A diagram is `<Diagram alt="..." source="..." />`. The `source` is Mermaid text. The build draws it to an SVG file during `npm run build`, so the lesson ships no diagram code and the learner's browser never loads Mermaid. `alt` is required: it is the text that a screen reader says for the diagram, so describe what the diagram shows. (`src` is for an SVG file you drew yourself and put in `assets/`.)
+
+````mdx
+<Diagram
+  alt="A learner answers the quiz; if they pass they go to the next chapter, otherwise they try again"
+  source="flowchart TD
+    A[Learner] --> B{&quot;Passed?&quot;}
+    B -->|yes| C[Next chapter]
+    B -->|no| D[Try again]
+    D --> A"
+/>
+````
+
+- **A double quote inside the text is written `&quot;`** (as in `{&quot;Passed?&quot;}` above). The other way is to put the prop in single quotes, `source='B{"Passed?"}'`, and then write a single quote inside it as `&#39;`.
+- **MDX removes the spaces at the start of every line of the prop**, so indentation cannot carry meaning. Use the diagram types and statements that do not need it (a `mindmap` does, which is one reason it is not supported). The indentation above is only for you to read.
+- **The first word of the first line that is not blank and not a `%%` comment is the type.** These are drawn: `flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`, `erDiagram`, and `pie`. Any other type is an error that names it and lists these.
+- These are errors, reported by `npm run validate` too (no browser needed), at the line of the source text: a line with `%%{` (an init directive can change how the diagram is drawn), a first line of `---` (front matter can set the configuration), a statement that starts with `click` and a space (it makes a link), a NUL or other control character (tab and line breaks are fine), and a source longer than 5000 characters or 200 lines.
+- A diagram cannot have links, images from the web, icons, or HTML in its labels. A label is plain text; a line break in it is `<br/>`, and other HTML is shown as text or dropped.
+- A Mermaid syntax error stops the build and is reported with the line of the lesson that Mermaid names, for example `lessons/01-welcome.mdx:12:1: error: Mermaid could not parse this diagram: Parse error on line 3: ...`.
+
+How it works, the settings, the cache, and what to install are in [`content-build/README.md`](../content-build/README.md#diagrams).
 
 ## Code steps
 

@@ -4,8 +4,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { buildAssetMap } from "./write-assets.ts";
 import type { Inspection } from "./course.ts";
+import type { CourseDiagrams } from "./diagrams.ts";
 import type { LessonTree } from "./lesson-tree.ts";
-import { rewriteAssetUrls } from "./rewrite-assets.ts";
+import { hasMermaidSource, rewriteAssetUrls } from "./rewrite-assets.ts";
 
 /** The version of the manifest and the lesson files. A change to their shape raises it. */
 export const SCHEMA_VERSION = 2;
@@ -59,26 +60,24 @@ export function buildManifest(courseId: string, inspection: Inspection): CourseM
 /**
  * Writes `private/courses/<course_id>.json` and `private/lessons/<course_id>/<lesson_id>.json` for a course
  * that has no error. Each lesson tree has its asset references pointed at the hashed files (see
- * `rewriteAssetUrls`). The caller has removed the old output; this only adds files. Returns false, and
- * writes nothing, when the inspection lacks what the files need.
+ * `rewriteAssetUrls`), and each `Diagram` that had Mermaid `source` points at its rendered file (`diagrams`). The caller has
+ * removed the old output; this only adds files. Returns false, and writes nothing, when the inspection lacks what the files need.
  */
-export function writeCourse(courseId: string, inspection: Inspection, buildDir: string): boolean {
+export function writeCourse(courseId: string, inspection: Inspection, buildDir: string, diagrams?: CourseDiagrams): boolean {
   const manifest = buildManifest(courseId, inspection);
   const { lessons, assets } = inspection;
   if (manifest === undefined || lessons === undefined || assets === undefined) return false;
 
-  const assetMap = buildAssetMap(courseId, assets.files).files;
+  const assetMap = buildAssetMap(courseId, assets.files, diagrams?.svgs).files;
   const root = resolve(buildDir);
   const lessonFolder = join(root, "private", "lessons", courseId);
   mkdirSync(lessonFolder, { recursive: true });
   for (const lesson of lessons) {
+    const tree = rewriteAssetUrls(lesson.tree, courseId, assetMap, diagrams?.fileFor);
+    // Fail closed: the Mermaid text is never written, so a Diagram that kept its `source` (no rendered diagrams were given) stops the build.
+    if (hasMermaidSource(tree)) throw new Error(`internal error: the lesson \`${lesson.id}\` still has a Diagram with Mermaid source, which must not be written; its diagrams were not rendered`);
     // Each object is built by listing its fields, so nothing else reaches the file.
-    const json: LessonJson = {
-      course_id: courseId,
-      chapter_id: lesson.chapter_id,
-      lesson_id: lesson.id,
-      tree: rewriteAssetUrls(lesson.tree, courseId, assetMap),
-    };
+    const json: LessonJson = { course_id: courseId, chapter_id: lesson.chapter_id, lesson_id: lesson.id, tree };
     writeFileSync(join(lessonFolder, `${lesson.id}.json`), jsonText(json), "utf8");
   }
   mkdirSync(join(root, "private", "courses"), { recursive: true });

@@ -1,0 +1,51 @@
+questions:
+  - id: types-1
+    text: Which part of a diagram says what kind of diagram it is?
+    options:
+      - id: a
+        text: The first line
+      - id: b
+        text: The last line
+    correct: a
+    explanation: The first word of the first line names the type.
+    lesson: 01-types
+  - id: types-2
+    text: Which word starts a sequence diagram?
+    options:
+      - id: a
+        text: sequenceDiagram
+      - id: b
+        text: sequence
+    correct: a
+    explanation: The type is written as sequenceDiagram.
+    lesson: 01-types
+  - id: types-3
+    text: Is a pie chart one of the supported types?
+    options:
+      - id: a
+        text: Yes
+      - id: b
+        text: No
+    correct: a
+    explanation: The pie type is supported.
+    lesson: 01-types
+  - id: types-4
+    text: Where does the Mermaid text of a diagram live?
+    options:
+      - id: a
+        text: In the source prop
+      - id: b
+        text: In the browser
+    correct: a
+    explanation: The build draws the text while it builds the course.
+    lesson: 01-types
+  - id: types-5
+    text: Does the learner's browser load Mermaid?
+    options:
+      - id: a
+        text: No
+      - id: b
+        text: Yes
+    correct: a
+    explanation: The diagram is an SVG file made at build time.
+    lesson: 01-types

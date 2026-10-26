@@ -10,8 +10,9 @@ import { DEFAULT_SCHEMA_DIR, loadComponentSchemas } from "./component-schemas.ts
 import type { ComponentSchemas } from "./component-schemas.ts";
 import { checkAssetFiles, makeAssetCollector } from "./asset-files.ts";
 import type { AssetCollector } from "./asset-files.ts";
+import { diagramSourceProblems, sourcePosition } from "./diagram-source.ts";
 import { compileLesson } from "./lesson.ts";
-import type { CodeStepUse } from "./lesson.ts";
+import type { CodeStepUse, DiagramUse } from "./lesson.ts";
 import type { LessonTree } from "./lesson-tree.ts";
 import { loadMediaConfig } from "./media-config.ts";
 import type { MediaConfig } from "./media-config.ts";
@@ -98,6 +99,8 @@ export type CompiledLesson = {
   /** The file inside the course, with `/`. */
   file: string;
   tree: LessonTree;
+  /** The `Diagram` tags that have a `source` prop, in order. */
+  diagrams: DiagramUse[];
 };
 
 /** `validateCourse` and what else the check found out, for the steps that build from the course. */
@@ -121,7 +124,7 @@ export function inspectCourse(courseDir: string, options: InspectOptions = {}): 
   const config = loadMediaConfig(options.mediaConfigPath);
   const assets = checkAssets(root, found, folderName, config, report);
   const course = readCourseYaml(root, found, folderName, report);
-  const tracker: LessonTracker = { clean: 0, used: new Set(), trees: new Map(), codeSteps: [] };
+  const tracker: LessonTracker = { clean: 0, used: new Set(), trees: new Map(), codeSteps: [], diagrams: new Map() };
   const checkLesson =
     options.compileLessons === true ? lessonChecker(options.schemaDir ?? DEFAULT_SCHEMA_DIR, assets, config, tracker) : undefined;
   let lessons: Map<string, Lesson[]> | undefined;
@@ -143,7 +146,9 @@ function compiledLessons(chapters: string[], lessons: Map<string, Lesson[]>, tra
     const ordered = [...(lessons.get(chapter_id) ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     for (const { id, title, order, file } of ordered) {
       const tree = tracker.trees.get(file);
-      if (tree !== undefined && title !== undefined && order !== undefined) out.push({ chapter_id, id, title, order, file, tree });
+      if (tree !== undefined && title !== undefined && order !== undefined) {
+        out.push({ chapter_id, id, title, order, file, tree, diagrams: tracker.diagrams.get(file) ?? [] });
+      }
     }
   }
   return out;
@@ -164,9 +169,15 @@ function checkAssets(root: string, found: Map<string, Kind>, courseId: string, c
 
 /**
  * What the lessons did: how many compiled with no problem, which asset files they use, the trees of the
- * lessons that compiled (by file), and the `CodeSteps` tags they make (by file).
+ * lessons that compiled (by file), the `CodeSteps` tags they make, and the `Diagram` tags that have a `source` (by file).
  */
-type LessonTracker = { clean: number; used: Set<string>; trees: Map<string, LessonTree>; codeSteps: { file: string; uses: CodeStepUse[] }[] };
+type LessonTracker = {
+  clean: number;
+  used: Set<string>;
+  trees: Map<string, LessonTree>;
+  codeSteps: { file: string; uses: CodeStepUse[] }[];
+  diagrams: Map<string, DiagramUse[]>;
+};
 
 /** Compiles a lesson with the component schemas, which are read once, when the first lesson needs them, and checks its references. */
 function lessonChecker(schemaDir: string, assets: AssetCollector, config: MediaConfig, tracker: LessonTracker): LessonChecker {
@@ -177,10 +188,19 @@ function lessonChecker(schemaDir: string, assets: AssetCollector, config: MediaC
     if ("problems" in result) return result.problems;
     tracker.trees.set(file, result.tree);
     tracker.codeSteps.push({ file, uses: result.codeSteps });
+    tracker.diagrams.set(file, result.diagrams);
     const problems = checkReferences(result.references, file, assets.entries, config, tracker.used);
+    problems.push(...diagramProblems(result.diagrams, file));
     if (problems.length === 0) tracker.clean += 1;
     return problems;
   };
+}
+
+/** The problems of the Mermaid text of the diagrams that can be seen without drawing them, each at the line of the source line. */
+function diagramProblems(diagrams: readonly DiagramUse[], file: string): Problem[] {
+  return diagrams.flatMap((use) =>
+    diagramSourceProblems(use.source).map(({ line, message }): Problem => ({ severity: "error", file, ...sourcePosition(use, line), message })),
+  );
 }
 
 /** True when every .mdx file of every listed chapter was compiled and had no problem, so the files that lessons use are all known. */

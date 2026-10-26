@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Mermaid config",
+  "description": "mermaid-config.json: the only place the Mermaid render settings live. The settings that keep the output safe and the same on every machine are fixed here with `const`, so a change to one of them is a setup error, not a quiet change. The colors are checked against the design system by tests/mermaid-config.test.ts.",
+  "type": "object",
+  "required": ["look", "handDrawnSeed", "theme", "fontFamily", "themeVariables", "htmlLabels", "securityLevel", "maxTextSize", "maxEdges", "flowchart", "sequence", "class", "state", "er", "pie"],
+  "additionalProperties": false,
+  "properties": {
+    "look": { "description": "classic is the same on every run; a hand-drawn look is random without a seed.", "const": "classic" },
+    "handDrawnSeed": { "description": "Fixes the random numbers of the hand-drawn shapes, in case a look uses them.", "const": 1 },
+    "fontFamily": { "description": "Mermaid measures the width of a text with this list (and with sans-serif, whichever is wider), and a sequence diagram reads no other. It starts with the bundled font, so the layout does not depend on the fonts of the machine.", "$ref": "#/definitions/bundledFont" },
+    "theme": { "description": "base takes every color from themeVariables.", "const": "base" },
+    "themeVariables": {
+      "description": "Colors from the design system and the font of the layout.",
+      "type": "object",
+      "required": ["fontFamily"],
+      "properties": {
+        "fontFamily": { "description": "Starts with the font that the renderer bundles, so the layout does not depend on the fonts of the machine.", "type": "string", "pattern": "^\"Recursive Variable\"" }
+      },
+      "additionalProperties": { "anyOf": [{ "type": "string" }, { "type": "boolean" }] }
+    },
+    "htmlLabels": { "description": "false writes labels as SVG text; true writes foreignObject.", "const": false },
+    "securityLevel": { "const": "strict" },
+    "maxTextSize": { "const": 5000 },
+    "maxEdges": { "const": 100 },
+    "flowchart": { "$ref": "#/definitions/textDiagram" },
+    "sequence": { "$ref": "#/definitions/textDiagram" },
+    "class": { "$ref": "#/definitions/textDiagram" },
+    "state": { "$ref": "#/definitions/textDiagram" },
+    "er": { "$ref": "#/definitions/textDiagram" },
+    "pie": {
+      "type": "object",
+      "required": ["useMaxWidth"],
+      "additionalProperties": false,
+      "properties": { "useMaxWidth": { "const": false } }
+    }
+  },
+  "definitions": {
+    "bundledFont": { "description": "A font list that starts with the font that the renderer bundles.", "type": "string", "pattern": "^\"Recursive Variable\"" },
+    "textDiagram": {
+      "type": "object",
+      "required": ["htmlLabels", "useMaxWidth"],
+      "additionalProperties": false,
+      "properties": {
+        "htmlLabels": { "const": false },
+        "useMaxWidth": { "description": "false gives the SVG a width and a height in pixels instead of 100%.", "const": false }
+      }
+    }
+  }
+}

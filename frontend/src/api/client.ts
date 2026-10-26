@@ -5,15 +5,17 @@ import type { paths } from "./schema";
  * The one place that creates the API client. Every other file imports `api` (or, in tests,
  * `createApiClient`) from here. A second `createClient` anywhere else is a lint error.
  *
- * What callers must handle (a helper that turns all of these into one `{ code, message }`
- * value is #94):
+ * What callers must handle: pass every failure to `toApiError` (`./apiError`), which turns it into
+ * one `{ code, message, status, retryAfter }` value. A call failed when `!response.ok` (or when it
+ * threw), never when `error` is truthy, because an empty error body leaves `error` as `""` or
+ * `undefined`.
  * - A response the spec documents (2xx, and 4xx/5xx in the shared error shape) comes back as
  *   `{ data, response }` or `{ error, response }`, with the JSON body parsed.
  * - A 4xx/5xx whose body is not JSON (for example an HTML 502 page from the proxy) also comes
- *   back as `{ error, response }`, but `error` is the raw body text, a string. Check
- *   `response.status` or the type of `error` before reading `error.error.code`.
- * - A network failure (offline, DNS, CORS, aborted request) is NOT returned: the call rejects
- *   with a `TypeError` (or `DOMException` on abort), so await it inside try/catch.
+ *   back as `{ error, response }`, but `error` is the raw body text, a string.
+ * - A network failure (offline, DNS, CORS) is NOT returned: the call rejects with a `TypeError`,
+ *   and an aborted request rejects with a `DOMException` named `AbortError`. A 2xx whose body is
+ *   not JSON rejects with a `SyntaxError`. Await the call inside try/catch.
  * - A 2xx with an empty body (204) gives `data: undefined`.
  */
 

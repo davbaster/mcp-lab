@@ -11,5 +11,8 @@ dist/
 # Content build output (make build-content)
 /build/
 
+# Rendered Mermaid diagrams that the content build keeps between runs (content-build/README.md, Diagrams)
+/content-build/.cache/
+
 # Secrets: configuration comes from environment variables
 .env

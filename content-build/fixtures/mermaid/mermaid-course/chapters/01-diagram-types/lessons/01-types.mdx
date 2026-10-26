@@ -1,0 +1,100 @@
+---
+title: Every diagram type
+order: 1
+---
+
+# Every diagram type
+
+A flowchart.
+
+<Diagram
+  alt="A learner takes the quiz; if they pass they go to the next chapter, otherwise they try again"
+  source="flowchart TD
+    %% MERMAID-SOURCE-SENTINEL
+    A[Learner] --> B{&quot;Passed?&quot;}
+    B -->|yes| C[Next chapter]
+    B -->|no| D[Try again]
+    D --> A
+    subgraph app [The app]
+      B
+      C
+    end"
+/>
+
+A graph, the older name of a flowchart.
+
+<Diagram alt="A request goes to the server, which asks the database" source="graph TD
+  Browser --> Server
+  Server --> Database" />
+
+A sequence diagram.
+
+<Diagram
+  alt="The learner sends answers to the server and gets the result back"
+  source="sequenceDiagram
+    participant L as Learner
+    participant S as Server
+    L->>S: Submit answers
+    S-->>L: Result
+    Note over L,S: Grading happens on the server"
+/>
+
+A class diagram.
+
+<Diagram
+  alt="A course has many lessons"
+  source="classDiagram
+    class Course {
+      +String id
+      +open() Lesson
+    }
+    class Lesson
+    Course &quot;1&quot; --> &quot;*&quot; Lesson"
+/>
+
+A state diagram.
+
+<Diagram
+  alt="A chapter is locked, then in progress, then passed"
+  source="stateDiagram
+    [*] --> Locked
+    Locked --> InProgress : unlock
+    InProgress --> Passed : pass quiz
+    Passed --> [*]"
+/>
+
+A state diagram, version 2.
+
+<Diagram
+  alt="A quiz attempt is open until it is graded, then it is passed or failed"
+  source="stateDiagram-v2
+    [*] --> Open
+    Open --> Graded : submit
+    state Graded {
+      [*] --> Failed
+      [*] --> Passed
+    }"
+/>
+
+An entity-relationship diagram.
+
+<Diagram
+  alt="A course has chapters, and a chapter has lessons"
+  source="erDiagram
+    COURSE ||--o{ CHAPTER : has
+    CHAPTER ||--|{ LESSON : has
+    COURSE {
+      string id
+      string title
+    }"
+/>
+
+A pie chart.
+
+<Diagram
+  alt="Reading takes 40 percent of the time, the quiz 25 percent, and code 35 percent"
+  source="pie showData title Time on each part
+    &quot;Reading&quot; : 40
+    &quot;Quiz&quot; : 25
+    &quot;Code&quot; : 35"
+/>

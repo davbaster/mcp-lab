@@ -34,7 +34,7 @@ HELP.help = Show this list (the default target)
 HELP.install = Install every part (install-backend, install-frontend, install-content-build)
 HELP.install-backend = Install backend dependencies from the lock file (uv sync --locked)
 HELP.install-frontend = Install frontend dependencies from the lock file (npm ci)
-HELP.install-content-build = Install content-build dependencies from the lock file (npm ci)
+HELP.install-content-build = Install content-build dependencies from the lock file (npm ci) and download the Chromium that draws Mermaid diagrams (npm run install:browser)
 HELP.lint = Lint every part (lint-backend, lint-frontend, lint-content-build)
 HELP.lint-backend = Lint the backend (ruff)
 HELP.lint-frontend = Lint the frontend (ESLint)
@@ -97,6 +97,7 @@ test-frontend:
 
 install-content-build:
 	cd content-build && npm ci
+	cd content-build && npm run install:browser
 
 lint-content-build:
 	cd content-build && npm run lint

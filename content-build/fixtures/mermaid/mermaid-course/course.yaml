@@ -1,0 +1,10 @@
+id: mermaid-course
+title: Mermaid course
+description: A small course whose lessons draw every supported kind of Mermaid diagram, for the diagram tests of the content build.
+chapters:
+  - id: 01-diagram-types
+    title: Diagram types
+  - id: 02-more-diagrams
+    title: More diagrams
+free_preview:
+  - 01-diagram-types

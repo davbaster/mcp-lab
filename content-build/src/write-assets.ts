@@ -5,6 +5,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { CheckedAsset } from "./asset-files.ts";
 import { inspectCourse } from "./course.ts";
+import type { GeneratedSvg } from "./diagrams.ts";
 import { sortProblems } from "./problem.ts";
 import type { Problem } from "./problem.ts";
 import { compareText } from "./text.ts";
@@ -15,12 +16,18 @@ export type AssetMapJson = {
   files: Record<string, { file: string; sha256: string; size: number }>;
 };
 
-/** The map of the checked files: keys in code-unit order, each entry built by listing its fields. */
-export function buildAssetMap(courseId: string, files: readonly CheckedAsset[]): AssetMapJson {
-  const entries = [...files].sort((a, b) => compareText(a.path, b.path));
+/**
+ * The map of the checked files and the rendered diagrams: keys in code-unit order, each entry built by listing its fields.
+ * The key of a diagram has a `:` (`mermaid:<hash>.svg`), which the name of a file in assets/ cannot have.
+ */
+export function buildAssetMap(courseId: string, files: readonly CheckedAsset[], generated: readonly GeneratedSvg[] = []): AssetMapJson {
+  const entries = [
+    ...files.map(({ path, file, sha256, size }) => ({ key: path, file, sha256, size })),
+    ...generated.map(({ key, file, sha256, size }) => ({ key, file, sha256, size })),
+  ].sort((a, b) => compareText(a.key, b.key));
   return {
     course_id: courseId,
-    files: Object.fromEntries(entries.map(({ path, file, sha256, size }) => [path, { file, sha256, size }])),
+    files: Object.fromEntries(entries.map(({ key, file, sha256, size }) => [key, { file, sha256, size }])),
   };
 }
 
@@ -32,9 +39,12 @@ export function buildAssetMap(courseId: string, files: readonly CheckedAsset[]):
  * `<buildDir>/public/assets/<course_id>/` and the old map (and only those), so no file of a removed asset stays.
  * It never reads, writes, or removes anything under `<buildDir>/private/`.
  *
+ * `generated` are the diagrams that were drawn from the `source` of the course's `Diagram` tags; they are written
+ * next to the other assets and are in the map. This function is the only one that writes to `public/`.
+ *
  * It does not check the lessons; run `validateCourse` first.
  */
-export function writeAssets(courseDir: string, buildDir: string): Problem[] {
+export function writeAssets(courseDir: string, buildDir: string, generated: readonly GeneratedSvg[] = []): Problem[] {
   if (buildDir.trim() === "") throw new Error("writeAssets needs the build folder");
   const { problems, assets } = inspectCourse(courseDir);
   if (assets === undefined) return problems;
@@ -47,14 +57,15 @@ export function writeAssets(courseDir: string, buildDir: string): Problem[] {
   const folder = join(root, "public", "assets", assets.courseId);
   const mapFile = join(root, "assets-map", `${assets.courseId}.json`);
   // JSON.stringify indents with "\n", never the platform's line ending, and keeps non-ASCII text as it is.
-  const map = `${JSON.stringify(buildAssetMap(assets.courseId, assets.files), null, 2)}\n`;
+  const map = `${JSON.stringify(buildAssetMap(assets.courseId, assets.files, generated), null, 2)}\n`;
 
   rmSync(folder, { recursive: true, force: true });
   rmSync(mapFile, { force: true });
-  if (assets.files.length > 0) {
+  if (assets.files.length > 0 || generated.length > 0) {
     mkdirSync(folder, { recursive: true });
     // Identical bytes and the same stem give the same name, so the file is written once.
     for (const { file, data } of assets.files) writeFileSync(join(folder, file), data);
+    for (const { file, data } of generated) writeFileSync(join(folder, file), data);
   }
   mkdirSync(join(root, "assets-map"), { recursive: true });
   writeFileSync(mapFile, map, "utf8");

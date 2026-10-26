@@ -1,0 +1,55 @@
+{
+  "course_id": "mermaid-course",
+  "files": {
+    "mermaid:191089c164765d86.svg": {
+      "file": "diagram-191089c164765d86.svg",
+      "sha256": "191089c164765d86222f66a318bead75cc3ebc1309aa443fb9f56ec7b9e51779",
+      "size": 17961
+    },
+    "mermaid:27eb4ddb18fbe5de.svg": {
+      "file": "diagram-27eb4ddb18fbe5de.svg",
+      "sha256": "27eb4ddb18fbe5de65c436bd740436f18891e84ea1b55614bffc8466a3474645",
+      "size": 4755
+    },
+    "mermaid:6a8203605f159ffd.svg": {
+      "file": "diagram-6a8203605f159ffd.svg",
+      "sha256": "6a8203605f159ffd78a5dcb13bd56818d106dabf140a055e12039d1f921a9961",
+      "size": 16181
+    },
+    "mermaid:7ad2cfa9b865e94b.svg": {
+      "file": "diagram-7ad2cfa9b865e94b.svg",
+      "sha256": "7ad2cfa9b865e94b028169e201781053e21d3f323570934e0f4648d5abfe1f1c",
+      "size": 27625
+    },
+    "mermaid:7b4244901c212c98.svg": {
+      "file": "diagram-7b4244901c212c98.svg",
+      "sha256": "7b4244901c212c9826daf2cbd66840545ef5f956da9e5aff2c87bd9707f413b0",
+      "size": 24111
+    },
+    "mermaid:7b70fd92a999468c.svg": {
+      "file": "diagram-7b70fd92a999468c.svg",
+      "sha256": "7b70fd92a999468c0569b9db40734a3e14e2b98710c69e88b7abdd823f15fda3",
+      "size": 4285
+    },
+    "mermaid:8824f53934961d9d.svg": {
+      "file": "diagram-8824f53934961d9d.svg",
+      "sha256": "8824f53934961d9d2e7777551aebfc01bc2fe3287ede869d93537d9bfdf57f3c",
+      "size": 11662
+    },
+    "mermaid:8edf4e5795cf2003.svg": {
+      "file": "diagram-8edf4e5795cf2003.svg",
+      "sha256": "8edf4e5795cf2003b747247ac65c725e5875645914848f3f9cfb31f5b5900ebc",
+      "size": 11668
+    },
+    "mermaid:a0bc4bac2c5be461.svg": {
+      "file": "diagram-a0bc4bac2c5be461.svg",
+      "sha256": "a0bc4bac2c5be46182c347d021b863be6d759e02a6d081583ab34c278e49c479",
+      "size": 11213
+    },
+    "mermaid:a2064e89915e4301.svg": {
+      "file": "diagram-a2064e89915e4301.svg",
+      "sha256": "a2064e89915e4301dfa56e7411920d4f0ded1fcf0b92a74a146b188338e5d015",
+      "size": 18879
+    }
+  }
+}

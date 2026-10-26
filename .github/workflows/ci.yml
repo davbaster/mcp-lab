@@ -82,6 +82,11 @@ jobs:
     # The self-hosted runner lives on the owner's VPS. Never run code from fork
     # pull requests on it: forks only get CI after it is pushed to this repo.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      # The tests start a headless Chromium to draw Mermaid diagrams. The runner is Ubuntu 24.04, where AppArmor blocks
+      # the browser sandbox for a normal user ("No usable sandbox"), so the build starts it with --no-sandbox. That is
+      # acceptable here: the page holds only Mermaid and lesson text from this repository, and the browser has no network.
+      MERMAID_NO_SANDBOX: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

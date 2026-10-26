@@ -3,6 +3,8 @@
 import { mkdirSync, rmSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { SetupError } from "./component-schemas.ts";
+import { renderDiagrams } from "./diagrams.ts";
+import type { CourseDiagrams, DiagramOptions } from "./diagrams.ts";
 import { allProblems, buildFolderProblem, checkCourses, hasErrors, openCoursesFolder, problemLines } from "./courses-folder.ts";
 import type { CheckedCourse } from "./courses-folder.ts";
 import { toPosix } from "./problem.ts";
@@ -23,17 +25,19 @@ export type BuildOptions = {
   schemaDir?: string;
   /** The media config to use. For tests. */
   mediaConfigPath?: string;
-  /** The environment, for `COURSES`. Defaults to `process.env`. */
+  /** The environment, for `COURSES` and `MERMAID_CACHE_DIR`. Defaults to `process.env`. */
   env?: Record<string, string | undefined>;
-};
+} & Pick<DiagramOptions, "rendererFactory" | "cacheDir" | "mermaidConfigPath" | "versions">;
 
 /**
  * Runs the command and returns the exit code: 0 when it built (warnings are allowed), 1 when the content has
  * errors (or the courses folder, `COURSES`, or the build folder cannot be used), 2 for a bad command line, and
- * 3 when the build's own setup is wrong (a component schema or `media-config.json` is not valid).
+ * 3 when the build's own setup is wrong (a component schema, `media-config.json`, or `mermaid-config.json` is not valid, or
+ * Chromium is needed and not installed).
  *
- * All or nothing: every selected course is checked first, and when any has an error nothing in the build folder
- * is created, changed, or removed.
+ * All or nothing: every selected course is checked first, and its diagrams are drawn (from the cache, or in Chromium, which starts
+ * only for a diagram that is not in the cache). When any course has an error, or any diagram cannot be drawn, nothing in the build
+ * folder is created, changed, or removed.
  */
 export async function main(args: readonly string[], output: Output, options: BuildOptions = {}): Promise<number> {
   const [coursesArg, buildArg] = args;
@@ -65,18 +69,20 @@ export async function main(args: readonly string[], output: Output, options: Bui
   if (folder.courses.length === 0) output.stdout(`no courses found in ${folder.shown}\n`);
 
   let checked: CheckedCourse[];
+  let diagrams: Map<string, CourseDiagrams>;
   try {
     checked = checkCourses(folder, selection.ids, options);
+    diagrams = await renderDiagrams(checked, { ...options, env: options.env ?? process.env });
   } catch (error) {
     if (!(error instanceof SetupError)) throw error;
     output.stderr(`build setup error: ${error.message}\n`);
     return 3;
   }
-  const found = allProblems(checked);
+  const found = allProblems(checked, new Map([...diagrams].map(([id, rendered]) => [id, rendered.problems])));
   if (checked.length > 0) output.stdout(`${problemLines(found).join("\n")}\n`);
   if (hasErrors(found)) return 1;
 
-  const failed = await write(checked, buildPath);
+  const failed = await write(checked, buildPath, diagrams);
   if (failed !== undefined) {
     output.stderr(`error: ${failed}\n`);
     return 1;
@@ -114,14 +120,15 @@ function selectCourses(courses: readonly string[], shown: string, value: string 
 }
 
 /** Removes the old output, then writes every course. Returns why it failed, or undefined. */
-async function write(checked: readonly CheckedCourse[], buildPath: string): Promise<string | undefined> {
+async function write(checked: readonly CheckedCourse[], buildPath: string, diagrams: ReadonlyMap<string, CourseDiagrams>): Promise<string | undefined> {
   for (const name of BUILD_FOLDERS) rmSync(join(buildPath, name), { recursive: true, force: true });
   mkdirSync(join(buildPath, "private"), { recursive: true });
   mkdirSync(join(buildPath, "public"), { recursive: true });
   for (const { id, shown, path, inspection } of checked) {
     // The writers check the course again; the course was valid a moment ago, so a problem here means it changed while building.
-    const problems: Problem[] = [...writeQuizzes(path, buildPath), ...(await writeCodeSteps(path, buildPath)), ...writeAssets(path, buildPath)];
-    if (problems.length > 0 || !writeCourse(id, inspection, buildPath)) {
+    const rendered = diagrams.get(id);
+    const problems: Problem[] = [...writeQuizzes(path, buildPath), ...(await writeCodeSteps(path, buildPath)), ...writeAssets(path, buildPath, rendered?.svgs)];
+    if (problems.length > 0 || !writeCourse(id, inspection, buildPath, rendered)) {
       return `${shown} changed while it was being built, so the build folder is incomplete; run the build again`;
     }
   }

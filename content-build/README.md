@@ -8,7 +8,8 @@ It needs Node 24 (the version in the root `.nvmrc`). The scripts run `.ts` files
 
 Run from the repo root with `make install-content-build`, `make lint-content-build`, `make typecheck-content-build`, and `make test-content-build`, or in this folder:
 
-- `npm ci` - install
+- `npm ci` - install the packages (no browser; see [Diagrams](#diagrams))
+- `npm run install:browser` - download the Chromium that draws Mermaid diagrams (`make install-content-build` runs both)
 - `npm test` - the tests (Vitest, single run)
 - `npm run lint` - ESLint
 - `npm run typecheck` - `tsc --noEmit`
@@ -249,7 +250,7 @@ The scan is plain text. It does not decode CSS escapes (`\75rl(`) or character r
 
 ### References in lessons
 
-`compileLesson` returns the references it found next to the tree (`{ tree, references }`; the tree and its golden files are unchanged). Each is `{ component, prop, value, line, column }`, at the prop or the Markdown image (`component` is `Markdown` and `prop` is `image` for `![alt](path)`). `src/assets.ts` holds the table of which props refer to a file or a media URL: `Image.src`, `Diagram.src`, `Model3D.src`, `Model3D.poster`, `Video.captions`, `Video.poster`, `Video.src`, and the URL of a Markdown image. A Markdown link and `CodeSteps` props are not references, and a `Diagram` with `source` (Mermaid) gets no check (#55).
+`compileLesson` returns the references it found next to the tree (`{ tree, references }`; the tree and its golden files are unchanged). Each is `{ component, prop, value, line, column }`, at the prop or the Markdown image (`component` is `Markdown` and `prop` is `image` for `![alt](path)`). `src/assets.ts` holds the table of which props refer to a file or a media URL: `Image.src`, `Diagram.src`, `Model3D.src`, `Model3D.poster`, `Video.captions`, `Video.poster`, `Video.src`, and the URL of a Markdown image. A Markdown link and `CodeSteps` props are not references, and a `Diagram` with `source` (Mermaid) is not a reference either: it has its own checks (see [Diagrams](#diagrams)).
 
 A value without a scheme (it does not match `^[A-Za-z][A-Za-z0-9+.-]*:`) is an *asset path*, relative to `assets/` and written without the `assets/` prefix (`images/pic.png`). It is looked up, exactly and case-sensitively, in the folder listing of `assets/`; a typed path is never opened. These are errors, each with its own message: an empty path, a path that starts with `/` or `\`, a `..` or `.` part, a backslash, an empty part (`a//b.png`), a `%`, `?`, or `#`, a name the name rule forbids, a path to a folder, and a missing file (a file that differs only in letter case is named in the message). The file type must fit the use: an image (`.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`) for `Image.src`, a Markdown image, `Model3D.poster`, and `Video.poster`; `.glb` or `.gltf` for `Model3D.src`; `.svg` for `Diagram.src`; `.vtt` for `Video.captions`.
 
@@ -286,6 +287,110 @@ The map `<buildDir>/assets-map/<course_id>.json` is outside `public/`, so it is 
 ### Pointing a lesson at the hashed files
 
 `compileLesson` keeps the paths as the author wrote them. The pure function `rewriteAssetUrls(tree, courseId, assetMap)` returns a new tree (the input is not changed) in which every asset reference is `/api/courses/<course_id>/assets/<hashed file name>`, the URL that #58 serves. `assetMap` is the `files` object of the map. It reads the same table of props as the checks. Values that are URLs (an allowlisted `Video.poster` or `captions`) and `Video.src` are not changed, and a reference that is not in the map throws an internal error, because the checks should have caught it. `writeAssets` does not write lesson trees: `build` (#12) calls `compileLesson` and then `rewriteAssetUrls`, and writes `private/lessons/`.
+
+## Diagrams
+
+A `<Diagram alt="..." source="..." />` holds Mermaid text. `npm run build` draws it to an SVG file in a Chromium that the build starts, writes the file with the other assets, and points the lesson at it, so a lesson ships no diagram code and the learner's browser never loads Mermaid (#55). `validate`, `compile`, and `ids:*` never start a browser. The authoring rules are in [`courses/README.md`](../courses/README.md#diagrams); this section is for people who work on the tool.
+
+### What the author may write
+
+- **The type** is the first word of the first line that is not blank and not a `%%` comment. Drawn: `flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`, `erDiagram`, and `pie`. Any other type is an error that names it and lists these. Left out on purpose: `gantt` draws a "today" line, so its output would change with the date; `mindmap` needs indentation, and MDX removes the spaces at the start of every line of a prop; `architecture-beta` loads icon packs; `zenuml` is a plugin.
+- **Errors before any drawing** (`src/diagram-source.ts`; `validate` reports them without Chromium, at the line of the source line: the prop's line plus the line in the source minus 1, and the column of the prop for the first line and 1 for later lines): a line with `%%{` (an init directive can switch `htmlLabels` back on), a first non-blank line of `---` (front matter can set the configuration), a statement that starts with `click` and a space (it makes a link), a NUL or other control character except tab and line break, and a source of more than 5000 characters (Unicode characters, after CRLF becomes LF) or 200 lines. Exactly 5000 characters and 200 lines pass.
+- `compileLesson` returns the uses next to `tree`, `references`, and `codeSteps`: `diagrams`, each `{ source, alt, line, column, tagLine, tagColumn }` (the prop's position and the tag's). The tree still holds `source` as written, so the golden trees and `npm run compile` do not change.
+- **The `alt` text is the accessible name.** The node keeps `alt`, and the SVG gets `<title id="diagram-title">` with the `alt` text (escaped, as the first child), `role="img"`, and `aria-labelledby="diagram-title"`. Mermaid's own `<title>` (from `accTitle:`) is replaced; a `<desc>` from `accDescr:` stays. This is done after the cache, so changing only `alt` does not draw again.
+
+### What the build writes
+
+1. `checkCourses` checks every course, including the source rules above. Then `renderDiagrams` (`src/diagrams.ts`) looks up each distinct source in the cache. If some are not there it starts one Chromium (`src/mermaid-render.ts`), draws those, and closes it. A course with no `source`, and a build whose diagrams are all cached, never start it, so they build with no browser installed.
+2. Each drawing goes through `finishSvg` (a numeric `width` and `height` equal to the `viewBox`, so the SVG shows at its natural size in an `<img>` and shrinks with CSS) and then `svgProblems`, the same SVG rules as the files in `assets/`, with no new exception. The SVG is **checked and never repaired**: a rule that fails is an error at the `<Diagram>` tag (`the diagram that Mermaid drew breaks an SVG rule, so it is not written (the problem is in the rendered diagram, not in the lesson text): ...`), and nothing is written. A size over `assetLimits.imageBytes` (5 MiB, `media-config.json`) is an error that names the size and the limit.
+3. Every problem of every lesson comes in one run, in lesson order and then line order (a problem found before drawing in a later lesson does not come before one found by drawing in an earlier lesson), with the other problems, and nothing is written when there is one (the all-or-nothing rule). A Mermaid syntax error is `<lesson path>:<line>:<column>: error: Mermaid could not parse this diagram: <Mermaid's message>`. The message is Mermaid's own text up to the stack trace, with no stack frame, no absolute path (`<path>`), and no URL (`<url>`). Mermaid counts lines after it drops the leading blank space and every comment line (`%% ...`); `sourceLineOfMermaidLine` counts them back, so the error is at the lesson line of the source line that Mermaid names. If Mermaid names no line, it is the line of the prop. A render that takes more than 30 seconds, and a browser that crashes, are errors at the tag that say which one it was; the browser is then thrown away and the next diagram gets a new one.
+4. `writeAssets` writes each SVG as `<build>/public/assets/<course_id>/diagram-<first 16 hex digits of the SHA-256 of the SVG bytes>.svg` (the same folder, hashed-name rule, and map file as the other assets; the Mermaid step writes nothing to `public/` itself, because `writeAssets` replaces that folder). The name matches the pattern the backend checks at startup. `assets-map/<course_id>.json` has an entry with `file`, `sha256`, and `size` under the key `mermaid:<first 16 hex digits of the SHA-256 of the SVG>.svg`: the `:` is a character the asset name rule forbids, so the key cannot be the path of a real file. Two diagrams with the same bytes (also in different lessons) are one file; different bytes are two files; a diagram whose source did not change keeps its name.
+5. In the lesson file under `private/lessons/`, the `Diagram` node is `{ "name": "Diagram", "props": { "alt": "<as written>", "src": "/api/courses/<course_id>/assets/<hashed name>" } }`: `source` is gone and `src` takes its place. The Mermaid text is in no file of the build (a test puts a comment line `%% MERMAID-SOURCE-SENTINEL` in a source, which Mermaid drops, and looks for it in every file). The manifest keeps `schema_version` 2, because no field of the manifest or of the tree changes.
+
+### The settings
+
+`mermaid-config.json` is the only place the render settings live (it is LF in `.gitattributes`, and its bytes in the cache key are its text with LF line endings, so a CRLF checkout gives the same key). `schemas/mermaid-config.schema.json` fixes the keys that keep the output safe and the same everywhere with `const`, so a change to one of them is a setup error (`build setup error: mermaid-config.json: ...`, exit 3), not a quiet change; the colors and the contrast are checked by `tests/mermaid-config.test.ts` against the tables of `_docs/design-system.md`. It is only read when a diagram needs drawing.
+
+| Setting | Why |
+|---|---|
+| `look: "classic"`, `handDrawnSeed: 1` | A class diagram changed from run to run without them. |
+| `theme: "base"` and `themeVariables` | The design system's single light theme (no dark mode in v1). Every `#rrggbb` is one of its color tokens, and the text color on each fill is a pair it lists with a contrast of at least 4.5:1. The background is transparent. |
+| `fontFamily` and `themeVariables.fontFamily` | `"Recursive Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`. The first font is the one that mermaid-cli bundles and loads, so the layout does not depend on the fonts of the machine; the rest is the design system's text stack. The top-level key matters: a sequence diagram measures its text with it and with nothing else, and without it that diagram was 12 px taller on a machine with other fonts (the one-font fontconfig test found it). An SVG shown as an `<img>` cannot load a font (the asset route blocks fonts from `data:` and there is no `@font-face`), so a learner sees the diagram in the first font of the design system's stack that their machine has, in boxes that were measured with the wider Recursive, which is why text fits. |
+| `htmlLabels: false` (top level and in `flowchart`, `sequence`, `class`, `state`, `er`) | Labels are SVG text and no `foreignObject` is written. A `<br/>` in a label is a line break; other HTML is shown as text or dropped. |
+| `securityLevel: "strict"` | Mermaid encodes the HTML in labels and turns click handlers off. |
+| `useMaxWidth: false` (every supported type) | The SVG gets a width and height in pixels instead of `100%`. |
+| `maxTextSize: 5000`, `maxEdges: 100` | The same limit as the source check, and a cap on a drawing that would take a long time. |
+
+The render call (`src/mermaid-render.ts`) also fixes the SVG id (`diagram`), turns font embedding off (the SVG rules and the asset route's Content-Security-Policy refuse `data:` fonts), sets a transparent background, and sets a 1280 by 800 page with a device scale factor of 1.
+
+**A known limit.** The layout still depends on the machine's fonts in some setups. Mermaid measures every text twice, in the configured font and in the machine's generic `sans-serif`, and uses the second measure only when it is both wider and taller than the first; that is the likely cause, but it was not confirmed for every case below. What was measured on Linux, with a fontconfig that holds one font and compared with the goldens (31 single-font setups; the same fixture, all eight types): DejaVu Sans, Liberation Sans, and the other regular sans, serif, and monospace faces from DejaVu, Liberation, and GNU FreeFont gave the same bytes. **Inter Regular and Inter Display Regular as the only font changed the `erDiagram`**, and most other Inter faces (Black, Bold Italic, ExtraLight, Light, and so on), Loma, and JetBrains Mono changed it too (the Inter Black and JetBrains Mono ones also changed the `sequenceDiagram`). A machine with all its usual fonts, Inter among them, gave the goldens. So a machine whose only or main fonts are Inter or JetBrains Mono may produce other bytes for ER and sequence diagrams. If the golden tests fail on a Linux machine and the difference is a few pixels of width or height, run `fc-match sans-serif` and `fc-list` first. The fontconfig test uses DejaVu Sans (or the first of Liberation Sans, Noto Sans, Arimo, FreeSans that it finds).
+
+### The browser
+
+- `npm run install:browser` (it is also the second line of `make install-content-build`) runs `puppeteer browsers install chrome-headless-shell` through `src/browser-install.ts`, which downloads only **chrome-headless-shell**, not full Chrome, at the build that puppeteer 25.16.0 pins (156.0.8078.47), into puppeteer's cache: `~/.cache/puppeteer` on Linux and macOS, `%USERPROFILE%\.cache\puppeteer` on Windows; `PUPPETEER_CACHE_DIR` changes it. It is about 120 MiB to download and 274 MB on disk on Linux, and took 3.4 s on the machine where this was written. `npm ci` downloads no browser (`.puppeteerrc.cjs` and the `puppeteer` key of `package.json` both say `skipDownload: true`; the backend image copies only `package.json` and the lock file before it runs `npm ci`, so the key in `package.json` is the one that works there. Without it that `npm ci` downloaded 676 MB).
+- The packages: `@mermaid-js/mermaid-cli` 12.0.0 (it brings `mermaid` 12.2.0) and `puppeteer` 25.16.0, both pinned to an exact version. `node_modules` is about 560 MB after `npm ci` (Mermaid itself 129 MB), and `npm ci` takes about 10 s with a warm npm cache. The lock file lists the Windows packages of the one native optional dependency (`@napi-rs/canvas`). Nothing in `frontend/` or `backend/` depends on `mermaid` or `puppeteer`; a test reads their package and lock files.
+- A browser that is not installed, or not the build the code launches (`PUPPETEER_EXECUTABLE_PATH` set to another one), is a setup error and not a stack trace: `build setup error: Chromium (chrome-headless-shell 156.0.8078.47) is not installed: it is not in <folder>; run make install-content-build ...`, exit 3. The same bytes need the same browser.
+- **Flags.** The browser runs with `headless: "shell"`, `--host-resolver-rules=MAP * ~NOTFOUND` (no host name resolves, so there is no network; a test has a diagram ask for an image from a local server and sees zero requests), `--font-render-hinting=none`, a temporary profile that is removed at the end (after the browser process has exited; if the system still refuses, as Windows can for a moment, it tries 20 times 250 ms apart, and then only prints a warning), and never `--disable-web-security`. Its sandbox stays on, except that `--no-sandbox` is added when the build runs as root (Docker, CI containers) or when `MERMAID_NO_SANDBOX=1` is set (Ubuntu 24.04 can block the sandbox for a normal user through AppArmor; the `content-build` job of `ci.yml` sets `MERMAID_NO_SANDBOX: 1` for that reason, on the self-hosted Ubuntu 24.04 runner). That is acceptable because the page holds only Mermaid and lesson text from this repo, offline.
+- **Unzip.** `npm run install:browser` unpacks the browser with the system `unzip` command on Linux and macOS (`tar.exe` or PowerShell on Windows). Without it the install fails with `no zip archiver is available`, and the command then says to install `unzip` on the machine (on Ubuntu, `sudo apt-get install unzip`). The failed install leaves a half-installed folder, which puppeteer refuses to install over (`The browser folder ... exists but the executable ... is missing`); `npm run install:browser` (`src/browser-install.ts`) removes that one folder, `<cache>/chrome-headless-shell/<platform>-<build>`, when it exists without its executable, and then installs again. It leaves a complete install, other builds, and everything else in the cache alone, and it uses `PUPPETEER_CACHE_DIR` when that is set.
+- **Linux libraries.** The browser needs the system libraries in its `deb.deps` file (`~/.cache/puppeteer/chrome-headless-shell/linux-<build>/chrome-headless-shell-linux64/deb.deps`): `libasound2`, `libatk-bridge2.0-0`, `libatk1.0-0`, `libatspi2.0-0`, `libcairo2`, `libcups2`, `libdbus-1-3`, `libexpat1`, `libgbm1`, `libglib2.0-0`, `libnspr4`, `libnss3`, `libpango-1.0-0`, `libudev1`, `libx11-6`, `libxcb1`, `libxcomposite1`, `libxdamage1`, `libxext6`, `libxfixes3`, `libxkbcommon0`, `libxrandr2`, and `fonts-liberation` (on Ubuntu 24.04 some have a `t64` suffix). To see what is missing: `ldd ~/.cache/puppeteer/chrome-headless-shell/linux-*/chrome-headless-shell-linux64/chrome-headless-shell | grep "not found"`. At least one font must be installed.
+
+### The cache
+
+`content-build/.cache/mermaid/` (git-ignored; `MERMAID_CACHE_DIR` overrides it, relative to the working folder) holds one `<key>.svg` per drawn source, outside the build folder, and `build` never deletes it. The key is the SHA-256 of the source (CRLF as LF), the bytes of `mermaid-config.json`, the installed versions of `mermaid` and `@mermaid-js/mermaid-cli`, the Chromium build, and `POSTPROCESS_VERSION` in `src/diagram-svg.ts` (raise it when you change `finishSvg`, the options of the render call, or the browser flags), each part with its name and length. A file name is only ever built from the 64 hex digits. An entry that is empty, is not UTF-8, starts with a byte order mark, fails `svgProblems`, or is not what `finishSvg` writes is ignored and drawn again. The cache keeps the SVG before the accessible name, which is added after it. A build with a warm cache is byte-identical to one with an empty cache. In CI the folder is not kept between jobs, so every job draws again.
+
+### Same input, same bytes
+
+Drawing the same source twice in one browser, in a different order, and in a new browser gives the same bytes, and so does building the fixture into two folders from two working folders. A test with a fontconfig that holds one regular font (Linux only) gives the same bytes as the default fonts. Nothing in the output has an absolute path, a date, or a random id. The SVG id is fixed, `handDrawnSeed` is fixed, and `gantt` (which draws today's date) is not supported.
+
+### Linux is the reference platform
+
+The bytes of a diagram depend on the platform. **Linux is the reference**: the goldens in `fixtures/expected-mermaid/` are the bytes Linux gives, and so are the diagrams of every published build, because published builds are made on Linux (the `content-build` job of CI, and the build for #116). A build on Windows or macOS is checked for everything except those bytes, and its output is not published.
+
+The cause, as measured: Chromium measures the width of text in the bundled font (Recursive Variable) with FreeType on Linux (advances in 1/64 px) and with DirectWrite on Windows, and the two give slightly different advances for the same text. Mermaid lays out boxes from those widths, so some numbers in the SVG differ. On the fixture, 4 of the 10 SVGs differ on Windows (an `erDiagram`, a `flowchart`, a `stateDiagram`, and a `classDiagram`), only in numbers (sizes and positions), by up to about 0.4 px (the `erDiagram`; the others by 0.2 px or less). The other 6 are identical. Rounding the numbers in the SVG does not remove the difference (the values fall on both sides of a rounding step), and there is no second set of goldens per platform.
+
+What this means for the tests: on Windows (`process.platform === "win32"`, a function in `tests/mermaid-helpers.ts` with a test of its own) exactly these are skipped, because they compare real Chromium bytes with the goldens:
+
+- in `tests/mermaid-real.test.ts`, the eight per-type tests named `<type>: the three renders equal the golden file byte for byte` (`flowchart`, `graph`, `sequenceDiagram`, `classDiagram`, `stateDiagram`, `stateDiagram-v2`, `erDiagram`, `pie`);
+- in `tests/mermaid-golden.test.ts`, the two tests that compare the real build with `fixtures/expected-mermaid/build/` (`writes exactly the files of fixtures/expected-mermaid/build, byte for byte, with an empty cache` and `gives the golden bytes from a working folder of its own`).
+
+The rest of the diagram tests run on Windows, including the same checks without the golden bytes: the build succeeds, every SVG passes the SVG rules, the structure and text are there, drawing twice in one browser, in the reverse order, and in a new browser gives the same bytes, a cold build, a build from another working folder with another cache, and a warm build give the same bytes on that machine, and the cache works. Linux runs everything, as before.
+
+### Safe SVG: one layer
+
+The checks above are one layer. `Image` and `Diagram` show an SVG as an `<img>` (#19), which does not run scripts, and the asset route sends `Content-Security-Policy: script-src 'none'; default-src 'none'; style-src 'unsafe-inline'; sandbox` and `nosniff` (#58). The CSP blocks fonts and images from `data:`, which is why none are embedded. A test also asserts that every golden has no `data:`, `@font-face`, `@import`, `foreignObject`, `<script`, `href` that is not `#...`, or attribute that starts with `on`.
+
+### Tests
+
+- **Tier 1** (no Chromium; they pass a fake renderer, or a fake launcher, to the build): `diagram-source`, `diagram-svg`, `mermaid-config`, `mermaid-cache`, `mermaid-render` (the launch flags, the timeout, the crash, the profile), `mermaid-build` (the output, the map, the errors, the cache, the all-or-nothing rule, the size limit, the missing browser), `mermaid-dependencies`, and the golden checks of `mermaid-golden`.
+- **Tier 2** (the real Chromium; they fail with the setup error if it is not installed): `mermaid-real` (the same bytes in one browser, in the reverse order, and in a new browser, for each type, which pass the SVG rules, and (not on Windows) equal `fixtures/expected-mermaid/renderer/<type>.svg`; the fontconfig test, which runs on Linux only because fontconfig is a Linux library; HTML in a label; a sequence diagram `link`; a node image from a local server; `accTitle` and `accDescr`; Mermaid's line numbers; the timeout and the crash) and the real-build tests of `mermaid-golden` (the build is sound; two working folders, two caches, and a warm cache give the same bytes; and, not on Windows, the real build equals `fixtures/expected-mermaid/build/` byte for byte).
+- Both tiers run in `npm test`. The fixture is `fixtures/mermaid/` (a courses folder with the course `mermaid-course`; `fixtures/valid` has no `Diagram` source, so `make check-images` is unchanged).
+
+### Upgrading Mermaid or Chromium
+
+The goldens are exact bytes, so an upgrade changes them on purpose:
+
+1. Change the version in `package.json` (a new dependency version needs the owner's approval, see `AGENTS.md`), run `npm install` in this folder, and commit `package-lock.json` with it. A new puppeteer pins another Chromium: run `npm run install:browser`.
+2. Run the tests; the golden tests fail with a diff.
+3. Regenerate the goldens with the real renderer and read the diff before you commit it:
+
+```
+cd content-build
+node tests/update-mermaid-goldens.ts
+```
+
+   It writes `fixtures/expected-mermaid/renderer/<type>.svg` and `fixtures/expected-mermaid/build/`. Run it on Linux: there is one set of goldens, the Linux one, not one per platform.
+4. Raise `POSTPROCESS_VERSION` only if the code in `src/` changed what is written. The cache key already holds the versions.
+
+### Windows
+
+`npm ci`, `npm run install:browser`, and `npm test` work in PowerShell 5.1 with Node 24: the tests start child processes with `process.execPath`, import by `file://` URL, and need no shell, and the golden SVGs are `-text` in `.gitattributes`, so a checkout does not change their line endings. The goldens are made on Linux, which is the reference (see [Linux is the reference platform](#linux-is-the-reference-platform)): on Windows the tests that compare real Chromium bytes with the goldens are skipped, and the other diagram tests run. To run it on Windows:
+
+```
+cd content-build
+npm ci
+npm run install:browser
+npm test
+```
 
 ## Building the courses
 
@@ -384,6 +489,8 @@ Chapters are in the order of `course.yaml`, lessons by chapter and then by `orde
 - `src/step-diff.ts` - `diffSteps`; `src/chapter-zip.ts` - `buildChapterZip`; `src/write-code-steps.ts` - `writeCodeSteps`
 - `src/lesson.ts` - `compileLesson`; `src/lesson-tree.ts` - the tree types, the check against its schema, and `serializeTree`; `src/component-schemas.ts` - reads the component schemas and `SetupError`; `src/url.ts` - the URL rule
 - `src/compile-cli.ts` and `src/compile.ts` - the `compile` command and its entry point
+- `src/browser-install.ts` and `src/install-browser.ts` - the `install:browser` command and its entry point
+- `src/diagram-source.ts` - the source checks and line numbers of a `Diagram`; `src/diagrams.ts` - `renderDiagrams`; `src/diagram-svg.ts` - `finishSvg` and the accessible name; `src/mermaid-render.ts` - the browser; `src/mermaid-cache.ts` - the cache; `src/mermaid-config.ts` - `mermaid-config.json`; `src/mermaid-versions.ts` - the installed versions (see [Diagrams](#diagrams))
 - `src/build-cli.ts` and `src/build.ts` - the `build` command and its entry point; `src/courses-folder.ts` - finding the courses and checking where the build may write; `src/write-course.ts` - the manifest and the lesson files
 - `src/ids.ts` - the IDs of a course and `ids.json`; `src/migrations.ts` - the notes in `MIGRATIONS.md`; `src/git.ts` - the git commands of the ID check (no shell); `src/ids-cli.ts`, `src/ids-update.ts`, and `src/ids-check.ts` - the `ids:update` and `ids:check` commands and their entry points
 - `src/schema.ts` - ajv checks, with messages that name the field instead of the schema keyword
@@ -393,6 +500,7 @@ Chapters are in the order of `course.yaml`, lessons by chapter and then by `orde
 - `fixtures/quizzes/valid/<case>.yaml` and `fixtures/quizzes/invalid/<case>.yaml` - single quiz files; a test puts one into a copy of the valid course as `chapters/01-first-steps/quiz.yaml`
 - `fixtures/lessons/valid/<case>.mdx` with `<case>.json` beside it (the golden tree), `fixtures/lessons/invalid/<case>.mdx` - one lesson per rejection; `fixtures/components/` - the small schema folder that the rule tests use
 - `fixtures/expected/` - the golden build folder for the valid course (`private/`, `public/`, `assets-map/`: the quizzes, code steps, assets, manifest, and lesson files), and the golden rewritten tree (`lessons/all-assets.json`, which is not part of a build folder); `fixtures/svg/` - one SVG per SVG rule; `fixtures/lessons/assets/` - the lesson that `rewriteAssetUrls` is tested with
+- `fixtures/mermaid/` - the courses folder with the course `mermaid-course` (a `Diagram` of each supported type); `fixtures/expected-mermaid/` - its golden output (`renderer/<type>.svg` and `build/`), regenerated by `tests/update-mermaid-goldens.ts`
 - `fixtures/valid/` - a valid course; `fixtures/invalid/<case>/` - one course per rule it breaks; `fixtures/warnings/<case>/` - courses that are valid but get a warning. Each folder's name is the course `id`, except `invalid/id-mismatch`.
 - `tests/` - the Vitest tests. The ID check tests create a temporary git repository (no network, a fixed author and fixed dates). Cases that depend on line endings or a byte order mark are written to a temporary folder by the test, so git's line-ending settings cannot change them.
 
