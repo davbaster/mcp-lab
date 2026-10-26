@@ -220,7 +220,9 @@ def _build_dir(value: str | None) -> Path:
     path = Path(value)
     try:
         exists = path.is_dir()
-    except OSError:  # a path part longer than the file system allows
+    except OSError:
+        # Any OSError from `is_dir` (for example a path part longer than the file system allows)
+        # is reported as "not an existing folder", with the path shortened.
         exists = False
         value = value if len(value) <= _MAX_SHOWN else value[: _MAX_SHOWN - 3] + "..."
     if not exists:

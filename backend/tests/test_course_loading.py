@@ -739,7 +739,9 @@ def test_uvicorn_logs_one_line_per_course_and_starts_without_a_database():
         process.wait(timeout=30)
         process.stderr.close()
 
-    loaded = [json.loads(line)["message"] for line in seen if "loaded course" in line]
+    loaded = [
+        json.loads(line)["message"] for line in seen if "loaded course" in line
+    ]
     assert loaded == [
         "loaded course beta-course: 1 chapters, 1 lessons",
         "loaded course alpha-course: 2 chapters, 3 lessons",
