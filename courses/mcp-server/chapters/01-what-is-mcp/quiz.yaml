@@ -1,0 +1,61 @@
+questions:
+  - id: what-is-mcp-1
+    text: In MCP, which part keeps one connection to one server?
+    options:
+      - id: a
+        text: The host
+      - id: b
+        text: The client
+      - id: c
+        text: The transport
+    correct: b
+    explanation: The host creates one client for each server it connects to, and each client keeps a single connection to its server.
+    lesson: 03-hosts-clients-servers
+  - id: what-is-mcp-2
+    text: Which primitive is a function that the model can decide to call?
+    options:
+      - id: a
+        text: A resource
+      - id: b
+        text: A prompt
+      - id: c
+        text: A tool
+    correct: c
+    explanation: Tools are controlled by the model, which chooses when to call them. Resources are controlled by the application and prompts by the user.
+    lesson: 04-server-primitives
+  - id: what-is-mcp-3
+    text: Which message format do MCP clients and servers use?
+    options:
+      - id: a
+        text: JSON-RPC 2.0
+      - id: b
+        text: GraphQL
+      - id: c
+        text: gRPC
+    correct: a
+    explanation: MCP messages are JSON-RPC 2.0 requests, responses, and notifications.
+    lesson: 05-messages
+  - id: what-is-mcp-4
+    text: Which request does a client send first on a new connection?
+    options:
+      - id: a
+        text: tools/list
+      - id: b
+        text: ping
+      - id: c
+        text: initialize
+    correct: c
+    explanation: The connection starts with initialize, where client and server agree on a protocol version and capabilities. Normal requests such as tools/list come after that.
+    lesson: 06-lifecycle
+  - id: what-is-mcp-5
+    text: Who decides when a prompt is used?
+    options:
+      - id: a
+        text: The model
+      - id: b
+        text: The user
+      - id: c
+        text: The server automatically
+    correct: b
+    explanation: Prompts are controlled by the user, who picks them on purpose, for example from a menu or a slash command.
+    lesson: 04-server-primitives

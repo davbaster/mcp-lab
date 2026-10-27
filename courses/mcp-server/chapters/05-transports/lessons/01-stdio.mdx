@@ -1,0 +1,28 @@
+---
+title: The stdio transport
+order: 1
+---
+
+# The stdio transport
+
+Chapter 1 said that with stdio the host starts your server as a child process. This lesson looks at what that means for the code you have written.
+
+The client runs a command, such as `uv run server.py`, and keeps the process alive. It writes to the server's standard input and reads from its standard output. Each message is one line of JSON-RPC, ended by a newline. The server never opens a port, and no other program can talk to it.
+
+<CodeSteps step="1" file="server.py" />
+
+Look at the last lines of the file. `mcp.run()` with no arguments uses stdio, which is the default transport. It reads lines from stdin until the client closes the pipe, and then the process ends.
+
+Three facts follow from this design.
+
+- **The client owns the process.** It starts the server and stops it. You do not launch it yourself when a client such as Claude Desktop uses it.
+- **There is one client per process.** Two clients means two processes, each with its own state.
+- **Standard error is free.** The client does not parse it, so it is the place for logs. The next lesson explains why that matters.
+
+You can still run `uv run server.py` by hand. It will sit and wait for input, because it expects a client on the other end. To try the server yourself, use the Inspector, which acts as the client and starts the process for you:
+
+```shell
+uv run mcp dev server.py
+```
+
+The Inspector opens in your browser and lets you list and call everything the server offers.

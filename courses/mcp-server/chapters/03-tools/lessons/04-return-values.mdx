@@ -1,0 +1,37 @@
+---
+title: Typed return values
+order: 4
+---
+
+# Typed return values
+
+So far the tools return a plain `dict`. The client gets the note as a block of text, and nothing tells it which fields to expect. Step 4 describes the shape with a `Note` class.
+
+<CodeSteps step="4" file="server.py" />
+
+`Note` is a `TypedDict`. It is still an ordinary dict at run time. The SDK reads the class and builds an output schema for the tool, and a client can then rely on the keys `id`, `title`, `body` and `created_at`.
+
+The code imports `TypedDict` from `typing_extensions`, which is installed with `mcp`. On Python 3.10 and 3.11 the SDK refuses the one in `typing`.
+
+A result has two parts, both sent by the server:
+
+- `content`: text for the model to read.
+- `structuredContent`: the same data as JSON that matches the output schema, for programs.
+
+For `get_note`, which returns `Note | str`, the structured part is wrapped under `result`. This is the answer to `get_note` with id 1, captured from the step 4 server (shortened: the real result also has a `resultType` field):
+
+```json
+{
+  "content": [
+    { "type": "text", "text": "{\n  \"id\": 1,\n  \"title\": \"Milk\",\n  \"body\": \"Buy milk\",\n  \"created_at\": \"2026-10-26T20:39:59+00:00\"\n}" }
+  ],
+  "structuredContent": {
+    "result": { "id": 1, "title": "Milk", "body": "Buy milk", "created_at": "2026-10-26T20:39:59+00:00" }
+  },
+  "isError": false
+}
+```
+
+When a tool returns a bare `Note`, as `create_note` does, `structuredContent` is the object itself. A list such as `list_notes`, or a union such as `Note | str`, is wrapped as `{"result": ...}`.
+
+The `| str` is there only because a missing note is still a text message. It makes the contract vague: the result is a note or some text. The next lesson removes it.

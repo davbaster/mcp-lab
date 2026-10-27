@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "notes": {
+      "command": "uv",
+      "args": ["--directory", "/ABSOLUTE/PATH/TO/notes-server", "run", "server.py"],
+      "env": {
+        "NOTES_LOG_LEVEL": "INFO",
+        "NOTES_DB_PATH": "/ABSOLUTE/PATH/TO/notes.db",
+        "NOTES_DATA_DIR": "/ABSOLUTE/PATH/TO/notes-data"
+      }
+    }
+  }
+}

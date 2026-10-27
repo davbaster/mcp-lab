@@ -1,0 +1,47 @@
+---
+title: Prompts
+order: 4
+---
+
+# Prompts
+
+A prompt is a reusable request that the user picks, for example from a menu in the client. The server writes the text; the user decides to use it. Step 3 adds `summarize_note`.
+
+<CodeSteps step="3" file="server.py" />
+
+`@mcp.prompt()` works like `@mcp.tool()`. The function name is the prompt name, the docstring is the description, and the parameters become the prompt's arguments. Here `note_id` is required. The function returns a string, and the server wraps it in one message with the role `user`.
+
+A client lists prompts with `prompts/list`:
+
+```json
+{
+  "prompts": [
+    {
+      "name": "summarize_note",
+      "description": "Ask the model to summarize one note.",
+      "arguments": [{ "name": "note_id", "required": true }]
+    }
+  ]
+}
+```
+
+Then it asks for the finished text with `prompts/get`, sending `{"note_id": "1"}`. Prompt arguments always arrive as strings, and the server converts `"1"` to the `int` your function expects. The result is:
+
+```json
+{
+  "description": "Ask the model to summarize one note.",
+  "messages": [
+    {
+      "role": "user",
+      "content": {
+        "type": "text",
+        "text": "Summarize note 1 in two sentences. Read it from notes://1."
+      }
+    }
+  ]
+}
+```
+
+The text points at the resource from lesson 3, so the application can attach the note when the user sends the prompt. The prompt does not read the note itself.
+
+If you need several messages, such as a user message followed by an assistant message, return a list of `UserMessage` and `AssistantMessage` objects from `mcp.server.mcpserver.prompts.base`. Step 3 keeps the simple string form.

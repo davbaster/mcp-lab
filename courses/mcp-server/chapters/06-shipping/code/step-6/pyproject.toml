@@ -1,0 +1,16 @@
+[project]
+name = "notes-server"
+version = "1.0.0"
+description = "A small MCP server for notes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp[cli]==2.3.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.1.1"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+filterwarnings = ["ignore::mcp.shared.exceptions.MCPDeprecationWarning"]

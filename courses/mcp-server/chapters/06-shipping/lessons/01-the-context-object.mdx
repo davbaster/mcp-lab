@@ -1,0 +1,30 @@
+---
+title: The Context object
+order: 1
+---
+
+# The Context object
+
+Until now a tool could only take arguments and return a value. A tool can also talk back to the client while it runs. It does this through a `Context` object. Step 1 uses it in two tools.
+
+<CodeSteps step="1" file="server.py" />
+
+To get the context, add a parameter with the type `Context`. The SDK sees the type and passes the object in. The parameter is not part of the tool's input schema, so the model never sees it. `create_note` still asks for a `title` and a `body` only, and the position of `ctx` among the parameters does not matter.
+
+## Logging to the client
+
+`await ctx.info("Created note 1")` sends a log message to the client. In Chapter 5 you learned that `print` breaks a stdio server, and that `logging` writes to stderr, which only a person reads. A context message travels inside the protocol, so the client can show it next to the tool call.
+
+<Callout type="note" title="A deprecation warning in 2.3.0">
+
+The MCP specification deprecated the logging capability as of 2026-07-28. In `mcp` 2.3.0, `ctx.info` still works, and a client that listens for log messages receives them. It also prints an `MCPDeprecationWarning` to stderr. The warning is harmless, and it is why the tests in lesson 3 silence it.
+
+</Callout>
+
+## Reporting progress
+
+`import_notes` reads a JSON file and adds the notes one at a time. After each note it calls `await ctx.report_progress(i, len(items), f"Imported {i} of {len(items)}")`. The arguments are how far it has got, the total, and a short message. A client that asked for progress can show a progress bar. Without it, a slow tool looks like a frozen one.
+
+Both methods are `async`, so a tool that calls them must be written as `async def` and must `await` them.
+
+For now `import_notes` reads `path` exactly as given. That is unsafe, and lesson 5 fixes it.

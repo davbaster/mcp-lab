@@ -1,0 +1,23 @@
+---
+title: Storing the notes
+order: 1
+---
+
+# Storing the notes
+
+Your server will manage notes, so it needs somewhere to keep them. This lesson adds a small storage layer with the `sqlite3` module from Python's standard library. There is nothing to install.
+
+The new file is `storage.py`. `server.py` is the same as at the end of Chapter 2, with only the `add` tool.
+
+<CodeSteps step="1" file="storage.py" />
+
+- **`DB_PATH`.** The database is one file, `notes.db`, in the folder where you start the server. It is a constant at the top so there is one place to change it. Chapter 6 moves it into configuration.
+- **First use.** `_connect()` creates the `notes` table if it does not exist yet, so there is no setup step.
+- **Five functions.** Create, list, get, update and delete, on the columns `id`, `title`, `body` and `created_at`. Each returns plain dicts, `None` or a boolean, and raises no exceptions of its own. Whether a missing note is an error is the tool's decision, and you will make it in lesson 5.
+- **Parameters, not string formatting.** Every query uses `?` placeholders and passes the values as a tuple. The values never become part of the SQL text, so a title such as `x'); DROP TABLE notes;--` is stored as plain text and cannot change the query. Never build SQL with f-strings.
+
+<Callout type="note" title="Why a separate file?">
+
+`storage.py` knows nothing about MCP. The tools in the next lesson are thin wrappers around it, which keeps each part easy to read and to test by hand.
+
+</Callout>

@@ -1,0 +1,47 @@
+---
+title: A resource template
+order: 3
+---
+
+# A resource template
+
+You cannot register one resource for every note, because notes come and go. A resource template is an address with a gap in it. Step 2 adds `notes://{note_id}`.
+
+<CodeSteps step="2" file="server.py" />
+
+The `{note_id}` in the address matches the function parameter with the same name. The client sends `notes://1`, and the server calls `read_note(1)`. The `int` type hint makes the server convert the text `1` to a number. The function returns the title, a blank line and the body as `text/plain`.
+
+Templates are listed separately. `resources/list` still shows only `notes://index`. `resources/templates/list` shows the template:
+
+```json
+{
+  "resourceTemplates": [
+    {
+      "name": "read_note",
+      "uriTemplate": "notes://{note_id}",
+      "description": "The title and text of one note.",
+      "mimeType": "text/plain"
+    }
+  ]
+}
+```
+
+Reading `notes://1` returns `"text": "Milk\n\nbuy milk"`.
+
+When the note does not exist, the function raises `ResourceNotFoundError`, from `mcp.server.mcpserver.exceptions`. This is different from a tool. A failed tool answers with a normal result marked `isError`. A failed resource read is a JSON-RPC error. This is what the step 2 server sends for `notes://42`:
+
+```json
+{
+  "error": {
+    "code": -32602,
+    "message": "Note 42 not found",
+    "data": { "uri": "notes://42" }
+  }
+}
+```
+
+<Callout type="warning" title="Use the right exception">
+
+Raise `ResourceNotFoundError` for a missing note so the client gets your message. A plain `ValueError` is treated as a crash: the client gets only `Error creating resource from template notes://42`, with error code `-32603` and no reason. An address that does not fit the template, such as `notes://abc`, gives the same general message.
+
+</Callout>

@@ -1,0 +1,72 @@
+questions:
+  - id: transports-1
+    text: Why does print("debug") break a stdio server?
+    options:
+      - id: a
+        text: Standard output carries the protocol messages, so stray text corrupts them
+      - id: b
+        text: print is disabled in MCP
+      - id: c
+        text: It slows the server down
+    correct: a
+    explanation: With stdio, the client reads standard output as JSON-RPC messages, one per line. Extra text there cannot be parsed. Log to standard error instead.
+    lesson: 02-never-write-to-stdout
+  - id: transports-2
+    text: With the stdio transport, who starts the server process?
+    options:
+      - id: a
+        text: The user, manually, every time
+      - id: b
+        text: A cloud scheduler
+      - id: c
+        text: The client or host application
+    correct: c
+    explanation: A stdio client launches the server as a child process and talks to it through standard input and output. It also stops the process when it is done.
+    lesson: 01-stdio
+  - id: transports-3
+    text: Which top-level key in this Claude Desktop config lists the servers to launch?
+    snippet:
+      language: json
+      code: |
+        {
+          "mcpServers": {
+            "notes": {
+              "command": "uv",
+              "args": ["run", "server.py"]
+            }
+          }
+        }
+    options:
+      - id: a
+        text: servers
+      - id: b
+        text: mcpServers
+      - id: c
+        text: tools
+    correct: b
+    explanation: Claude Desktop reads the servers from the mcpServers key. Each entry in it has a name and a command to run.
+    lesson: 03-claude-desktop
+  - id: transports-4
+    text: How does a client send messages to a Streamable HTTP server?
+    options:
+      - id: a
+        text: A new WebSocket for each message
+      - id: b
+        text: By writing to the server's stdin
+      - id: c
+        text: With an HTTP POST to the server's single MCP endpoint
+    correct: c
+    explanation: Streamable HTTP uses one endpoint, such as /mcp. The client POSTs each message to it, and the server replies with JSON or a stream of events.
+    lesson: 04-streamable-http
+  - id: transports-5
+    text: Which setting matters most when you run a Streamable HTTP server locally?
+    options:
+      - id: a
+        text: Bind to 127.0.0.1 and validate the Origin header
+      - id: b
+        text: Disable all logging
+      - id: c
+        text: Use port 80
+    correct: a
+    explanation: Binding to 127.0.0.1 keeps other computers out, and checking Origin stops web pages from reaching the server through DNS rebinding. Logging and the port number do not protect it.
+    lesson: 06-local-http-safety

@@ -1,0 +1,33 @@
+---
+title: The connection lifecycle
+order: 6
+---
+
+# The connection lifecycle
+
+Every MCP connection follows the same steps.
+
+1. **Initialize.** The client sends an `initialize` request. It says which protocol version it supports and which capabilities it has.
+2. **Capability negotiation.** The server answers with its own protocol version and capabilities, for example that it offers tools. From here on, both sides use only what both agreed on.
+3. **Initialized.** The client sends the `notifications/initialized` notification to say it is ready.
+4. **Operation.** Now the normal work happens: the client lists tools, calls them, reads resources, and so on.
+
+<Diagram
+  alt="A sequence from the client to the server. The client sends initialize, the server responds with its capabilities, the client sends the notifications/initialized notification, and then they exchange normal requests."
+  source="sequenceDiagram
+    participant C as Client
+    participant S as Server
+    C->>S: initialize request
+    S-->>C: initialize response with capabilities
+    C->>S: notifications/initialized
+    C->>S: tools/list request
+    S-->>C: tools/list response"
+/>
+
+<Callout type="note" title="Why negotiate?">
+
+Clients and servers are written by different people at different times. Agreeing on a version and on capabilities first lets them work together even when one is newer than the other.
+
+</Callout>
+
+A connection ends when either side closes it.

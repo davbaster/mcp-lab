@@ -1,0 +1,61 @@
+questions:
+  - id: resources-1
+    text: What is the main difference between a resource and a tool?
+    options:
+      - id: a
+        text: Resources are faster
+      - id: b
+        text: Tools cannot take arguments
+      - id: c
+        text: Resources expose read-only context the application chooses to include; tools perform actions the model invokes
+    correct: c
+    explanation: A resource is data with an address that the application decides to read and show to the model. A tool is something the model decides to call, and it can change things. Speed is not the difference, and tools can take arguments.
+    lesson: 01-resources-vs-tools
+  - id: resources-2
+    text: '@mcp.resource("notes://{note_id}") defines a...'
+    options:
+      - id: a
+        text: Resource template
+      - id: b
+        text: Tool
+      - id: c
+        text: Prompt
+    correct: a
+    explanation: An address with a gap such as {note_id} is a resource template. The gap is filled from the address a client asks for, and the value is passed to the function parameter with the same name.
+    lesson: 03-resource-template
+  - id: resources-3
+    text: Which method does a client call to get a resource's contents?
+    options:
+      - id: a
+        text: resources/call
+      - id: b
+        text: resources/read
+      - id: c
+        text: tools/call
+    correct: b
+    explanation: Clients use resources/list to find resources and resources/read with a URI to get the contents. There is no resources/call, and tools/call runs a tool.
+    lesson: 02-static-resource
+  - id: resources-4
+    text: Users should be able to pick "Summarize this note" from a menu in their client. Which primitive fits?
+    options:
+      - id: a
+        text: Prompt
+      - id: b
+        text: Tool
+      - id: c
+        text: Resource
+    correct: a
+    explanation: Prompts are controlled by the user, who picks them on purpose, for example from a menu. A tool is chosen by the model, and a resource is chosen by the application.
+    lesson: 04-prompts
+  - id: resources-5
+    text: Which of these should be a tool rather than a resource?
+    options:
+      - id: a
+        text: The list of note titles
+      - id: b
+        text: A single note's content
+      - id: c
+        text: Creating a new note
+    correct: c
+    explanation: Creating a note changes data, and resources are only for reading. The list of titles and a single note's content are read-only context, which fits resources.
+    lesson: 05-choosing-primitive

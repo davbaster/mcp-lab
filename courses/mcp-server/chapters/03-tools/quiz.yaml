@@ -1,0 +1,67 @@
+questions:
+  - id: tools-1
+    text: Why do tool docstrings matter?
+    options:
+      - id: a
+        text: They are required for Python to run
+      - id: b
+        text: They become the description the model uses to decide when and how to call the tool
+      - id: c
+        text: They speed up execution
+    correct: b
+    explanation: The docstring becomes the tool's description in tools/list. The model reads it to decide when to call the tool and what to pass, so a clear docstring leads to better calls. Python runs fine without one, and it has no effect on speed.
+    lesson: 03-docstrings
+  - id: tools-2
+    text: A tool raises ToolError("Note 42 not found"). What does the client receive?
+    options:
+      - id: a
+        text: The server process crashes
+      - id: b
+        text: The connection closes
+      - id: c
+        text: A tool result marked isError true with the message
+    correct: c
+    explanation: The server catches the error and answers with a normal tool result that has isError set to true and the message in its content, so the model can read it and try again. The server keeps running and the connection stays open. Note that in mcp 2.3.0 a plain ValueError would hide the message and send only Error executing tool followed by the tool name.
+    lesson: 05-errors
+  - id: tools-3
+    text: Which annotation best fits delete_note?
+    options:
+      - id: a
+        text: "destructiveHint: true"
+      - id: b
+        text: "readOnlyHint: true"
+      - id: c
+        text: "openWorldHint: false only"
+    correct: a
+    explanation: delete_note removes data, so destructiveHint true tells clients to take care, for example by asking the user first. readOnlyHint true would be wrong because the tool writes. openWorldHint is about reaching outside systems and says nothing about deleting.
+    lesson: 06-annotations
+  - id: tools-4
+    text: What problem does this cause?
+    snippet:
+      language: python
+      code: |
+        @mcp.tool()
+        def get_note(note_id):
+            ...
+    options:
+      - id: a
+        text: Python raises a SyntaxError
+      - id: b
+        text: The tool is hidden from clients
+      - id: c
+        text: The input schema has no type for note_id, so the model gets no guidance on what to pass
+    correct: c
+    explanation: The input schema is built from the type hints. Without a hint, note_id has no type in the schema and the model has to guess what to pass. The code is valid Python and the tool is still listed.
+    lesson: 02-crud-tools
+  - id: tools-5
+    text: Which design is generally better for an LLM?
+    options:
+      - id: a
+        text: One tool that runs raw SQL
+      - id: b
+        text: Separate focused tools (create_note, delete_note, ...) with clear schemas
+      - id: c
+        text: "One manage_notes(action: str, data: str) tool"
+    correct: b
+    explanation: Small tools with clear names and typed arguments are easy for a model to choose and to call correctly. A raw SQL tool gives far more power than the job needs, and a single tool with free-text arguments hides every choice inside strings.
+    lesson: 02-crud-tools

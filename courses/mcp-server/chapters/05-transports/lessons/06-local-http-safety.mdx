@@ -1,0 +1,34 @@
+---
+title: Running HTTP safely
+order: 6
+---
+
+# Running HTTP safely
+
+A stdio server cannot be reached by anything except its client. A server that listens on a port can. Even on your own laptop, a web page that you open in a browser can try to send requests to `localhost`. Follow three rules.
+
+- **Bind to `127.0.0.1`.** This address accepts connections from your own computer only. Binding to `0.0.0.0` opens the port to your whole network.
+- **Validate the `Origin` header.** Browsers add `Origin` to requests from web pages. If the server checks it, a malicious page cannot talk to your server through DNS rebinding, a trick that makes a web address point at `127.0.0.1`.
+- **Add authentication before you expose the server remotely.** Anyone who can reach an open endpoint can call your tools. Sign-in is outside this course.
+
+Step 3 follows the first rule explicitly.
+
+<CodeSteps step="3" file="server.py" />
+
+The `host="127.0.0.1"` argument is the default, but writing it makes the intent clear.
+
+In `mcp` 2.3.0 the second rule is built in. When the host is `127.0.0.1`, `localhost` or `::1`, the SDK turns on checks for the `Host` and `Origin` headers by itself. For any other host, such as `0.0.0.0`, no checks are applied unless you pass `transport_security=...` to `run()`.
+
+Here is what the notes server did when tested with curl:
+
+- A request with `Origin: http://evil.example` was rejected with `403 Invalid Origin header`.
+- A request with `Host: evil.example` was rejected with `421 Invalid Host header`.
+- A request with `Origin: http://localhost:6274`, the address of the Inspector, was accepted.
+
+<Callout type="warning" title="Changing the host changes the rules">
+
+If you ever bind to another address so that other machines can connect, you take over the job of choosing the allowed hosts and origins, and you need authentication as well.
+
+</Callout>
+
+That is the end of Chapter 5. Take the quiz to check what you learned.

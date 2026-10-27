@@ -1,0 +1,86 @@
+---
+title: The raw messages
+order: 5
+---
+
+# The raw messages
+
+The Messages pane on the right of the Inspector lists every message between the Inspector and your server. Click one to open it. These are the JSON-RPC messages from Chapter 1. The examples below are what the `notes` server sent and received over stdio. They are shortened where it helps, and fields may be in a different order in your version.
+
+## Start-up
+
+The Inspector first sends `initialize`, and the server answers with its name and what it supports. Then the Inspector sends the `notifications/initialized` notification. It has no `id`, so there is no response.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": { "tools": { "listChanged": false } },
+    "serverInfo": { "name": "notes", "version": "" }
+  }
+}
+```
+
+The `capabilities` object is shortened here. The server also reports empty `prompts` and `resources` support. It says it has tools because you registered one.
+
+## Listing tools
+
+The request is `tools/list`. Compare the answer with `server.py`: the name, the description, and the schema all come from the function.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "add",
+        "description": "Add two numbers.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "a": { "title": "A", "type": "integer" },
+            "b": { "title": "B", "type": "integer" }
+          },
+          "required": ["a", "b"]
+        }
+      }
+    ]
+  }
+}
+```
+
+The real answer also has `title` fields and an `outputSchema` for the `int` return value.
+
+## Calling a tool
+
+The request names the tool and gives its arguments.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": { "name": "add", "arguments": { "a": 2, "b": 3 } }
+}
+```
+
+The response has the same `id`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [{ "type": "text", "text": "5" }],
+    "structuredContent": { "result": 5 },
+    "isError": false
+  }
+}
+```
+
+The `content` list is what a model reads. `structuredContent` is the same answer as data. `isError` is false because the call worked.
+
+That is the end of Chapter 2. Take the quiz to check what you learned.

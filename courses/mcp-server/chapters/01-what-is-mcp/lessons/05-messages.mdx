@@ -1,0 +1,60 @@
+---
+title: Messages
+order: 5
+---
+
+# Messages
+
+Clients and servers talk with JSON-RPC 2.0, a small standard for sending calls as JSON. MCP uses three kinds of message.
+
+## Request
+
+A request asks the other side to do something. It has an `id`, a `method`, and usually `params`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list"
+}
+```
+
+## Response
+
+A response answers one request. It carries the same `id`, and either a `result` or an `error`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "tools": [
+      {
+        "name": "add",
+        "description": "Add two numbers",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "a": { "type": "integer" },
+            "b": { "type": "integer" }
+          },
+          "required": ["a", "b"]
+        }
+      }
+    ]
+  }
+}
+```
+
+## Notification
+
+A notification is a one-way message. It has no `id`, so nobody sends a response.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "notifications/initialized"
+}
+```
+
+The `id` is what pairs a response with its request. A notification has none because it expects no answer.

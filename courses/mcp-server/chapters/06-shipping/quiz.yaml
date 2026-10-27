@@ -1,0 +1,61 @@
+questions:
+  - id: shipping-1
+    text: How should a tool send log messages to the client?
+    options:
+      - id: a
+        text: Print them to standard output
+      - id: b
+        text: Return the logs inside the tool result
+      - id: c
+        text: Accept a ctx parameter of type Context and call await ctx.info
+    correct: c
+    explanation: The SDK passes a Context object to any tool that declares one, and ctx.info sends a log message to the client through the protocol. Printing to standard output would corrupt a stdio server.
+    lesson: 01-the-context-object
+  - id: shipping-2
+    text: An import_notes tool takes 30 seconds. How do you keep the user informed?
+    options:
+      - id: a
+        text: Call ctx.report_progress as the work proceeds
+      - id: b
+        text: Split it into 30 tools
+      - id: c
+        text: Return early and hope it finishes
+    correct: a
+    explanation: report_progress sends the current step, the total and a message, so the client can show a progress bar. Returning early leaves the user with a wrong answer, and splitting the tool does not help.
+    lesson: 01-the-context-object
+  - id: shipping-3
+    text: Where should the server open its SQLite connection so that it happens once for the server's lifetime?
+    options:
+      - id: a
+        text: Inside every tool call
+      - id: b
+        text: In the client
+      - id: c
+        text: In the server's lifespan handler
+    correct: c
+    explanation: Code before the yield in the lifespan runs at startup and the finally block runs at shutdown. Tools then read the open connection from the context.
+    lesson: 02-lifespan
+  - id: shipping-4
+    text: The server needs an API key for an external service. Where should it come from?
+    options:
+      - id: a
+        text: Hardcoded in server.py
+      - id: b
+        text: An environment variable set in the client config's env block
+      - id: c
+        text: A tool argument that the model fills in
+    correct: b
+    explanation: Environment variables keep the key out of the code and out of the conversation. A hardcoded key gets committed and shared, and a tool argument passes through the model.
+    lesson: 04-configuration-and-secrets
+  - id: shipping-5
+    text: An export_notes tool takes a path and writes a file. What is the main risk?
+    options:
+      - id: a
+        text: Path traversal, so the model could write outside the intended folder. Restrict paths to an allowed directory
+      - id: b
+        text: The file may be too small
+      - id: c
+        text: JSON is not supported
+    correct: a
+    explanation: A path such as ../../.ssh/config, an absolute path or a symlink can point outside the data folder. Resolve the path and check that it stays inside the allowed directory.
+    lesson: 05-safe-inputs

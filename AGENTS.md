@@ -25,7 +25,7 @@ A web app for guided courses. v1 ships one course, "Build an MCP Server" (Python
 | `frontend/` | React, TypeScript, Vite, Vitest. Talks to the backend only through the generated API client. |
 | `content-build/` | Node + TypeScript. Validates courses and compiles restricted MDX to JSON. |
 | `courses/<id>/` | Course content: `course.yaml`, `assets/`, `chapters/NN-slug/` (lessons `.mdx`, `code/step-N/`, `quiz.yaml`). |
-| `oncall-mcp/` | FastMCP on-call server, its adapters, and the alert/feedback runners. |
+| `oncall-mcp/` | MCP on-call server (`MCPServer` from the `mcp` SDK), its adapters, and the alert/feedback runners. |
 | `openapi.yaml` | The API contract, exported from the backend. |
 | `_docs/` | Plan and backlog. |
 
@@ -118,7 +118,7 @@ On-call commands will be added as their task is done.
 ## Working style
 
 - Keep changes scoped to the issue you're working on. If you find something else that needs doing, note it rather than fixing it in the same change.
-- Add or update tests with every change, and run the relevant test suites, linters, and type checks before saying a task is done.
+- For now, don't add new tests (David's decision, 2026-10-26; see `HANDOFF.md`). Never skip or delete existing tests, and run the relevant test suites, linters, and type checks before saying a task is done.
 - Match the surrounding code's style, naming, and comment density.
 - Work on a branch, never directly on `main`. Reference the issue in commits and PRs (for example `Closes #7`).
 - Don't commit secrets. Configuration comes from environment variables.

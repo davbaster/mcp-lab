@@ -1,0 +1,28 @@
+---
+title: What a server can offer
+order: 4
+---
+
+# What a server can offer
+
+A server offers three kinds of things, called primitives. Each one is controlled by a different party.
+
+## Tools: controlled by the model
+
+A tool is a function that the model can decide to call, such as searching a database or sending a message. The server describes each tool with a name, a description, and an input schema, and the model chooses when to use it.
+
+## Resources: controlled by the application
+
+A resource is data that gives context, such as a file, a database record, or a document. The host application decides which resources to read and how to show them to the model.
+
+## Prompts: controlled by the user
+
+A prompt is a reusable template that the user picks on purpose, for example from a menu or a slash command. It can start a task such as summarizing a document or reviewing code.
+
+<Callout type="tip" title="A way to remember it">
+
+Tools are for the model, resources are for the application, and prompts are for the user.
+
+</Callout>
+
+Most servers start with tools, and so will you.

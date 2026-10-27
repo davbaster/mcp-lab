@@ -1,0 +1,29 @@
+---
+title: Hosts, clients, and servers
+order: 3
+---
+
+# Hosts, clients, and servers
+
+MCP has three roles.
+
+- **Host:** the AI application the user works in, such as a chat app or a code editor. It runs the model and decides what the user is allowed to do.
+- **Client:** a component inside the host. Each client keeps one connection to one server.
+- **Server:** a program that offers context and abilities to the host through MCP. It can run on the same computer or elsewhere.
+
+The host creates one client for each server it connects to. If a host uses three servers, it runs three clients.
+
+<Diagram
+  alt="One host contains three clients. Each client has its own connection to one server: a files server, a database server, and a calendar server."
+  source="flowchart LR
+    subgraph H[Host]
+      C1[Client 1]
+      C2[Client 2]
+      C3[Client 3]
+    end
+    C1 --> S1[Files server]
+    C2 --> S2[Database server]
+    C3 --> S3[Calendar server]"
+/>
+
+The connections are separate, so one server does not see what another server sends. In this course you will build a server.

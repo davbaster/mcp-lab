@@ -1,0 +1,47 @@
+---
+title: A static resource
+order: 2
+---
+
+# A static resource
+
+A static resource has one fixed address. Step 1 adds `notes://index`, a list of every note with only its id and title.
+
+<CodeSteps step="1" file="server.py" />
+
+The `@mcp.resource()` decorator takes the address first. `notes://` is a URI scheme made up for this server; any scheme works as long as your server and its clients agree. The `mime_type` tells clients that the text is JSON. The function returns a string, so it uses `json.dumps` to turn the list into JSON text. It sends titles and ids only, never the bodies, so the index stays small.
+
+As with tools, the docstring becomes the description, and the function name becomes the resource name, `notes_index`.
+
+A client discovers it with `resources/list`. The server in step 1 answers with one entry:
+
+```json
+{
+  "resources": [
+    {
+      "name": "notes_index",
+      "uri": "notes://index",
+      "description": "Titles and ids of every saved note.",
+      "mimeType": "application/json"
+    }
+  ]
+}
+```
+
+Then the client reads it with `resources/read`, giving the URI. After saving one note called Milk, the result is:
+
+```json
+{
+  "contents": [
+    {
+      "uri": "notes://index",
+      "mimeType": "application/json",
+      "text": "[{\"id\": 1, \"title\": \"Milk\"}]"
+    }
+  ]
+}
+```
+
+The `text` is a string that holds JSON, so it is escaped. With no notes saved, it is `"[]"`.
+
+Your tools from Chapter 3 are unchanged and still work. To try it by hand, `uv run mcp dev server.py` opens the MCP Inspector, which can list and read resources.

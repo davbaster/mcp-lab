@@ -1,0 +1,28 @@
+---
+title: Transports
+order: 7
+---
+
+# Transports
+
+A transport is how the JSON-RPC messages travel between client and server. The messages stay the same whichever transport you use. MCP defines two standard transports.
+
+## stdio
+
+The host starts the server as a child process on the same computer. Messages go through the process's standard input and standard output, one message per line. It is simple and fast, and it suits local tools.
+
+<Callout type="warning" title="Do not print to stdout">
+
+With stdio, standard output carries the protocol. If your server prints anything else there, the client gets confused. Write logs to standard error instead.
+
+</Callout>
+
+## Streamable HTTP
+
+The server runs on its own and listens for HTTP requests at one address. The client sends each message as an HTTP POST, and the server can answer with a single response or with a stream of events. It suits servers that run remotely and serve many clients.
+
+## Which one to use
+
+Use stdio for a server that runs on the user's own machine. Use Streamable HTTP for a server that others reach over a network. You will start with stdio in this course.
+
+That is the end of Chapter 1. Take the quiz to check what you learned.

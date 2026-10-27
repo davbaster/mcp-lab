@@ -1,0 +1,20 @@
+---
+title: Create, read, update, delete
+order: 2
+---
+
+# Create, read, update, delete
+
+Now `server.py` exposes the storage as tools. Step 2 removes `add` and registers five tools: `create_note`, `list_notes`, `get_note`, `update_note` and `delete_note`.
+
+<CodeSteps step="2" file="server.py" />
+
+Two design choices matter more than the code.
+
+**Type hints are the contract.** `note_id: int` becomes an integer property in the input schema, and `title: str | None = None` becomes an optional string. A parameter without a hint, like `def get_note(note_id):`, has no type in the schema, so the model gets no guidance on what to pass. Always write the hints.
+
+**One focused tool per action.** Five small tools with clear names and schemas are easier for a model to choose from than one big tool. `manage_notes(action: str, data: str)` hides every choice inside free text, and a tool that runs raw SQL gives the model far more power than the job needs.
+
+When a note is missing, these tools return a plain text message such as `Note 42 not found`. That works, but the client sees a normal successful result with text in it. Lesson 5 fixes this.
+
+Try it. Run `uv run mcp dev server.py`, open the Inspector, and call `create_note`, then `list_notes`. The tools have one-line docstrings for now, and the next lesson shows why that is not enough.

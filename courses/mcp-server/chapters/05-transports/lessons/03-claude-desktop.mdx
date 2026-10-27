@@ -1,0 +1,48 @@
+---
+title: Connecting Claude Desktop
+order: 3
+---
+
+# Connecting Claude Desktop
+
+Claude Desktop is a client that starts stdio servers for you. You tell it which ones in a JSON file. Step 2 adds a sample, `claude_desktop_config.json`.
+
+<CodeSteps step="2" file="claude_desktop_config.json" />
+
+The file has one top-level key, `mcpServers`. Each entry in it is a server, and its key (`notes`) is the name Claude Desktop shows.
+
+- `command` is the program to run. Here it is `uv`.
+- `args` is the list of arguments. `--directory` makes `uv` change to your project folder first, so `notes.db` is created inside it. Then `run server.py` starts the server.
+- `env` sets environment variables for the process. This one sets the log level from the last lesson.
+
+Replace `/ABSOLUTE/PATH/TO/notes-server` with the full path to your project folder. A relative path will not work, because Claude Desktop does not start in your folder.
+
+Open the file from Claude Desktop with Settings > Developer > Edit Config, or find it directly:
+
+<Tabs>
+
+<Tab label="macOS">
+
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+
+</Tab>
+
+<Tab label="Windows">
+
+`%APPDATA%\Claude\claude_desktop_config.json`
+
+In JSON, a Windows path needs `/` or doubled backslashes: `C:/Users/you/notes-server` or `C:\\Users\\you\\notes-server`.
+
+</Tab>
+
+</Tabs>
+
+If the file already has other servers, add `notes` next to them instead of replacing them.
+
+After you save the file, fully quit Claude Desktop and open it again. Closing the window is not enough. The notes tools then appear in the connectors menu of a new conversation.
+
+<Callout type="tip" title="If the server does not start">
+
+Claude Desktop writes the server's stderr to a log file named `mcp-server-notes.log`, in `~/Library/Logs/Claude` on macOS and `%APPDATA%\Claude\logs` on Windows. That is where your logging from lesson 2 ends up. If Desktop cannot find `uv`, put the full path to `uv` in `command`.
+
+</Callout>

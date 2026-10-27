@@ -1,0 +1,35 @@
+---
+title: The lifespan
+order: 2
+---
+
+# The lifespan
+
+Every storage function so far opened its own database connection. That works, but it repeats work on every call. A server should open its resources once when it starts and close them when it stops. MCP servers do this with a lifespan. Step 2 adds one.
+
+<CodeSteps step="2" file="server.py" />
+
+`lifespan` is an async context manager. Everything before `yield` runs at startup, and the `finally` block runs at shutdown. Here it opens the database with `storage.connect("notes.db")` and closes it afterward. The value it yields, an `AppState` object that holds the connection, is the server's shared state. You give the function to the server with `MCPServer("notes", lifespan=lifespan)`.
+
+When you run the server, stderr shows when it opens and closes the database:
+
+```
+INFO:notes:Opened notes.db
+INFO:notes:Closed notes.db
+```
+
+A tool reaches the state through its context: `ctx.request_context.lifespan_context.conn`. The alias `Ctx = Context[AppState]` tells the type checker what that object holds. The storage functions now take the connection as their first argument, and they write inside `with conn:` so that each change is committed.
+
+<Callout type="note" title="Static resources cannot take a Context">
+
+A resource with a fixed address, such as `notes://index`, cannot have a `ctx` parameter. The SDK raises an error when you register it. Template resources like `notes://{note_id}`, tools and prompts can. So the lifespan also stores the state in the module-level variable `current`, and `notes_index` reads the connection from there.
+
+</Callout>
+
+<Callout type="note" title="Why check_same_thread=False">
+
+Tools that are plain `def` functions run in worker threads. By default SQLite refuses to use a connection in a thread other than the one that created it. `check_same_thread=False` removes that check. The calls here are short, and SQLite is normally built to be used from several threads. A busier server would add a lock around writes.
+
+</Callout>
+
+With stdio, the lifespan runs once each time a client starts the server, and the `finally` block runs when the client closes it.

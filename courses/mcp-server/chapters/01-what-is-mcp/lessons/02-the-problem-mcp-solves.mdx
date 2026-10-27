@@ -1,0 +1,22 @@
+---
+title: The problem MCP solves
+order: 2
+---
+
+# The problem MCP solves
+
+An AI application becomes more useful when it can reach your files, your databases, and your tools. Before MCP, each connection was built by hand.
+
+Say there are N AI applications and M tools or data sources. If every application needs its own custom integration with every source, you need N x M integrations. Each one has its own format and its own bugs, and each one is maintained by someone.
+
+## One protocol instead
+
+The Model Context Protocol (MCP) is an open standard for connecting AI applications to external systems. Each application learns to speak MCP once, and each tool or data source exposes itself through MCP once. Any application can then talk to any source, so the work drops from N x M to roughly N + M.
+
+<Callout type="note" title="An everyday comparison">
+
+A USB port works the same way. Any device with the right plug works with any computer that has the port, and neither side needs to know about the other in advance.
+
+</Callout>
+
+In the next lessons you will meet the parts of MCP: who talks to whom, what a server can offer, and what the messages look like.

@@ -1,0 +1,33 @@
+---
+title: Errors the model can read
+order: 5
+---
+
+# Errors the model can read
+
+A missing note is a failure, and the result should say so. Step 5 raises an error instead of returning text, so `get_note`, `update_note` and `delete_note` now return a plain `Note` or `None`. `update_note` also fails if you pass neither a title nor a body.
+
+<CodeSteps step="5" file="server.py" />
+
+The tools raise `ToolError`, from `mcp.server.mcpserver.exceptions`. Raise it for failures you expect. The server catches it and answers with a normal tool result that has `isError: true` and your message in `content`, so the model can read what went wrong and try again. This is the result for `get_note` with id 42, captured from the step 5 server (shortened: the real result also has a `resultType` field):
+
+```json
+{
+  "content": [
+    { "type": "text", "text": "Error executing tool get_note: Note 42 not found" }
+  ],
+  "isError": true
+}
+```
+
+The server stays up and the connection stays open. Only that call failed.
+
+<Callout type="warning" title="A plain ValueError hides the message">
+
+In `mcp` 2.3.0, any exception other than `ToolError` is treated as a crash. The client gets only `Error executing tool get_note`, with no reason, and the traceback goes to the server's log. A `ValueError("Note 42 not found")` would leave the model guessing. Raise `ToolError` for failures you expect.
+
+</Callout>
+
+Arguments that fail the input schema, such as `note_id` set to `"abc"`, also come back as `isError: true`, with the validation message.
+
+Write error messages for the model: say what was wrong and, when you can, what to do instead.

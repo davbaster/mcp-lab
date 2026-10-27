@@ -1,0 +1,38 @@
+---
+title: Docstrings the model can use
+order: 3
+---
+
+# Docstrings the model can use
+
+The docstring of a tool function becomes its description in `tools/list`. The model reads that text, and the input schema, to decide whether to call the tool and what to pass. In practice, the docstring is the prompt for your tool.
+
+Compare the same server with weak and improved docstrings. Only the docstrings differ, not the code.
+
+<Tabs>
+
+<Tab label="Weak (step 2)">
+
+<CodeSteps step="2" file="server.py" />
+
+</Tab>
+
+<Tab label="Improved (step 3)">
+
+<CodeSteps step="3" file="server.py" />
+
+</Tab>
+
+</Tabs>
+
+"Get a note." does not say where the id comes from, so a model may guess one. The improved version says:
+
+- **When to call it.** "Call this when the user asks to remember, write down or save something." and "Call this only when the user clearly asks to delete a note".
+- **What each argument means.** The `Args:` section is part of the description the model sees, so it can tell what `note_id` and `body` are for.
+- **What happens to omitted values.** For `update_note`, a field you leave out keeps its current value.
+
+<Callout type="tip" title="See it in the Inspector">
+
+Run `uv run mcp dev server.py` on step 3 and open a tool. Its description is exactly the docstring you wrote.
+
+</Callout>
