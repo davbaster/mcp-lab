@@ -18,7 +18,7 @@ TEST_DB_PORT ?= 5433
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
-	check-images
+	check-images check-caddy
 
 HELP_TARGETS = help \
 	install install-backend install-frontend install-content-build \
@@ -28,7 +28,7 @@ HELP_TARGETS = help \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
-	check-images
+	check-images check-caddy
 
 HELP.help = Show this list (the default target)
 HELP.install = Install every part (install-backend, install-frontend, install-content-build)
@@ -58,6 +58,7 @@ HELP.update-content-ids = Write courses/<id>/ids.json for every course (writes f
 HELP.check-content-ids = Check courses/<id>/ids.json holds the IDs the courses have now
 HELP.check-content-ids-base = Check no published ID was removed without a note, as in make check-content-ids-base BASE=origin/main (needs git history, not in any aggregate)
 HELP.check-images = Build the backend and frontend images, check the course build is in the backend image and no course data in the frontend one (needs Docker, not in any aggregate)
+HELP.check-caddy = Validate caddy/mcp-lab.caddy and deploy/gateway.Caddyfile with Caddy in Docker, using throwaway values from deploy/caddy-validate.vars (needs Docker, not in any aggregate)
 
 help:
 	$(info Usage: make <target>   (run from the repo root, a variable goes after the target: make test-backend DATABASE_URL=<url>))
@@ -122,6 +123,10 @@ check-content-ids-base:
 
 check-images:
 	cd backend && uv run python scripts/check_images.py
+
+check-caddy:
+	docker run --rm --env-file deploy/caddy-validate.vars -v ./caddy:/etc/caddy:ro caddy:2.11.7-alpine caddy validate --config /etc/caddy/mcp-lab.caddy --adapter caddyfile
+	docker run --rm -v ./deploy:/etc/caddy:ro caddy:2.11.7-alpine caddy validate --config /etc/caddy/gateway.Caddyfile --adapter caddyfile
 
 check-openapi:
 	cd backend && uv run python scripts/export_openapi.py --check

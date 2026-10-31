@@ -16,3 +16,6 @@ dist/
 
 # Secrets: configuration comes from environment variables
 .env
+
+# The real env files of production and staging live only on the VM (deploy/*.env.example are the templates)
+deploy/*.env

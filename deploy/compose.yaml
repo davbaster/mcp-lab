@@ -1,0 +1,132 @@
+# One app project of the server: production, staging, or an isolated deployment. Which one it is comes only from
+# the env file: docker compose --env-file deploy/production.env -f deploy/compose.yaml up -d
+# (production.env.example and staging.env.example are the templates; the env files live only on the VM).
+# The images are pulled from GHCR by tag (IMAGE_TAG, a commit SHA); nothing is built on the VM.
+# The shared Caddy proxy is set up outside this repo; only `gateway` joins its network. No service publishes a port.
+name: ${COMPOSE_PROJECT_NAME:?set COMPOSE_PROJECT_NAME in the env file}
+
+x-logging: &logging
+  # Rotated logs, so they cannot fill the disk.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # Each project has its own Postgres server, database, and role. Isolated deployments that share another project's
+  # server leave COMPOSE_PROFILES empty in their env file (README, "Isolated deployment").
+  postgres:
+    profiles: [database]
+    image: postgres:16
+    restart: unless-stopped
+    mem_limit: ${POSTGRES_MEM_LIMIT:-384m}
+    logging: *logging
+    environment:
+      # Empty when the project has no Postgres of its own; the image then refuses to start, so a missing value is never silent.
+      POSTGRES_USER: ${POSTGRES_USER:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${POSTGRES_DB:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      db:
+        # Other projects on the same db network (isolated deployments) reach this server by this name.
+        aliases:
+          - ${COMPOSE_PROJECT_NAME}-postgres
+    healthcheck:
+      # -h 127.0.0.1 skips the init-time server, which only listens on a socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    image: ${BACKEND_IMAGE:?set BACKEND_IMAGE in the env file}:${IMAGE_TAG:?set IMAGE_TAG in the env file}
+    restart: unless-stopped
+    mem_limit: ${BACKEND_MEM_LIMIT:-384m}
+    logging: *logging
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the env file}
+      # The deploy step migrates before it replaces a service (#35), so the backend does not migrate on start.
+      RUN_MIGRATIONS_ON_START: ${RUN_MIGRATIONS_ON_START:-false}
+      COURSES: ${COURSES:?set COURSES in the env file}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:?set TRUSTED_PROXIES in the env file}
+      DEPLOYMENT: ${DEPLOYMENT:?set DEPLOYMENT in the env file}
+      # Not published, not routed by the gateway, and the backend is not on the proxy network.
+      METRICS_PORT: ${METRICS_PORT:-9000}
+    networks:
+      - db
+      - app
+    depends_on:
+      postgres:
+        condition: service_healthy
+        # Isolated deployments use another project's Postgres, so there is no service to wait for.
+        required: false
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE in the env file}:${IMAGE_TAG:?set IMAGE_TAG in the env file}
+    restart: unless-stopped
+    mem_limit: ${FRONTEND_MEM_LIMIT:-64m}
+    logging: *logging
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # The public-facing service: routes /api/* to the backend and the rest to the frontend (gateway.Caddyfile).
+  gateway:
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    mem_limit: ${GATEWAY_MEM_LIMIT:-48m}
+    logging: *logging
+    volumes:
+      - ./gateway.Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      app:
+      proxy:
+        # The name the shared Caddy's site file proxies to (the UPSTREAM variables in deploy/proxy.env.example).
+        aliases:
+          - ${PROXY_UPSTREAM:?set PROXY_UPSTREAM in the env file}
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  # backend, frontend, and gateway. internal: no route out.
+  app:
+    internal: true
+  # Postgres and the backend. Named per project unless DB_NETWORK says otherwise (isolated deployments that share a server).
+  db:
+    internal: true
+    external: ${DB_EXTERNAL:-false}
+    name: ${DB_NETWORK:-${COMPOSE_PROJECT_NAME}_db}
+  # The shared Caddy's network, created outside this repo. Only the gateway joins it.
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}
+
+volumes:
+  postgres-data:

@@ -129,3 +129,14 @@ jobs:
       # The check script runs with uv, in backend/. It builds both images and looks inside them.
       - run: make install-backend
       - run: make check-images
+
+  caddy:
+    name: caddy
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork
+    # pull requests on it: forks only get CI after it is pushed to this repo.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Validates the production site file with the same Caddy version the server runs (needs Docker on the runner).
+      - run: make check-caddy
