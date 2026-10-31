@@ -56,7 +56,7 @@ def test_backend_dockerfile_builds_the_course_content_in_its_first_stage():
     node_major = (ROOT / ".nvmrc").read_text().strip()
 
     assert [stage.splitlines()[0] for stage in stages] == [
-        f"FROM node:{node_major}-alpine AS content",
+        f"FROM node:{node_major}-bookworm AS content",
         "FROM python:3.12-slim AS build",
         "FROM python:3.12-slim",
     ]
