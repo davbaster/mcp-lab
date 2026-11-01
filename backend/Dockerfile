@@ -2,11 +2,23 @@
 # content-build/, and the component schemas of the frontend. backend/Dockerfile.dockerignore keeps the context small.
 
 # Stage 1: build the course content (lesson trees, quizzes, code steps, assets, manifests).
-# The Node major version equals .nvmrc. Only the output is copied to the runtime image.
-FROM node:24-alpine AS content
+# The Node major version equals .nvmrc. Only the output is copied to the runtime image: the browser and Node stay here.
+# Debian-based (glibc) and not Alpine, because chrome-headless-shell, which draws the Mermaid diagrams (#55), is published
+# for glibc Linux only. The full image (not -slim) is used because it already has the `unzip` that the browser install needs.
+FROM node:24-bookworm AS content
 WORKDIR /repo
 COPY content-build/package.json content-build/package-lock.json content-build/
 RUN cd content-build && npm ci
+# The chrome-headless-shell build to install. It must equal the build that puppeteer pins in content-build (the version in
+# content-build/package.json); the next step stops the build with a message when it does not. Change both together.
+ARG CHROME_HEADLESS_SHELL_VERSION=156.0.8078.47
+RUN cd content-build && node --input-type=module -e 'const { PUPPETEER_REVISIONS } = await import("puppeteer"); const pinned = PUPPETEER_REVISIONS["chrome-headless-shell"]; if (pinned !== process.argv[1]) { console.error("chrome-headless-shell version mismatch: backend/Dockerfile (CHROME_HEADLESS_SHELL_VERSION) installs " + process.argv[1] + ", but the puppeteer pinned in content-build/package.json uses " + pinned + ". Set CHROME_HEADLESS_SHELL_VERSION in backend/Dockerfile to " + pinned + "."); process.exit(1); }' "${CHROME_HEADLESS_SHELL_VERSION}"
+# The operating-system libraries the browser needs (its deb.deps file; the rest of that file is already in the image or is for
+# full Chrome), and a font. Only in this stage; the runtime image gets none of it.
+RUN apt-get update     && apt-get install -y --no-install-recommends         fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 libdbus-1-3 libgbm1 libnspr4 libnss3         libxcomposite1 libxdamage1 libxfixes3 libxkbcommon0 libxrandr2     && rm -rf /var/lib/apt/lists/*
+# Only chrome-headless-shell, never full Chrome, at the pinned build (the same download as `npm run install:browser`).
+# The check after it fails the build if a library is still missing.
+RUN cd content-build     && npx puppeteer browsers install chrome-headless-shell@${CHROME_HEADLESS_SHELL_VERSION}     && ! ldd /root/.cache/puppeteer/chrome-headless-shell/linux-${CHROME_HEADLESS_SHELL_VERSION}/chrome-headless-shell-linux64/chrome-headless-shell | grep "not found"
 COPY content-build content-build
 # The content build reads the component schemas from the frontend's folder, at the same relative place as in the repo.
 COPY frontend/src/content-components/schemas frontend/src/content-components/schemas
