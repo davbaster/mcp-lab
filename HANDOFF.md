@@ -1,6 +1,6 @@
 # Handoff
 
-Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-01.
+Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-02.
 
 Read [`AGENTS.md`](AGENTS.md) first. It has the layout, commands and rules. [`_docs/plan.md`](_docs/plan.md) is the scope, and [`_docs/process.md`](_docs/process.md) is how each task is run (PM grooms, engineer builds, QA passes or fails, then the issue is closed). This file only holds the state and decisions that the repo doesn't.
 
@@ -27,7 +27,8 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 - **Chapters (#26-#33, #61, #62):** merged (PR #138).
 - **#116 (Mermaid in the backend image):** merged (PR #140). The content stage of `backend/Dockerfile` is `node:24-bookworm` with the pinned chrome-headless-shell and its apt libraries (content stage only). The backend image now builds with the real `courses/`.
 - **#34 (production and staging Compose with TLS):** merged (PR #141) but the issue stays open until the checks below are done. Files: `deploy/` (compose, `*.env.example`, `gateway.Caddyfile`), `caddy/mcp-lab.caddy`, `make check-caddy` and the `caddy` CI job, and the README section "Production and staging".
-- **Next:** finish #34 (below), then #35 (deploy script). #77 (publish images to GHCR) is a prerequisite for deploying and was dropped in the cut; ask David to bring it back.
+- **#77 (publish images to GHCR):** reactivated by David on 2026-11-02 (the backlog cut is lifted for #77 only); in PR #143, waiting on David's merge. `.github/workflows/images.yml` builds both images for every push on the self-hosted runner, checks them (`make check-image-contents`), scans them with Trivy (critical/high with a fix fail the job, SARIF to the Security tab) and pushes `ghcr.io/davbaster/mcp-lab-{backend,frontend}:<full sha>` only if everything passed. Fork PRs are not built (David's decision). Trivy cannot scan Compose files, so only Dockerfiles are scanned (README says so). The frontend base is `nginx:1.30-alpine` plus `apk upgrade --no-cache`, so two builds of the same commit can differ in Alpine package versions; `.trivyignore` is empty.
+- **Next:** after PR #143 merges, check its first Actions run on `itias-vps` (the GHA cache, trivy-action's database download, the SARIF upload which needs code scanning on, the first GHCR push, and the warm-cache build time for the PR notes). Then David switches both packages to public in GitHub (they are created private). Then deploy the stack on the VM and finish #34 (below), then #35 (deploy script).
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 
 ## #34 still open
