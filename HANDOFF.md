@@ -1,6 +1,6 @@
 # Handoff
 
-Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-01.
+Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-02.
 
 Read [`AGENTS.md`](AGENTS.md) first. It has the layout, commands and rules. [`_docs/plan.md`](_docs/plan.md) is the scope, and [`_docs/process.md`](_docs/process.md) is how each task is run (PM grooms, engineer builds, QA passes or fails, then the issue is closed). This file only holds the state and decisions that the repo doesn't.
 
@@ -27,6 +27,7 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 - **Chapters (#26-#33, #61, #62):** merged (PR #138).
 - **#116 (Mermaid in the backend image):** merged (PR #140). The content stage of `backend/Dockerfile` is `node:24-bookworm` with the pinned chrome-headless-shell and its apt libraries (content stage only). The backend image now builds with the real `courses/`.
 - **#34 (production and staging Compose with TLS):** merged (PR #141) but the issue stays open until the checks below are done. Files: `deploy/` (compose, `*.env.example`, `gateway.Caddyfile`), `caddy/mcp-lab.caddy`, `make check-caddy` and the `caddy` CI job, and the README section "Production and staging".
+- **#39 (ops schema and database roles):** implemented on the branch `feat/39-ops-schema-roles`, waiting for QA and David's merge. `oncall-mcp/` now has the `ops` Alembic history (version table `ops.ops_alembic_version`), the seven tables, the four roles, Makefile targets and a CI job. Open questions for David: (a) there is no pytest for the constraints and roles because of the no-new-tests decision (checked by a manual SQL script); (b) Makefile and CI for `oncall-mcp` were added here, not in #40; (c) in the isolated mode the `app.*` grants happen only if `app.feedback` exists when migration 0002 runs, and a re-runnable grant script is still to write; (d) the evidence columns of the dropped #64 are not covered by `ops_retention`; (e) `deployment` is stored as the deployment's name (text); (f) creating the roles needs CREATEROLE. Also: `ops_writer` has SELECT on its tables too (UPDATE ... WHERE needs it), and the backend test `test_alembic_check_ignores_other_schemas` fails in a database that already holds the real `ops` schema.
 - **Next:** finish #34 (below), then #35 (deploy script). #77 (publish images to GHCR) is a prerequisite for deploying and was dropped in the cut; ask David to bring it back.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
 

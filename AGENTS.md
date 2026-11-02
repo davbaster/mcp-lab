@@ -35,8 +35,8 @@ Some of these folders don't exist until their backlog task creates them.
 
 The root `Makefile` is the single entry point, and CI calls the same targets. Run `make` from the repo root; plain `make` lists every target. A variable goes after the target and reaches the commands (`make test-backend DATABASE_URL=<url>`). A failing command stops `make` with a non-zero exit code.
 
-- `make install` - install every part (`install-backend`, `install-frontend`, `install-content-build`)
-- `make lint` - lint every part (`lint-backend`, `lint-frontend`, `lint-content-build`)
+- `make install` - install every part (`install-backend`, `install-frontend`, `install-content-build`, `install-oncall-mcp`)
+- `make lint` - lint every part (`lint-backend`, `lint-frontend`, `lint-content-build`, `lint-oncall-mcp`)
 - `make typecheck` - typecheck every part that has one (`typecheck-frontend`, `typecheck-content-build`; the backend has none yet)
 - `make test` - run every test suite (`test-backend`, `test-frontend`, `test-content-build`); the backend needs `DATABASE_URL` set to a `_test` database
 - `make check` - `check-openapi`, `check-api-client`, and `check-content-ids` (the generated files are up to date; no database or git history needed)
@@ -46,9 +46,10 @@ The root `Makefile` is the single entry point, and CI calls the same targets. Ru
 - `make push-images BACKEND_IMAGE=<ref> FRONTEND_IMAGE=<ref>` - `docker push` both images (CI only, after the login, in no aggregate)
 - `make upload-sarif` - upload the Trivy `trivy-*.sarif` files to the Security tab (CI only, needs `GITHUB_TOKEN`, in no aggregate)
 - `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
+- `make migrate-oncall-mcp` and `make check-migrations-oncall-mcp` - apply the `ops` migrations and check them against the models; they need `OPS_DATABASE_URL` (and `migrate-oncall-mcp` the four role passwords, see `oncall-mcp/README.md`), so they are in no aggregate
 - `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
 
-Each task that adds a new part (`oncall-mcp/` in #40) also adds that part's targets to the `Makefile` and to the aggregate targets, and CI calls them. Recipes stay portable: one command per line, or `cd <dir> && <command>`; no pipes, `;`, `||`, `$(shell ...)`, `VAR=value` prefixes, single quotes, or Unix-only tools. `backend/tests/test_repo_files.py` checks this.
+Each task that adds a new part also adds that part's targets to the `Makefile` and to the aggregate targets, and CI calls them. Recipes stay portable: one command per line, or `cd <dir> && <command>`; no pipes, `;`, `||`, `$(shell ...)`, `VAR=value` prefixes, single quotes, or Unix-only tools. `backend/tests/test_repo_files.py` checks this.
 
 The per-folder commands are what the targets run. Use them directly to run one test file, start a dev server, or build. Each command is on its own line and starts with `cd`, so it works in PowerShell 5.1 as well as bash. Run from the repo root.
 
@@ -80,7 +81,14 @@ The per-folder commands are what the targets run. Use them directly to run one t
 - `cd content-build` then `npm run build -- ../courses ../build` - build every course (`COURSES=<id>,<id>` limits it); writes nothing if any course has an error
 - `cd content-build` then `npm run ids:update -- ../courses` - write `ids.json` for every course; `npm run ids:check -- ../courses` checks them, and `npm run ids:check -- ../courses --base origin/main` also fails on a removed published ID without a note
 
-On-call commands will be added as their task is done.
+`oncall-mcp/` (Python; install first with `make install-oncall-mcp`):
+
+- `cd oncall-mcp` then `uv sync --locked` - install dependencies
+- `cd oncall-mcp` then `uv run ruff check .` - lint
+- `cd oncall-mcp` then `uv run alembic upgrade head` - apply the `ops` migrations (needs `OPS_DATABASE_URL` and the four role passwords)
+- `cd oncall-mcp` then `uv run alembic check` - the models and the migrations agree
+
+The server's own commands will be added as their task is done.
 
 ## Rules
 
