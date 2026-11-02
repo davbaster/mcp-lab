@@ -1,6 +1,6 @@
 # Handoff
 
-Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-10-26.
+Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-01.
 
 Read [`AGENTS.md`](AGENTS.md) first. It has the layout, commands and rules. [`_docs/plan.md`](_docs/plan.md) is the scope, and [`_docs/process.md`](_docs/process.md) is how each task is run (PM grooms, engineer builds, QA passes or fails, then the issue is closed). This file only holds the state and decisions that the repo doesn't.
 
@@ -24,8 +24,23 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 
 - **Merged:** everything through the frontend phase, plus #107 (course loader edge cases, PR #136).
 - **#111 (trailing newline in route paths):** passed QA, merged (PR #137).
-- **Next:** all chapters (#26-#33, #61, #62) are in PR #138, waiting on David's merge. Next is the deploy, #34.
+- **Chapters (#26-#33, #61, #62):** merged (PR #138).
+- **#116 (Mermaid in the backend image):** merged (PR #140). The content stage of `backend/Dockerfile` is `node:24-bookworm` with the pinned chrome-headless-shell and its apt libraries (content stage only). The backend image now builds with the real `courses/`.
+- **#34 (production and staging Compose with TLS):** merged (PR #141) but the issue stays open until the checks below are done. Files: `deploy/` (compose, `*.env.example`, `gateway.Caddyfile`), `caddy/mcp-lab.caddy`, `make check-caddy` and the `caddy` CI job, and the README section "Production and staging".
+- **Next:** finish #34 (below), then #35 (deploy script). #77 (publish images to GHCR) is a prerequisite for deploying and was dropped in the cut; ask David to bring it back.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
+
+## #34 still open
+
+- **Gateway (accepted by David, 2026-10-31):** each project runs a small Caddy `gateway` that is the only service on the `proxy` network. It routes `/api/*` to the backend and the rest to the frontend, so the backend's metrics port (9000) never joins `proxy`. So routing lives in `deploy/gateway.Caddyfile`, not only in `caddy/mcp-lab.caddy`.
+- **Media origin:** `content-build/media-config.json` still has the placeholder `https://media.mcp-lab.example` (many tests use it). YouTube and Vimeo embeds already work. Replace the placeholder only when David picks a media CDN.
+- **Memory limits:** production 880 MB, staging 608 MB; with 1024 MB reserved for #37 (an assumption, #37 sets the real figure) and 128 MB for the shared Caddy, 2640 MB of 4096 MB.
+- **Domains** are in `deploy/proxy.env.example` (the shared Caddy's env), so changing them needs the Caddy container recreated, not reloaded.
+- **Not done (needs the VM):** the checks from outside the VM (README, "Production and staging", the `curl.exe` lines), the isolated deployment on a VM, and Let's Encrypt issuance and renewal.
+- **Outside checks (2026-11-01):** from David's PC, 5432, 9000 and 2019 on `157.180.78.25` time out (blocked by the Hetzner firewall `firewall-cust-1`, which allows only 443, 80, 53 from anywhere and 22, 4222 and 8083 from David's static home IP). The first attempt ran the lines on the VM with `curl.exe`, which proves nothing about outside access. Still open: `/metrics`, `/api/metrics` and the response headers, which need the stack deployed, so they wait on #77. On Linux use `-o /dev/null`, not `-o NUL`. Port 80 was opened so HTTP redirects to HTTPS; certificates would also come through port 443 alone.
+- **CI Postgres port (not part of #34):** `docker ps` on the VM showed a `postgres:16` container publishing `0.0.0.0:32928->5432`, most likely a CI service container on the self-hosted runner. The firewall blocks that port from outside, so it is not reachable from the internet (not tested directly). Port 53 is open to everyone; if that DNS server resolves for anyone, it can be abused, outside this repo.
+- **Shared Caddy on the VM (checked 2026-11-01, ready):** container `caddy` (v2.11.7, image tag `caddy:2-alpine`) from `/opt/proxy/compose.yaml`, on the `proxy` network, publishing 80 and 443 only, `mem_limit: 256m`. `/data` is the volume `caddy_data`. `/opt/proxy/Caddyfile` has the ACME email, the global `metrics` option, the `:9180` metrics site (answers inside the container) and `import sites/*.caddy`; `/opt/proxy/sites` is mounted at `/etc/caddy/sites`, which is where a deploy copies `mcp-lab.caddy`. `/opt/proxy/mcp-lab.env` (the Compose `env_file`) holds the domains (`mcp-prod.itias.net`, `mcp-staggin.itias.net`, spelled like that in the DNS) and the staging login; both domains resolve to the VM. Trap: `Caddyfile` is mounted as a single file, and editors replace the file, so after editing it run `docker compose up -d --force-recreate` (a reload keeps the old file). The `sites/` folder is a directory mount and does not have this problem. Changing `mcp-lab.env` also needs the container recreated.
+- **Windows test failures that predate these PRs:** six backend tests (asset loading, golden quiz text, long build path, metrics x2, observability) fail on David's Windows machine with or without these changes.
 
 ## Decisions to keep
 
