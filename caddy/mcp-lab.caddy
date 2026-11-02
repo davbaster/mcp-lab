@@ -1,0 +1,47 @@
+# mcp-lab's site blocks for the server's shared Caddy (set up outside this repo, see README, "Production and
+# staging"). The shared Caddyfile imports this file (`import /opt/proxy/sites/*.caddy`). A deploy copies it there,
+# runs `caddy validate`, and reloads Caddy; CI runs the same validation (`make check-caddy`).
+#
+# Every {$NAME} below is an environment variable of the shared Caddy container (deploy/proxy.env.example lists
+# them). Caddy gets and renews the Let's Encrypt certificates of the domains on its own (stored in the proxy's
+# /data volume), and redirects HTTP to HTTPS.
+#
+# One upstream per deployment: the gateway container of the app project, which answers on port 8080 and routes
+# /api/* to the backend and the rest to the frontend (deploy/gateway.Caddyfile). The backend itself is never
+# on the proxy network, so its metrics port (9000) is not reachable from here.
+
+# What every deployment has. The one argument is the upstream's name on the proxy network.
+(mcp_lab_site) {
+	# The Content-Security-Policy is not set or touched here: the frontend sends it and it passes through unchanged.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+
+	# The backend's metrics are on its own port, which is never routed. Without this, /metrics would fall
+	# through to the frontend's index.html with status 200. (/api/metrics reaches the backend, which answers 404.)
+	@metrics path /metrics /metrics/*
+	handle @metrics {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy {args[0]}:8080
+	}
+}
+
+# Production
+{$MCP_LAB_PRODUCTION_DOMAIN} {
+	import mcp_lab_site {$MCP_LAB_PRODUCTION_UPSTREAM}
+}
+
+# Staging: behind HTTP basic auth (a bcrypt hash, from `caddy hash-password`) and kept out of search engines.
+{$MCP_LAB_STAGING_DOMAIN} {
+	basic_auth {
+		{$MCP_LAB_STAGING_AUTH_USER} {$MCP_LAB_STAGING_AUTH_HASH}
+	}
+	header X-Robots-Tag "noindex, nofollow"
+	import mcp_lab_site {$MCP_LAB_STAGING_UPSTREAM}
+}

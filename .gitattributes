@@ -59,3 +59,6 @@ backend/tests/fixtures/course-build/public/** -text
 backend/tests/fixtures/course-build/assets-map/** text eol=lf
 # The ZIPs of the fixture build are served as they are and compared with the size and SHA-256 in their JSON, so a Windows checkout must not change a byte.
 backend/tests/fixtures/course-build/private/code/**/*.zip binary
+# The files that run in the Caddy and Compose containers on the server: LF on a Windows checkout.
+*.caddy text eol=lf
+deploy/** text eol=lf

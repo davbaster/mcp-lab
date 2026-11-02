@@ -247,7 +247,7 @@ The backend serves Prometheus metrics on a separate, internal-only port and writ
 | `DEPLOYMENT` | The deployment name, the `deployment` label of every sample and the `deployment` field of every log line: lowercase letters, digits, and hyphens (`^[a-z0-9-]+$`). Required, read when the app starts. Unset, empty, invalid, or `host` (reserved for the server-wide exporters of #37 and #38) stops the backend with a message naming `DEPLOYMENT`. `compose.yaml` sets `${DEPLOYMENT:-local}`. |
 | `METRICS_PORT` | The port of the metrics server, default `9000`. A value that is not a port number, or a port already in use, stops the backend with a message naming `METRICS_PORT`. The server runs in the backend's own process and is closed when the app shuts down. (`0` picks a free port, which the tests use.) |
 
-**Access.** `GET /metrics` on the metrics port returns the Prometheus text format and needs no database (a scrape opens no connection, so it works while the database is down). The main app does not serve metrics: `GET /metrics` and `GET /api/metrics` on port 8000 are 404 in the shared error shape, and the routes are not in `openapi.yaml`. The metrics port has no authentication: the network is the control. `compose.yaml` publishes no port for it and Caddy proxies only `backend:8000`, so only containers on the Docker networks the backend joins can reach it. The local `caddy/Caddyfile` answers `/metrics` with 404 itself (otherwise it would fall through to the frontend's `index.html` with status 200). The production site file is #34's.
+**Access.** `GET /metrics` on the metrics port returns the Prometheus text format and needs no database (a scrape opens no connection, so it works while the database is down). The main app does not serve metrics: `GET /metrics` and `GET /api/metrics` on port 8000 are 404 in the shared error shape, and the routes are not in `openapi.yaml`. The metrics port has no authentication: the network is the control. `compose.yaml` publishes no port for it and Caddy proxies only `backend:8000`, so only containers on the Docker networks the backend joins can reach it. The local `caddy/Caddyfile` answers `/metrics` with 404 itself (otherwise it would fall through to the frontend's `index.html` with status 200). The production site file is `caddy/mcp-lab.caddy` (see [Production and staging](#production-and-staging)); it answers `/metrics` with 404 as well.
 
 Only the app's own series are on the page (a dedicated registry: no `process_*`, `python_*`, or `python_gc_*`), and every sample has `deployment`. Label values come from fixed sets or from the configured courses, never from request input.
 
@@ -511,6 +511,157 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 
 A variable set in the PowerShell session (for example `$env:HTTP_PORT = "8081"`) overrides `.env` until you close the session or remove it with `Remove-Item Env:HTTP_PORT`.
 
+## Production and staging
+
+Production and staging run side by side on one VM as two Compose projects from the same images, behind the server's shared Caddy ([#34](https://github.com/davbaster/mcp-lab/issues/34)). They use `deploy/compose.yaml` (not the root `compose.yaml`, which is the local stack) and differ only by their env file. The deploy script and deploy history are [#35](https://github.com/davbaster/mcp-lab/issues/35); the images come from GHCR by commit SHA ([#77](https://github.com/davbaster/mcp-lab/issues/77)).
+
+| File | What |
+|---|---|
+| `deploy/compose.yaml` | The app project: `postgres`, `backend`, `frontend`, and `gateway`. No `build:` section; every service has `restart: unless-stopped`, a memory limit, and rotated logs (`json-file`, 10 MB x 3). No service publishes a port. |
+| `deploy/production.env.example`, `deploy/staging.env.example` | The templates for `deploy/production.env` and `deploy/staging.env`. The real files live only on the VM, readable only by the deploy user, and are never committed (`.gitignore` ignores `*.env`). |
+| `deploy/gateway.Caddyfile` | The project's small internal Caddy: `/api/*` to the backend, everything else to the frontend, `/metrics` is 404. |
+| `caddy/mcp-lab.caddy` | The site file for the shared Caddy: a block for production and one for staging. |
+| `deploy/proxy.env.example` | The variables that the site file reads (domains, upstream names, the staging login). |
+| `deploy/caddy-validate.vars` | Throwaway values for `make check-caddy` only. |
+
+`COMPOSE_PROJECT_NAME`, `DEPLOYMENT`, `COURSES`, the image names and `IMAGE_TAG`, the database settings, and the memory limits come only from the env file; the domains come only from the shared Caddy's env file (`proxy.env.example`). Production and staging have different project names (`mcp-lab-production`, `mcp-lab-staging`), so their containers, networks, and volumes are separate, and each has its own Postgres container, database, role, and password. Both use the same `IMAGE_TAG`.
+
+### What the server needs first
+
+These are set up outside this repo, like Docker. This repo never starts, stops, or reconfigures them beyond its own site file.
+
+- A Docker network named `proxy` (`docker network create proxy`).
+- A Caddy container named `caddy` on that network, in its own Compose project, publishing ports 80 and 443 only, with a persistent `/data` volume (that is where the Let's Encrypt certificates and their renewals live, so they survive restarts and redeploys). Its env file holds the variables of `deploy/proxy.env.example`, and its Caddyfile imports the site files and exposes Caddy's metrics:
+
+```
+{
+	# Prometheus metrics for Caddy itself (#37). The admin API (port 2019) stays on its default, the container's loopback.
+	metrics
+}
+
+# Served on the proxy network only: this port is neither published nor routed by any site.
+:9180 {
+	metrics /metrics
+}
+
+import /opt/proxy/sites/*.caddy
+```
+
+- The DNS records of the production and staging domains pointing at the VM, so Caddy can get certificates. Caddy redirects HTTP to HTTPS on its own.
+- Firewall (managed outside the repo): open 80 and 443 (published by the shared proxy) and 22 (deploys, [#78](https://github.com/davbaster/mcp-lab/issues/78)). Nothing else: not 5432, 9000, or 2019.
+
+A deploy copies `caddy/mcp-lab.caddy` to `/opt/proxy/sites/mcp-lab.caddy`, validates it, and reloads Caddy. A change to the proxy's env file takes effect when the Caddy container is recreated, not on a reload.
+
+```
+docker exec caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+docker exec caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+```
+
+`make check-caddy` runs `caddy validate` on the site file and on `deploy/gateway.Caddyfile` in a `caddy:2.11.7-alpine` container (the version of the other Compose files; needs Docker), and the `caddy` job of CI runs the same target.
+
+### Run it
+
+On the VM, from the repo checkout, once per project (first create the env file from the example and replace every `CHANGE_ME`; for staging, generate the bcrypt hash with `docker exec caddy caddy hash-password`):
+
+```
+docker compose --env-file deploy/production.env -f deploy/compose.yaml pull
+docker compose --env-file deploy/production.env -f deploy/compose.yaml run --rm backend alembic upgrade head
+docker compose --env-file deploy/production.env -f deploy/compose.yaml up -d --wait
+```
+
+Use `deploy/staging.env` for staging. The backend does not migrate on start here (`RUN_MIGRATIONS_ON_START=false`); the `alembic` line is the migration step that the deploy script (#35) will run before it replaces a service.
+
+### How it is wired
+
+- **Networks.** Only `gateway` joins the external `proxy` network, under the name in `PROXY_UPSTREAM` (the shared Caddy proxies to `<that name>:8080`). The backend, the frontend, and the gateway share the project's `app` network, and Postgres and the backend share its `db` network; both are `internal` (no route out). The backend's metrics port (`METRICS_PORT`, 9000) is therefore reachable only from containers on `<project>_app`, never from the proxy network or the internet. The gateway exists because the backend cannot be on the proxy network (all its ports would be): it routes `/api/*` and keeps `/metrics` a 404. The shared Caddy answers `/metrics` with 404 too (otherwise the frontend would answer with `index.html` and status 200); `/api/metrics` reaches the backend, which answers 404.
+- **Client addresses.** The gateway believes the `X-Forwarded-For` of the shared Caddy and adds to it, and the backend believes the gateway (`TRUSTED_PROXIES`, Docker's private ranges), so the failed-login limits count per browser. Tightening the range is [#114](https://github.com/davbaster/mcp-lab/issues/114).
+- **Headers.** HTTPS responses carry `Strict-Transport-Security: max-age=31536000` (one year), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy: camera=(), microphone=(), geolocation=()`. Caddy neither sets nor changes the `Content-Security-Policy`; the frontend's reaches the browser as it is. HSTS has no `includeSubDomains` because other apps on the server may share the domain.
+- **Staging** needs the login from the proxy's env file (`MCP_LAB_STAGING_AUTH_USER` and the bcrypt hash `MCP_LAB_STAGING_AUTH_HASH`) and sends `X-Robots-Tag: noindex, nofollow`.
+- **Observability** ([#37](https://github.com/davbaster/mcp-lab/issues/37)). Caddy's metrics are at `caddy:9180/metrics` on the proxy network. A scraper reaches a backend's metrics (`backend:9000/metrics`) by joining that project's `app` network (`<project>_app`).
+
+### Memory budget
+
+A Hetzner VPS with 4 GB RAM. The limits are `mem_limit` caps, set in the env files (the defaults are in `deploy/compose.yaml`); real use is lower.
+
+| Service | Production | Staging |
+|---|---|---|
+| `postgres` | 384 MB | 256 MB |
+| `backend` | 384 MB | 256 MB |
+| `frontend` | 64 MB | 48 MB |
+| `gateway` | 48 MB | 48 MB |
+| Project total | 880 MB | 608 MB |
+
+| | MB |
+|---|---|
+| Production | 880 |
+| Staging | 608 |
+| Observability stack (#37, reserved; its issue sets the real limits) | 1024 |
+| Shared Caddy | 128 |
+| **Total of limits** | **2640** |
+| Left of 4096 for the host and other apps | **1456** (at least 512 is required) |
+
+An isolated deployment on a shared Postgres adds 352 MB (backend 256, frontend 48, gateway 48), which leaves 1104 MB.
+
+### Scheduled jobs
+
+Scheduled jobs ([#57](https://github.com/davbaster/mcp-lab/issues/57), [#67](https://github.com/davbaster/mcp-lab/issues/67)) run from the host's cron, as the deploy user, through `docker compose exec` (or `run --rm` for a job that needs its own container). `-T` is required because cron has no terminal; `flock -n` skips a run if the last one is still going. The example entry runs at 03:00 every day against production; replace `<command>` with the job's command:
+
+```
+0 3 * * * cd /opt/mcp-lab && flock -n /tmp/mcp-lab-production-job.lock docker compose --env-file deploy/production.env -f deploy/compose.yaml exec -T backend <command> 2>&1 | logger -t mcp-lab-job
+```
+
+### Checks
+
+The Postgres of one project must not accept another project's login. From any machine with Docker, using staging's password against production's database (expect `password authentication failed`, and the same the other way round):
+
+```
+docker run --rm --network mcp-lab-production_db -e PGPASSWORD=<staging password> postgres:16 psql -h mcp-lab-production-postgres -U <staging user> -d <production database> -c "select 1"
+```
+
+Staging cannot even resolve production's Postgres, because the `db` networks are separate. From outside the VM (use `curl.exe` in PowerShell 5.1), nothing but 80 and 443 answers, and the public domain does not expose metrics:
+
+```
+curl.exe -m 5 -v telnet://<vm address>:5432
+curl.exe -m 5 -v telnet://<vm address>:9000
+curl.exe -m 5 -v telnet://<vm address>:2019
+curl.exe -s -o NUL -w "%{http_code}" https://<production domain>/metrics
+curl.exe -s -o NUL -w "%{http_code}" https://<production domain>/api/metrics
+curl.exe -sI https://<production domain>/
+```
+
+The first three must time out or be refused, the two metrics URLs must answer 404 (and the body must not contain `http_requests_total`), and the last shows the four security headers and the unchanged `Content-Security-Policy`.
+
+### Isolated deployment
+
+One deployment per course from the same image, with its own domain, `DEPLOYMENT` name, and env file, and its own database and role on a Postgres server that is already running (here production's). In this example the course is `course-b` on `course-b.example.com`.
+
+1. Create the role and database on the shared server, and make them private to each other (a new database lets every role connect by default):
+
+   ```
+   docker exec -it mcp-lab-production-postgres-1 psql -U <production user> -d postgres
+   ```
+
+   ```
+   CREATE ROLE course_b LOGIN PASSWORD '<password>';
+   CREATE DATABASE course_b OWNER course_b;
+   REVOKE CONNECT ON DATABASE course_b FROM PUBLIC;
+   REVOKE CONNECT ON DATABASE <production database> FROM PUBLIC;
+   GRANT CONNECT ON DATABASE <production database> TO <production user>;
+   ```
+
+2. Copy `deploy/staging.env.example` to `deploy/course-b.env` and change: `COMPOSE_PROJECT_NAME=mcp-lab-course-b`, `COMPOSE_PROFILES=` (empty: no Postgres of its own), `DEPLOYMENT=course-b`, `COURSES=<the course IDs>`, `DATABASE_URL=postgresql+psycopg://course_b:<password>@mcp-lab-production-postgres:5432/course_b`, `DB_NETWORK=mcp-lab-production_db` and `DB_EXTERNAL=true` (the production project's `db` network, which must exist; it does while production runs), `PROXY_UPSTREAM=mcp-lab-course-b`, and the memory limits. The `POSTGRES_*` lines are not used then and can stay or go.
+3. Add a block for it to `caddy/mcp-lab.caddy` and the two variables to the proxy's env file (then recreate the Caddy container):
+
+   ```
+   {$MCP_LAB_COURSE_B_DOMAIN} {
+   	import mcp_lab_site {$MCP_LAB_COURSE_B_UPSTREAM}
+   }
+   ```
+
+4. Start it like the others (`--env-file deploy/course-b.env`), including the `alembic upgrade head` step.
+
+The course content comes from the image, so an isolated deployment of a course needs an image built with that course in its `COURSES_DIR`. The `deployment` label that `DEPLOYMENT` sets keeps its metrics and logs apart in the shared observability stack.
+
 ## Lock files and versions
 
 `backend/uv.lock`, `frontend/package-lock.json`, and `content-build/package-lock.json` are committed. They pin every package, so every machine and every CI run installs the same ones.
@@ -540,7 +691,7 @@ Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a comm
 
 CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container and the `docker-images` job builds the images.
 
-The `content-build` job checks out the whole history (`fetch-depth: 0`). `make install-content-build` also downloads the headless Chromium (a few seconds; the runner does not keep `~/.cache/puppeteer` between jobs unless it is set up to), and the tests of both tiers need it. The runner needs the `unzip` command to unpack the browser, and the browser needs the system libraries listed in its `deb.deps` file (see [`content-build/README.md`](content-build/README.md#the-browser)); if the runner lacks some, install them on the runner, not from the job. The runner is Ubuntu 24.04, where AppArmor blocks the browser's sandbox for a normal user (`No usable sandbox`), so the job sets `MERMAID_NO_SANDBOX: 1` in its `env:` (this job only). That is acceptable because the page holds only Mermaid and lesson text from this repository, and the browser has no network. After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection). The `docker-images` job runs `make check-images`.
+The `content-build` job checks out the whole history (`fetch-depth: 0`). `make install-content-build` also downloads the headless Chromium (a few seconds; the runner does not keep `~/.cache/puppeteer` between jobs unless it is set up to), and the tests of both tiers need it. The runner needs the `unzip` command to unpack the browser, and the browser needs the system libraries listed in its `deb.deps` file (see [`content-build/README.md`](content-build/README.md#the-browser)); if the runner lacks some, install them on the runner, not from the job. The runner is Ubuntu 24.04, where AppArmor blocks the browser's sandbox for a normal user (`No usable sandbox`), so the job sets `MERMAID_NO_SANDBOX: 1` in its `env:` (this job only). That is acceptable because the page holds only Mermaid and lesson text from this repository, and the browser has no network. After the tests it runs `make build-content`, which builds every course in `courses/` (so CI proves the real courses build), and `make check-content-ids-base`, which fails when a published chapter, lesson, or question ID was removed or renamed without a note in the course's `MIGRATIONS.md`. For a pull request, or a push to a branch other than `main`, it compares with `origin/main`; for a push to `main`, with the commit before the push (`github.event.before`; the first push, whose base is all zeros, skips the comparison). The base reaches the Makefile through the step's `env: BASE:`. The job is not a required check yet (that is a ruleset change, see Branch protection). The `docker-images` job runs `make check-images`. The `caddy` job runs `make check-caddy`, which validates `caddy/mcp-lab.caddy` and `deploy/gateway.Caddyfile` with Caddy in Docker.
 
 Because the repo is public, the jobs skip pull requests from forks, so outside code never runs on the VPS. A skipped job counts as passing for branch protection, so review a fork PR's code before merging it, or push its branch to this repo to get a real CI run.
 
@@ -584,4 +735,6 @@ Fix the failure or re-run the job. A test is never skipped or weakened to get a 
 | `frontend/` | React, TypeScript, Vite, Vitest. |
 | `courses/` | Course content. The folder format is in [`courses/README.md`](courses/README.md); the first course comes with [#26](https://github.com/davbaster/mcp-lab/issues/26) onward. |
 | `content-build/` | Course validator, MDX compiler, and build, Node and TypeScript. |
+| `deploy/` | The production and staging Compose project, its env templates, and the gateway Caddyfile ([Production and staging](#production-and-staging)). |
+| `caddy/` | `Caddyfile` for the local stack, `mcp-lab.caddy` for the server's shared Caddy. |
 | `oncall-mcp/` | The on-call MCP server (filled by [#40](https://github.com/davbaster/mcp-lab/issues/40)). |

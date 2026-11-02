@@ -1,0 +1,29 @@
+# The one container of an app project that joins the shared proxy's network. It routes /api/* to the backend and
+# the rest to the frontend, so the backend (and its metrics port, 9000) stays on the project's private network.
+# Plain HTTP on 8080: the shared Caddy in front of it does TLS, and the project publishes no port.
+{
+	admin off
+	auto_https off
+	servers {
+		protocols h1
+		# The shared Caddy is the only client. Believe its X-Forwarded-For (the real browser address) and add to it,
+		# so the backend's failed-login limits count per client (TRUSTED_PROXIES in the env file).
+		trusted_proxies static private_ranges
+	}
+}
+
+:8080 {
+	# Never reaches the frontend's index.html (status 200) or the backend's metrics port.
+	@metrics path /metrics /metrics/*
+	handle @metrics {
+		respond 404
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:8080
+	}
+}
