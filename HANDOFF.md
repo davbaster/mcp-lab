@@ -1,6 +1,6 @@
 # Handoff
 
-Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-10-26.
+Where the work stands, for anyone picking it up without access to the original Claude project (another Claude account, Codex, or a person). Last updated 2026-11-01.
 
 Read [`AGENTS.md`](AGENTS.md) first. It has the layout, commands and rules. [`_docs/plan.md`](_docs/plan.md) is the scope, and [`_docs/process.md`](_docs/process.md) is how each task is run (PM grooms, engineer builds, QA passes or fails, then the issue is closed). This file only holds the state and decisions that the repo doesn't.
 
@@ -24,8 +24,23 @@ On 2026-10-26 David cut the backlog to finish sooner. These issues are dropped f
 
 - **Merged:** everything through the frontend phase, plus #107 (course loader edge cases, PR #136).
 - **#111 (trailing newline in route paths):** passed QA, merged (PR #137).
-- **Next:** all chapters (#26-#33, #61, #62) are in PR #138, waiting on David's merge. Next is the deploy, #34.
+- **Chapters (#26-#33, #61, #62):** merged (PR #138).
+- **#116 (Mermaid in the backend image):** merged (PR #140). The content stage of `backend/Dockerfile` is `node:24-bookworm` with the pinned chrome-headless-shell and its apt libraries (content stage only). The backend image now builds with the real `courses/`.
+- **#34 (production and staging Compose with TLS):** merged (PR #141) but the issue stays open until the checks below are done. Files: `deploy/` (compose, `*.env.example`, `gateway.Caddyfile`), `caddy/mcp-lab.caddy`, `make check-caddy` and the `caddy` CI job, and the README section "Production and staging".
+- **Next:** finish #34 (below), then #35 (deploy script). #77 (publish images to GHCR) is a prerequisite for deploying and was dropped in the cut; ask David to bring it back.
 - Work so far has gone through the branch `claude/project-thread-cwgogn`, one PR per one or two issues, each merged by David. Start new work on a fresh branch from `main`.
+
+## #34 still open
+
+- **Gateway (accepted by David, 2026-10-31):** each project runs a small Caddy `gateway` that is the only service on the `proxy` network. It routes `/api/*` to the backend and the rest to the frontend, so the backend's metrics port (9000) never joins `proxy`. So routing lives in `deploy/gateway.Caddyfile`, not only in `caddy/mcp-lab.caddy`.
+- **Media origin:** `content-build/media-config.json` still has the placeholder `https://media.mcp-lab.example` (many tests use it). YouTube and Vimeo embeds already work. Replace the placeholder only when David picks a media CDN.
+- **Memory limits:** production 880 MB, staging 608 MB; with 1024 MB reserved for #37 (an assumption, #37 sets the real figure) and 128 MB for the shared Caddy, 2640 MB of 4096 MB.
+- **Domains** are in `deploy/proxy.env.example` (the shared Caddy's env), so changing them needs the Caddy container recreated, not reloaded.
+- **Not done (needs the VM):** the checks from outside the VM (README, "Production and staging", the `curl.exe` lines), the isolated deployment on a VM, and Let's Encrypt issuance and renewal.
+- **2026-11-01 attempt:** David ran the `curl` lines on the VM itself (`localhost`, and `curl.exe`, which does not exist on Linux). That proves nothing about outside access. They must run from another machine against the VM's public address (`157.180.78.25`), and the `/metrics` checks need the stack deployed, which waits on #77 (no mcp-lab containers were running). On Linux use `-o /dev/null`, not `-o NUL`.
+- **Security note, not part of #34:** `docker ps` on the VM showed a `postgres:16` container publishing `0.0.0.0:32928->5432` (random port, created minutes earlier), most likely the service container of a CI job on the self-hosted runner. It listens on all interfaces with the CI's throwaway password while it runs. Check it from outside; if it answers, restrict it with the firewall or publish it on `127.0.0.1` only. Not filed as an issue yet.
+- **Shared Caddy on the VM** (`caddy:2-alpine`, container `caddy`) publishes 80 and 443 only; 2019 is not published. Its `import` line, `proxy` network and metrics setting still need checking against the README.
+- **Windows test failures that predate these PRs:** six backend tests (asset loading, golden quiz text, long build path, metrics x2, observability) fail on David's Windows machine with or without these changes.
 
 ## Decisions to keep
 
