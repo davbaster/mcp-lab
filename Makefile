@@ -18,7 +18,7 @@ TEST_DB_PORT ?= 5433
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
-	check-images check-caddy
+	check-images check-image-contents push-images upload-sarif check-caddy
 
 HELP_TARGETS = help \
 	install install-backend install-frontend install-content-build \
@@ -28,7 +28,7 @@ HELP_TARGETS = help \
 	check check-openapi check-api-client check-migrations \
 	migrate-backend test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
-	check-images check-caddy
+	check-images check-image-contents push-images upload-sarif check-caddy
 
 HELP.help = Show this list (the default target)
 HELP.install = Install every part (install-backend, install-frontend, install-content-build)
@@ -58,6 +58,9 @@ HELP.update-content-ids = Write courses/<id>/ids.json for every course (writes f
 HELP.check-content-ids = Check courses/<id>/ids.json holds the IDs the courses have now
 HELP.check-content-ids-base = Check no published ID was removed without a note, as in make check-content-ids-base BASE=origin/main (needs git history, not in any aggregate)
 HELP.check-images = Build the backend and frontend images, check the course build is in the backend image and no course data in the frontend one (needs Docker, not in any aggregate)
+HELP.check-image-contents = Check the built images in BACKEND_IMAGE and FRONTEND_IMAGE hold no env file and the frontend none of the quiz data, as in make check-image-contents BACKEND_IMAGE=<ref> FRONTEND_IMAGE=<ref> (needs Docker, not in any aggregate)
+HELP.push-images = Push the images BACKEND_IMAGE and FRONTEND_IMAGE to their registry (CI only, after docker login; not in any aggregate)
+HELP.upload-sarif = Upload the Trivy SARIF files trivy-*.sarif of the repo root to the Security tab (CI only, needs GITHUB_TOKEN and the GITHUB_* variables; not in any aggregate)
 HELP.check-caddy = Validate caddy/mcp-lab.caddy and deploy/gateway.Caddyfile with Caddy in Docker, using throwaway values from deploy/caddy-validate.vars (needs Docker, not in any aggregate)
 
 help:
@@ -123,6 +126,16 @@ check-content-ids-base:
 
 check-images:
 	cd backend && uv run python scripts/check_images.py
+
+check-image-contents:
+	cd backend && uv run python scripts/check_image_contents.py $(BACKEND_IMAGE) $(FRONTEND_IMAGE)
+
+push-images:
+	docker push $(BACKEND_IMAGE)
+	docker push $(FRONTEND_IMAGE)
+
+upload-sarif:
+	cd backend && uv run python scripts/upload_sarif.py ../trivy-config.sarif ../trivy-backend.sarif ../trivy-frontend.sarif
 
 check-caddy:
 	docker run --rm --env-file deploy/caddy-validate.vars -v ./caddy:/etc/caddy:ro caddy:2.11.7-alpine caddy validate --config /etc/caddy/mcp-lab.caddy --adapter caddyfile

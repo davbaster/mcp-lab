@@ -42,6 +42,9 @@ The root `Makefile` is the single entry point, and CI calls the same targets. Ru
 - `make check` - `check-openapi`, `check-api-client`, and `check-content-ids` (the generated files are up to date; no database or git history needed)
 - `make build-content` - build every course in `courses/` into `build/` (writes files, so it is in no aggregate); `make update-content-ids` writes `courses/<id>/ids.json` (also in no aggregate); `make check-content-ids-base BASE=origin/main` fails when a published ID was removed without a note in `MIGRATIONS.md` (needs git history, in no aggregate)
 - `make check-images` - build the backend and frontend Docker images and look inside them (needs Docker; in no aggregate); CI runs it in the `docker-images` job
+- `make check-image-contents BACKEND_IMAGE=<ref> FRONTEND_IMAGE=<ref>` - check the built images hold no env file and the frontend none of the quiz data (needs Docker; CI only, in no aggregate)
+- `make push-images BACKEND_IMAGE=<ref> FRONTEND_IMAGE=<ref>` - `docker push` both images (CI only, after the login, in no aggregate)
+- `make upload-sarif` - upload the Trivy `trivy-*.sarif` files to the Security tab (CI only, needs `GITHUB_TOKEN`, in no aggregate)
 - `make migrate-backend` and `make check-migrations` - need a database, so they are in no aggregate (`test` already exercises migrations)
 - `make test-db-up` / `make test-db-down` - start and stop a disposable test Postgres in Docker (`TEST_DB_PORT`, default 5433)
 

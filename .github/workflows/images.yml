@@ -1,0 +1,143 @@
+name: Images
+
+# Builds the backend and frontend images for every pushed commit, scans them with Trivy, and publishes them to GitHub
+# Container Registry as ghcr.io/davbaster/mcp-lab-backend:<sha> and ghcr.io/davbaster/mcp-lab-frontend:<sha> (#77).
+# The VM only pulls these images (deploy/compose.yaml); it never builds.
+on:
+  push:
+    # Every branch. Tag pushes do not run it.
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+concurrency:
+  # A push is never cancelled by a newer push: every commit needs its own images.
+  group: images-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  # The image names equal BACKEND_IMAGE and FRONTEND_IMAGE in deploy/*.env.example. The tag is the full commit SHA.
+  BACKEND_IMAGE: ghcr.io/davbaster/mcp-lab-backend:${{ github.sha }}
+  FRONTEND_IMAGE: ghcr.io/davbaster/mcp-lab-frontend:${{ github.sha }}
+
+jobs:
+  images:
+    name: images
+    # The self-hosted runner lives on the owner's VPS. Never run code from fork pull requests on it. This workflow has no
+    # pull_request trigger (forks are not built), and the guard stays in case one is added.
+    runs-on: [self-hosted, Linux, X64, ubuntu-24]
+    # A push of a deleted branch has no commit to build.
+    if: github.event_name == 'push' && !github.event.deleted && github.event.repository.full_name == github.repository
+    # Granted to this job only: packages: write pushes to GHCR with GITHUB_TOKEN (no personal access token), and
+    # security-events: write uploads the Trivy results to the Security tab.
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          # Keep equal to the uv version in backend/Dockerfile.
+          version: 0.11.32
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Each image is built for linux/amd64 only (the VM is x86) and loaded into the local Docker daemon, so Trivy and the
+      # content check look at the exact image that is pushed later. The layer cache lives in the GitHub Actions cache,
+      # one scope per image. The OCI labels name the commit and the repository. provenance: false keeps the image a plain
+      # single manifest (no attestation manifest next to it), which docker push and the VM's docker compose pull expect.
+      - name: Build the backend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          provenance: false
+          tags: ${{ env.BACKEND_IMAGE }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+      - name: Build the frontend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          provenance: false
+          tags: ${{ env.FRONTEND_IMAGE }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          # Shown in feedback reports (VITE_APP_VERSION in frontend/Dockerfile).
+          build-args: |
+            VITE_APP_VERSION=${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+      # The image check is a Python script run by uv in backend/ (same as the docker-images job in ci.yml).
+      - run: make install-backend
+      - name: Check no env file is in either image and no quiz data in the frontend image
+        run: make check-image-contents
+      # Trivy runs before anything is pushed. Each scan fails the job on a critical or high finding (the image scans only
+      # count findings that have a fixed version) and writes a SARIF file. Every scan and the upload have `if: always()`, so
+      # all of them run, and every SARIF file is uploaded, even when an earlier step failed; the job still ends red. Login and
+      # push have no `if:`, so they run only when every earlier step passed, and nothing is pushed otherwise.
+      # Accepted exceptions are in .trivyignore (ID, reason, expiry date). Trivy has no Compose support, so the config scan
+      # reads the Dockerfiles only.
+      - name: Trivy config scan (Dockerfiles)
+        if: ${{ always() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          # Not Dockerfiles: Trivy takes these ignore-pattern files for Dockerfiles by their name and logs a parse error.
+          skip-files: backend/Dockerfile.dockerignore,frontend/Dockerfile.dockerignore
+          format: sarif
+          output: trivy-config.sarif
+          limit-severities-for-sarif: true
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          trivyignores: .trivyignore
+      - name: Trivy scan of the backend image
+        if: ${{ always() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.BACKEND_IMAGE }}
+          format: sarif
+          output: trivy-backend.sarif
+          limit-severities-for-sarif: true
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+          trivyignores: .trivyignore
+      - name: Trivy scan of the frontend image
+        if: ${{ always() }}
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.FRONTEND_IMAGE }}
+          format: sarif
+          output: trivy-frontend.sarif
+          limit-severities-for-sarif: true
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: 1
+          trivyignores: .trivyignore
+      - name: Upload the Trivy results to the Security tab
+        if: ${{ always() }}
+        run: make upload-sarif
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Only reached when the check and every scan passed.
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push the images
+        run: make push-images
