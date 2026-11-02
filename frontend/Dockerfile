@@ -15,7 +15,10 @@ ENV VITE_APP_VERSION=$VITE_APP_VERSION
 RUN node scripts/csp.mjs ../content-build/media-config.json csp.conf
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.30-alpine
+# The base image lags behind Alpine's fixed packages (brotli, curl); this installs the fixes for the vulnerabilities Trivy
+# reports (#77). The packages are upgraded in place, and nothing is added.
+RUN apk upgrade --no-cache
 COPY frontend/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/frontend/csp.conf /etc/nginx/csp.conf
 COPY --from=build /app/frontend/dist /usr/share/nginx/html

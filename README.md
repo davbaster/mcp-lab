@@ -25,7 +25,7 @@ Run `make install` first, after cloning and after pulling a change to a lock fil
 | `make test` | Run every test suite (the backend needs `DATABASE_URL`, see [Test database](#test-database)) |
 | `make check` | Check that `openapi.yaml`, the generated API client, and the `ids.json` of every course are up to date (needs no database and no git history) |
 
-Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi`, `check-api-client`, and `check-content-ids` are the steps of `make check`. `build-content` (build every course into `build/`), `update-content-ids` (write `courses/<id>/ids.json`), `check-content-ids-base` (no published ID was removed without a note, used as `make check-content-ids-base BASE=origin/main`, which needs git history), and `check-images` (build both Docker images and look inside them, see [Docker stack](#docker-stack)) write files or need git or Docker, so they are in no aggregate. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
+Each part also has its own targets: `install-backend`, `lint-backend`, `test-backend`, `install-frontend`, `lint-frontend`, `typecheck-frontend`, `test-frontend`, `install-content-build`, `lint-content-build`, `typecheck-content-build`, `test-content-build`. `check-openapi`, `check-api-client`, and `check-content-ids` are the steps of `make check`. `build-content` (build every course into `build/`), `update-content-ids` (write `courses/<id>/ids.json`), `check-content-ids-base` (no published ID was removed without a note, used as `make check-content-ids-base BASE=origin/main`, which needs git history), and `check-images` (build both Docker images and look inside them, see [Docker stack](#docker-stack)), and `check-image-contents`, `push-images`, and `upload-sarif` (the steps of the image workflow, see [Published images](#published-images)) write files or need git or Docker, so they are in no aggregate. `migrate-backend` (apply the migrations) and `check-migrations` (models and migrations agree) need a database, so they are in no aggregate. `test-db-up` and `test-db-down` start and stop the disposable test Postgres. A failing command stops `make` with a non-zero exit code. A variable goes after the target and reaches the commands, for example `make test-backend DATABASE_URL=<url>`.
 
 The commands below are what the targets run. Use them directly to run one test file, start the dev servers, or build. Run each on its own line from the repo root. Each starts with `cd`, so it works in PowerShell 5.1 as well as bash.
 
@@ -685,9 +685,40 @@ git ls-remote --tags https://github.com/actions/checkout
 
 For an annotated tag, use the line that ends in `^{}`. The uv version CI installs (`version:` of the `setup-uv` step in `ci.yml`) must equal the `uv==` version in `backend/Dockerfile`; change both together.
 
+## Published images
+
+`.github/workflows/images.yml` builds the backend and frontend images for every commit pushed to any branch and publishes them to GitHub Container Registry ([#77](https://github.com/davbaster/mcp-lab/issues/77)), so the VM only pulls images and never builds them (a build needs more memory than the 4 GB VM can spare next to the running app).
+
+| Image | Name |
+|---|---|
+| Backend | `ghcr.io/davbaster/mcp-lab-backend:<sha>` |
+| Frontend | `ghcr.io/davbaster/mcp-lab-frontend:<sha>` |
+
+The tag is the full 40-character commit SHA (`git rev-parse HEAD`), and there is no other tag. These are the names and the `IMAGE_TAG` that `deploy/*.env.example` use. The packages are public, so no login is needed to pull:
+
+```
+docker pull ghcr.io/davbaster/mcp-lab-backend:<sha>
+docker pull ghcr.io/davbaster/mcp-lab-frontend:<sha>
+```
+
+There is one image per commit for every configuration: the backend image holds the build output of every course in `courses/`, and `COURSES` is read when it runs. Each image is built from `backend/Dockerfile` or `frontend/Dockerfile` for `linux/amd64` only (the VM is x86), and has the labels `org.opencontainers.image.revision` (the commit SHA) and `org.opencontainers.image.source` (the repository URL); `docker image inspect --format '{{ json .Config.Labels }}' <image>` shows them. The frontend image is built with `VITE_APP_VERSION` set to the SHA, so feedback reports show the commit.
+
+What the workflow does, in this order. Any failing step stops it, and then nothing is pushed:
+
+1. Builds both images into the runner's local Docker (not pushed yet). The layers are cached in the GitHub Actions cache (`type=gha`, one scope per image), so a build after a change that leaves the dependencies alone reuses the `npm ci`, browser, and `uv sync` layers. The backend image is the slow one: its first stage downloads the headless Chromium that draws the Mermaid diagrams (#116).
+2. `make check-image-contents` looks inside the two built images: no env file (`.env`, `.env.*`, `*.env`) anywhere in either, and no quiz data in the frontend image (no `private` or `course-build` folder, and no file with the name of any quiz file in the backend image).
+3. Trivy checks the Dockerfiles (config scan), then each image. A critical or high finding fails the job; for the images only findings that have a fixed version count. The results are SARIF files, uploaded to the Security tab (Security > Code scanning) also when a scan fails (`make upload-sarif`, with the workflow's token). Trivy's config scan reads Dockerfiles, not Compose files: it has no Compose support, so `compose.yaml` and `deploy/compose.yaml` are not scanned by it.
+4. Logs in to `ghcr.io` with the workflow's `GITHUB_TOKEN` and pushes the two images that were scanned (`make push-images`).
+
+An accepted exception goes in `.trivyignore`: the vulnerability or misconfiguration ID, `exp:<YYYY-MM-DD>` (Trivy stops ignoring it on that day), and a comment line above that says why.
+
+Permissions: the workflow's default is `contents: read`. The one job adds `packages: write` (push to GHCR) and `security-events: write` (upload to the Security tab). There is no personal access token. The job runs only on a push, on the self-hosted runner like CI, and has the fork guard. It has no `pull_request` trigger, so pull requests are not built: a pull request from this repo is covered by the push of its branch, and a pull request from a fork is not built at all (the criterion "forks build but do not push" was replaced on purpose by "forks are not built", because fork code never runs on the self-hosted runner and GitHub-hosted runners are not used).
+
+The first push to GHCR creates each package as private. Set both packages (`mcp-lab-backend` and `mcp-lab-frontend`) to public once, in the package's settings on GitHub (Package settings > Danger Zone > Change visibility), so the VM can pull without a login. To build and look at an image by hand, `make check-images` (above) builds both from the Dockerfiles with fixture courses.
+
 ## CI
 
-Every `run:` step in `.github/workflows/ci.yml` calls a `make` target, so a command that passes locally with `make` passes in CI the same way. The runner needs GNU Make.
+Every `run:` step in `.github/workflows/ci.yml` and `.github/workflows/images.yml` calls a `make` target, so a command that passes locally with `make` passes in CI the same way. The runner needs GNU Make.
 
 CI runs on the self-hosted runner on the owner's VPS (labels `self-hosted`, `Linux`, `X64`, `ubuntu-24`), not on GitHub-hosted runners. Jobs queue while that runner is busy or offline. The runner needs Docker, because the `backend` job starts a Postgres service container and the `docker-images` job builds the images.
 

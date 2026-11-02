@@ -1,0 +1,4 @@
+# Accepted Trivy findings for the image scans and the config scan (#77). One entry per line:
+#   <vulnerability or misconfiguration ID> exp:<YYYY-MM-DD>
+# with a comment line above it that says why the finding is accepted. Trivy stops ignoring an entry on its expiry date,
+# so the build fails again and someone looks at it. No entry has an end date without a reason, and no entry is open-ended.
