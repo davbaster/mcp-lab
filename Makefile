@@ -11,34 +11,36 @@
 TEST_DB_PORT ?= 5433
 
 .PHONY: help \
-	install install-backend install-frontend install-content-build \
-	lint lint-backend lint-frontend lint-content-build \
+	install install-backend install-frontend install-content-build install-oncall-mcp \
+	lint lint-backend lint-frontend lint-content-build lint-oncall-mcp \
 	typecheck typecheck-frontend typecheck-content-build \
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
-	migrate-backend test-db-up test-db-down \
+	migrate-backend migrate-oncall-mcp check-migrations-oncall-mcp test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
 	check-images check-image-contents push-images upload-sarif check-caddy
 
 HELP_TARGETS = help \
-	install install-backend install-frontend install-content-build \
-	lint lint-backend lint-frontend lint-content-build \
+	install install-backend install-frontend install-content-build install-oncall-mcp \
+	lint lint-backend lint-frontend lint-content-build lint-oncall-mcp \
 	typecheck typecheck-frontend typecheck-content-build \
 	test test-backend test-frontend test-content-build \
 	check check-openapi check-api-client check-migrations \
-	migrate-backend test-db-up test-db-down \
+	migrate-backend migrate-oncall-mcp check-migrations-oncall-mcp test-db-up test-db-down \
 	build-content update-content-ids check-content-ids check-content-ids-base \
 	check-images check-image-contents push-images upload-sarif check-caddy
 
 HELP.help = Show this list (the default target)
-HELP.install = Install every part (install-backend, install-frontend, install-content-build)
+HELP.install = Install every part (install-backend, install-frontend, install-content-build, install-oncall-mcp)
 HELP.install-backend = Install backend dependencies from the lock file (uv sync --locked)
 HELP.install-frontend = Install frontend dependencies from the lock file (npm ci)
 HELP.install-content-build = Install content-build dependencies from the lock file (npm ci) and download the Chromium that draws Mermaid diagrams (npm run install:browser)
-HELP.lint = Lint every part (lint-backend, lint-frontend, lint-content-build)
+HELP.lint = Lint every part (lint-backend, lint-frontend, lint-content-build, lint-oncall-mcp)
 HELP.lint-backend = Lint the backend (ruff)
 HELP.lint-frontend = Lint the frontend (ESLint)
 HELP.lint-content-build = Lint content-build (ESLint)
+HELP.install-oncall-mcp = Install oncall-mcp dependencies from the lock file (uv sync --locked)
+HELP.lint-oncall-mcp = Lint oncall-mcp (ruff)
 HELP.typecheck = Typecheck every part that has a typecheck (typecheck-frontend, typecheck-content-build)
 HELP.typecheck-frontend = Typecheck the frontend (tsc --noEmit)
 HELP.typecheck-content-build = Typecheck content-build (tsc --noEmit)
@@ -51,6 +53,8 @@ HELP.check-openapi = Check openapi.yaml matches the backend
 HELP.check-api-client = Check the generated frontend API client matches openapi.yaml
 HELP.check-migrations = Check the models and the migrations agree (needs DATABASE_URL, not in any aggregate)
 HELP.migrate-backend = Apply all database migrations (needs DATABASE_URL, not in any aggregate)
+HELP.migrate-oncall-mcp = Apply the ops migrations (needs OPS_DATABASE_URL and the four role passwords, see oncall-mcp/README.md; not in any aggregate)
+HELP.check-migrations-oncall-mcp = Check the ops models and the ops migrations agree (needs OPS_DATABASE_URL, not in any aggregate)
 HELP.test-db-up = Start a disposable test Postgres in Docker on TEST_DB_PORT (default 5433) and print its DATABASE_URL
 HELP.test-db-down = Stop the disposable test Postgres
 HELP.build-content = Build every course in courses/ into build/ (writes files, not in any aggregate)
@@ -69,8 +73,8 @@ help:
 	$(foreach target,$(HELP_TARGETS),$(info $(target): $(HELP.$(target))))
 	@echo Test database: see the Test database section of README.md.
 
-install: install-backend install-frontend install-content-build
-lint: lint-backend lint-frontend lint-content-build
+install: install-backend install-frontend install-content-build install-oncall-mcp
+lint: lint-backend lint-frontend lint-content-build lint-oncall-mcp
 typecheck: typecheck-frontend typecheck-content-build
 test: test-backend test-frontend test-content-build
 check: check-openapi check-api-client check-content-ids
@@ -86,6 +90,18 @@ test-backend:
 
 migrate-backend:
 	cd backend && uv run alembic upgrade head
+
+install-oncall-mcp:
+	cd oncall-mcp && uv sync --locked
+
+lint-oncall-mcp:
+	cd oncall-mcp && uv run ruff check .
+
+migrate-oncall-mcp:
+	cd oncall-mcp && uv run alembic upgrade head
+
+check-migrations-oncall-mcp:
+	cd oncall-mcp && uv run alembic check
 
 install-frontend:
 	cd frontend && npm ci

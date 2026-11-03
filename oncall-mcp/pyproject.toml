@@ -1,0 +1,18 @@
+[project]
+name = "mcp-lab-oncall-mcp"
+version = "0.1.0"
+description = "On-call MCP server for mcp-lab"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.20.1",
+    "psycopg[binary]>=3,<4",
+    "sqlalchemy>=2,<3",
+]
+
+[tool.ruff]
+line-length = 100
+
+[dependency-groups]
+dev = [
+    "ruff>=0.17.2",
+]

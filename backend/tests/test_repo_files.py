@@ -673,7 +673,7 @@ def test_gitignore_ignores_the_build_folder_at_the_repo_root_only():
 def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
     rules = _rules()
 
-    parts = ("-backend", "-frontend", "-content-build")
+    parts = ("-backend", "-frontend", "-content-build", "-oncall-mcp")
     assert {name: rules[name].recipe for name in rules if name.endswith(parts)} | {
         name: rules[name].recipe for name in ("check-openapi", "check-migrations", "check-api-client")
     } == {
@@ -693,6 +693,11 @@ def test_per_part_targets_run_the_part_commands_from_the_parts_folder():
         "lint-content-build": ["cd content-build && npm run lint"],
         "typecheck-content-build": ["cd content-build && npm run typecheck"],
         "test-content-build": ["cd content-build && npm test"],
+        # The ops schema's own history (#39); the two database targets are in no aggregate.
+        "install-oncall-mcp": ["cd oncall-mcp && uv sync --locked"],
+        "lint-oncall-mcp": ["cd oncall-mcp && uv run ruff check ."],
+        "migrate-oncall-mcp": ["cd oncall-mcp && uv run alembic upgrade head"],
+        "check-migrations-oncall-mcp": ["cd oncall-mcp && uv run alembic check"],
     }
     assert "typecheck-backend" not in rules
 
@@ -751,15 +756,15 @@ def test_aggregate_targets_call_only_the_per_part_targets_they_should():
     rules = _rules()
 
     assert {name: rules[name].prerequisites for name in ("install", "lint", "typecheck", "test", "check")} == {
-        "install": ["install-backend", "install-frontend", "install-content-build"],
-        "lint": ["lint-backend", "lint-frontend", "lint-content-build"],
+        "install": ["install-backend", "install-frontend", "install-content-build", "install-oncall-mcp"],
+        "lint": ["lint-backend", "lint-frontend", "lint-content-build", "lint-oncall-mcp"],
         "typecheck": ["typecheck-frontend", "typecheck-content-build"],
         "test": ["test-backend", "test-frontend", "test-content-build"],
         "check": ["check-openapi", "check-api-client", "check-content-ids"],
     }
     for name in ("install", "lint", "typecheck", "test", "check"):
         assert rules[name].recipe == [], name
-    needs_database = {"migrate-backend", "check-migrations"}
+    needs_database = {"migrate-backend", "check-migrations", "migrate-oncall-mcp", "check-migrations-oncall-mcp"}
     assert not needs_database & {p for r in rules.values() for p in r.prerequisites}
 
 
