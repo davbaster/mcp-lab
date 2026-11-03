@@ -39,6 +39,14 @@ The migration needs a role that may create roles (`CREATEROLE`) and the owner of
 
 The grants on `app.*` are made only if `app.feedback` exists in the database when the migration runs. Run `make migrate-backend` first. When the app is in another database (the isolated mode), `oncall_reader` gets no grant on `app` here and needs the same `GRANT` run against the app's database. A column added to `app.feedback` later is not readable by `oncall_reader` until the grant is run again.
 
+## Redaction
+
+`oncall_mcp/redaction.py` has one function, `redact(value)`, that takes a string, number, boolean, `None`, or lists and dicts nested to any depth, and returns a new value (the input is never changed). Nothing sensitive may leave the on-call server, and [#40](https://github.com/davbaster/mcp-lab/issues/40) wires it into every result.
+
+Each removed value becomes `[REDACTED:<kind>]`, where the kind is `password`, `token`, `cookie`, `email`, `username` or `quiz_answer` (`KINDS` lists them). It works on key names (the whole value under `password`, `token`, `secret`, `api_key`, `session`, `authorization`, `cookie`, `email`, `username`, `user`, `correct`, `option_id`, `answers`, `explanation` and similar names is replaced, even a nested dict) and on text (`Cookie:`/`Authorization:` header lines, `Bearer ...`, GitHub and Anthropic keys, JWTs, `https://user:pass@host`, `key=value` pairs and email addresses in any string, and JSON written inside a JSON string). Running it twice gives the same result as once, and IDs such as `course_id`, `lesson_id` and UUIDs are not touched.
+
+Limits: a learner's username written as plain text, with no key or pattern around it, is not caught, so feedback resources ([#46](https://github.com/davbaster/mcp-lab/issues/46)) must never include identity. Free-form personal data and names, secrets in a format it does not know, encoded values (base64, hex), and truncated or malformed JSON (only the text patterns apply) are not caught either, and over-masking is accepted (a key such as `correct_count` is masked). The full list is in the module docstring.
+
 ## Commands
 
 Run from the repo root, each on its own line. `make install-oncall-mcp` installs the dependencies (`uv sync --locked`) and `make lint-oncall-mcp` runs ruff.
